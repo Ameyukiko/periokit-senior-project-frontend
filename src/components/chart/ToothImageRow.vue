@@ -33,6 +33,10 @@ defineProps<{
   baselineY?: number  // Custom baseline position for PD graph
 }>()
 
+const emit = defineEmits<{
+  selectTooth: [id: ToothId]
+}>()
+
 </script>
 
 <template>
@@ -50,9 +54,10 @@ defineProps<{
           <div
             v-for="id in group"
             :key="id"
-            class="h-full flex shrink-0 justify-center group relative z-10 cursor-default transition-all duration-200 rounded-xl"
+            class="h-full flex shrink-0 justify-center group relative z-10 cursor-pointer transition-all duration-200 rounded-xl hover:bg-blue-50/30"
             :class="selectedToothId === id ? 'bg-blue-50 ring-2 ring-[#0052ff] ring-inset' : ''"
             :style="getToothColumnStyle(id)"
+            @click="emit('selectTooth', id)"
           >
             <img
               :src="getToothImage(id, surface, chartData[id])"

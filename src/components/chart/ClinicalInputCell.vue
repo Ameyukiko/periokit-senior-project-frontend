@@ -114,13 +114,13 @@ const handleToggle = () => {
 const toggleColorClass = computed(() => {
   if (props.inputType !== "toggle" || !props.value) return "";
   const name = props.fieldName.toLowerCase();
-  if (name.includes("bop")) return "bg-red-500 shadow-inner";
-  if (name.includes("pi")) return "bg-blue-500 shadow-inner";
-  return "bg-slate-500";
+  if (name.includes("bop")) return props.disabled ? "bg-red-800/50" : "bg-red-500 shadow-inner";
+  if (name.includes("pi")) return props.disabled ? "bg-blue-800/50" : "bg-blue-500 shadow-inner";
+  return props.disabled ? "bg-slate-600/60" : "bg-slate-500";
 });
 
 const containerClasses = computed(() => ({
-  "opacity-50 pointer-events-none": props.disabled,
+  "bg-slate-800/70 opacity-80 pointer-events-none": props.disabled,
   "bg-slate-50/50": props.readonly,
   "hover:bg-slate-50/80": !props.disabled && !props.readonly && props.inputType === "numeric",
 }));
@@ -149,7 +149,7 @@ const containerClasses = computed(() => ({
         :class="[
           isAbnormal ? 'text-red-600 font-bold' : '',
           isCriticalValue && !isAbnormal ? 'text-red-600 font-extrabold' : '',
-          !isAbnormal && !isCriticalValue ? 'text-slate-700' : '',
+          !isAbnormal && !isCriticalValue ? (disabled ? 'text-slate-500' : 'text-slate-700') : '',
           readonly ? 'font-bold cursor-default' : 'cursor-text font-medium',
         ]"
       />
@@ -190,7 +190,7 @@ const containerClasses = computed(() => ({
         :class="[toggleColorClass]"
       >
         <div v-if="value" class="w-full h-full opacity-100"></div>
-        <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-200/50 group-hover:bg-slate-300 transition-colors"></div>
+        <div v-else class="w-1.5 h-1.5 rounded-full transition-colors" :class="disabled ? 'bg-slate-500/40' : 'bg-slate-200/50 group-hover:bg-slate-300'"></div>
       </div>
     </template>
 

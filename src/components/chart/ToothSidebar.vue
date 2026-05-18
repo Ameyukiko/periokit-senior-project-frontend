@@ -132,7 +132,7 @@ const analysisData = computed(() => {
     <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
 
       <!-- PD Section -->
-      <section :class="{ 'opacity-40 grayscale pointer-events-none': toothData.extracted }">
+      <section :class="{ 'bg-slate-800/30 opacity-70 pointer-events-none': toothData.extracted }">
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">PD</h3>
         <div class="grid grid-cols-2 gap-4">
           <!-- Buccal Card -->
@@ -160,7 +160,7 @@ const analysisData = computed(() => {
       </section>
 
       <!-- CAL Section -->
-      <section :class="{ 'opacity-40 grayscale pointer-events-none': toothData.extracted }">
+      <section :class="{ 'bg-slate-800/30 opacity-70 pointer-events-none': toothData.extracted }">
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">CAL</h3>
         <div class="grid grid-cols-2 gap-4">
           <!-- Buccal Card -->
@@ -188,7 +188,7 @@ const analysisData = computed(() => {
       </section>
 
       <!-- Visual Indicators Section (Standard 6-Site Hexagonal Diagrams) -->
-      <section class="grid grid-cols-2 gap-4" :class="{ 'opacity-40 grayscale pointer-events-none': toothData.extracted }">
+      <section class="grid grid-cols-2 gap-4" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <!-- BoP Diagram -->
         <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/bop">
           <!-- Percentage Badge -->
@@ -275,7 +275,7 @@ const analysisData = computed(() => {
       </section>
 
       <!-- Analysis Summary -->
-      <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'opacity-40 grayscale pointer-events-none': toothData.extracted }">
+      <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <h3 class="text-[13px] font-black text-slate-800 mb-6">
           Analysis Summary
         </h3>

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { calculateBopPercentage, calculateCal, calculateChartSummary, calculatePdCategories, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import { createInitialChartData } from '@/domain/chart/chart.factory'
+import { getFurcationSites } from '@/domain/chart/chart.rules'
 import type { ChartData, PatientInfo, SiteIndex, Surface, ToothId } from '@/domain/chart/chart.types'
 import { useAuthStore } from './auth'
 
@@ -117,6 +118,11 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     selectTooth(id: ToothId) {
+      const chart = getActiveChart(this)
+      const tooth = chart.teethData[id]
+      // Prevent selection if tooth is extracted
+      if (!tooth || tooth.extracted) return
+      // If clicking same tooth, deselect; otherwise select new tooth
       this.selectedToothId = this.selectedToothId === id ? null : id
     },
 
@@ -183,6 +189,38 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       const tooth = chart.teethData[id]
       if (!tooth) return
       tooth.extracted = !tooth.extracted
+
+      // Clear ALL clinical data when tooth is extracted (fill black)
+      if (tooth.extracted) {
+        const clearSurfaceData = () => ({
+          bop: [false, false, false],
+          pi: [false, false, false],
+          rec: ['', '', ''],
+          pd: ['', '', ''],
+          cal: ['', '', ''],
+          ktw: ''
+        })
+
+        // Surface data (BOP, PI, Recession, PD, CAL, Keratinized)
+        tooth.buccal = clearSurfaceData()
+        tooth.lingual = clearSurfaceData()
+
+        // Other fields
+        tooth.implant = false
+        tooth.mo = ''
+        tooth.note = ''
+        tooth.prognosisKC = ''
+        tooth.prognosisMN = ''
+
+        // Furcation
+        tooth.fur.buccal = tooth.fur.buccal.map(() => 0)
+        tooth.fur.lingual = tooth.fur.lingual.map(() => 0)
+
+        // Close sidebar if this tooth was selected
+        if (this.selectedToothId === id) {
+          this.selectedToothId = null
+        }
+      }
     },
 
     updateNote(id: ToothId, note: string) {

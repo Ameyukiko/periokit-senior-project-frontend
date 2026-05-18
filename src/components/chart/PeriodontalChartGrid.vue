@@ -354,8 +354,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Upper Arch - Images -->
         <div class="flex flex-col gap-6 mb-4">
-          <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" />
-          <ToothImageRow label="PALATAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-4" label-position="top" :baseline-y="62" />
+          <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" @select-tooth="emit('selectTooth', $event)" />
+          <ToothImageRow label="PALATAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-4" label-position="top" :baseline-y="62" @select-tooth="emit('selectTooth', $event)" />
         </div>
 
         <!-- Upper Arch Palatal -->
@@ -446,8 +446,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </div>
 
         <div class="flex flex-col gap-6 mb-4">
-          <ToothImageRow label="LINGUAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-6" label-position="bottom" :baseline-y="99" />
-          <ToothImageRow label="BUCCAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-6" label-position="bottom" :baseline-y="62" />
+          <ToothImageRow label="LINGUAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-6" label-position="bottom" :baseline-y="99" @select-tooth="emit('selectTooth', $event)" />
+          <ToothImageRow label="BUCCAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-6" label-position="bottom" :baseline-y="62" @select-tooth="emit('selectTooth', $event)" />
         </div>
 
         <!-- Lower Arch Buccal -->
