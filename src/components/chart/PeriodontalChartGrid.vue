@@ -361,7 +361,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         <!-- Upper Arch Palatal -->
         <div class="flex mt-4 mb-10" data-section="upper-palatal">
           <div class="flex flex-col bg-white border-l border-y border-slate-400 text-[9px] font-bold text-slate-500 w-20 sticky left-0 z-20">
-            <div v-for="row in LINGUAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
+            <div v-for="row in PALATAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
           </div>
           <div class="flex">
             <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
