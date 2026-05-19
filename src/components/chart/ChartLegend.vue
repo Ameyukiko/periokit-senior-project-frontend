@@ -82,6 +82,14 @@
               </div>
             </div>
           </div>
+
+          <div class="mt-2 pt-2 border-t border-slate-100">
+            <h4 class="text-[8px] font-black text-red-600 uppercase tracking-wider mb-1.5">Warning</h4>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[8px] font-bold text-red-600">Red numbers</span>
+              <span class="text-[8px] font-medium text-slate-400">= Abnormal value (warning only, does not affect recording)</span>
+            </div>
+          </div>
         </div>
       </Transition>
     </div>
@@ -121,6 +129,14 @@
             </div>
             <span class="text-[9px] font-bold text-slate-500">: Grade III</span>
           </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-red-200 p-3 shadow-sm">
+        <h3 class="text-[9px] font-black text-red-600 uppercase tracking-widest mb-2 border-b border-red-100 pb-1.5">Warning</h3>
+        <div class="flex items-center gap-2">
+          <span class="text-[9px] font-bold text-red-600">Red numbers</span>
+          <span class="text-[9px] font-medium text-slate-400">= Abnormal value (warning only, does not affect recording)</span>
         </div>
       </div>
     </template>

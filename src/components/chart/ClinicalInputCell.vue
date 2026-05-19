@@ -37,16 +37,22 @@ const clearWarning = () => {
   }, 3000);
 };
 
-// Critical value (>=4) - existing logic
+// Critical PD value (>4) - PD values greater than 4 are red
 const isCriticalValue = computed(() => {
   if (props.inputType !== "numeric") return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  // Only apply to PD field
+  if (fieldKeyInfo !== "pd") return false;
   const val = parseInt(String(props.value));
-  return !isNaN(val) && val >= 4;
+  return !isNaN(val) && val > 4;
 });
 
 // Abnormal value (exceeds normal threshold but within absolute limit)
 const isAbnormal = computed(() => {
   if (props.inputType !== "numeric" || !props.value) return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  // CAL should not be styled red
+  if (fieldKeyInfo === "cal") return false;
   return isAbnormalValue(String(props.value), props.fieldName);
 });
 
