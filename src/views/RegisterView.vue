@@ -57,7 +57,7 @@ const register = async () => {
   );
 
   // 2. Validate ทุกช่องพร้อมกัน
-  if (!form.studentId) errors.studentId = "Please enter your Student ID";
+  if (!form.studentId) errors.studentId = "Please enter your Doctor ID";
   if (!form.firstName) errors.firstName = "Please enter your First Name";
   if (!form.surname) errors.surname = "Please enter your Surname";
 
@@ -239,15 +239,15 @@ const register = async () => {
             </button>
           </div>
 
-          <!-- Student ID -->
+          <!-- Doctor ID -->
           <div>
             <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
-              >Student ID</label
+              >Doctor ID</label
             >
             <input
               v-model="form.studentId"
               type="text"
-              placeholder="66xxxxxxx"
+              placeholder="Doctor ID"
               :class="[
                 'w-full bg-[#f1f5f9] border-none rounded-[10px] py-2.5 px-4 text-[#1f2937] placeholder-[#9ca3af] focus:ring-2 focus:ring-[#0052ff] outline-none transition-all',
                 errors.studentId ? 'ring-2 ring-red-500 bg-red-50' : '',

@@ -30,7 +30,7 @@ defineProps<{
           <input v-model="patientInfo.doctor" type="text" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-4 flex items-center gap-2 ml-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Student ID:</span>
+          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Doctor ID:</span>
           <input v-model="patientInfo.studentId" type="text" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-4 flex items-center gap-2">
