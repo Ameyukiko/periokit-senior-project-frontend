@@ -42,6 +42,10 @@ export interface PdCategories {
   deep: number
 }
 
+export interface PdBreakdown {
+  [depth: number]: number  // PD depth → tooth count, e.g., { 5: 3, 6: 2, 7: 1 }
+}
+
 export interface HealthDistribution {
   healthy: number
   moderate: number
@@ -55,5 +59,9 @@ export interface ChartSummary {
   bopPercentage: number
   piPercentage: number
   pdCategories: PdCategories
+  pdBreakdown: PdBreakdown
   healthDistribution: HealthDistribution
+  mobilityCount: number
+  furcationCount: number
+  keratinizedLowCount: number
 }

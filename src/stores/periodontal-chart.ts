@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { calculateBopPercentage, calculateCal, calculateChartSummary, calculatePdCategories, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import { createInitialChartData } from '@/domain/chart/chart.factory'
-import { getFurcationSites } from '@/domain/chart/chart.rules'
 import type { ChartData, PatientInfo, SiteIndex, Surface, ToothId } from '@/domain/chart/chart.types'
 import { useAuthStore } from './auth'
 

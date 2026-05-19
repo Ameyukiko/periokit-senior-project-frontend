@@ -210,7 +210,7 @@ const KTW_WARNING_BASE_POSITIONS: Record<'upper' | 'lower', KtwWarningPosition> 
   lower: { top: '92%', left: '50%' }   // Bottom of lower teeth
 }
 
-export const getKtwWarningStyle = (id: ToothId, surface: Surface): KtwWarningPosition => {
+export const getKtwWarningStyle = (id: ToothId, _surface: Surface): KtwWarningPosition => {
   // Base position depends on arch
   return KTW_WARNING_BASE_POSITIONS[isUpperTooth(id) ? 'upper' : 'lower']
 }

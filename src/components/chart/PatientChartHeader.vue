@@ -108,12 +108,36 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
+        <!-- Mobility Badge -->
+        <div v-if="props.summary.mobilityCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200">
+          <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
+          <span class="text-[11px] font-black text-amber-600">
+            {{ props.summary.mobilityCount }} teeth
+          </span>
+        </div>
+
+        <!-- Furcation Badge -->
+        <div v-if="props.summary.furcationCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-50 border border-purple-200">
+          <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
+          <span class="text-[11px] font-black text-purple-600">
+            {{ props.summary.furcationCount }} teeth
+          </span>
+        </div>
+
+        <!-- Keratinized Badge -->
+        <div v-if="props.summary.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200">
+          <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
+          <span class="text-[11px] font-black text-teal-600">
+            {{ props.summary.keratinizedLowCount }} teeth
+          </span>
+        </div>
+
         <!-- PD Breakdown -->
         <template v-for="item in sortedPdBreakdown" :key="item.depth">
           <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200">
             <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
             <span class="text-[11px] font-black text-rose-600">
-              {{ item.count }}
+              {{ item.count }} teeth
             </span>
           </div>
         </template>
