@@ -45,13 +45,13 @@ const getToothColumnStyle = (id: ToothId) => {
 
 <template>
   <div
-    class="flex flex-col shrink-0 border-r border-slate-400 last:border-r-0 transition-all duration-200 cursor-default"
+    class="flex flex-col shrink-0 border-r border-slate-200 last:border-r-0 transition-all duration-200 cursor-default"
     :class="[midline ? 'border-l-2 border-l-slate-500' : '', selected ? 'bg-blue-50/50 ring-2 ring-[#0052ff] ring-inset z-10' : '']"
     :style="getToothColumnStyle(id)"
   >
     <div
       v-if="headerPosition === 'top'"
-      class="h-7 flex items-center justify-center font-black text-[11px] border-b border-slate-400 cursor-pointer transition-all duration-200"
+      class="h-7 flex items-center justify-center font-black text-[11px] border-b border-slate-200 cursor-pointer transition-all duration-200"
       :class="selected ? 'bg-[#0052ff] text-white' : 'bg-slate-50 text-slate-800 hover:bg-[#0052ff] hover:text-white'"
       @click.stop="select"
     >
@@ -59,10 +59,10 @@ const getToothColumnStyle = (id: ToothId) => {
     </div>
 
     <template v-if="order === 'standard'">
-      <div class="h-6 border-b border-slate-400 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && (toothData.implant = !toothData.implant)">
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && (toothData.implant = !toothData.implant)">
         <input v-model="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -77,7 +77,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('mo', 0, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -92,13 +92,13 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('ktw', 0, state)"
         />
       </div>
-      <div class="h-6 border-b border-slate-400 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
         <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
           <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
-          <div v-else class="w-3 h-3 border border-slate-400 rounded-full bg-white/50"></div>
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
         </div>
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -113,7 +113,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @change="emit('toggleBop', id, surface, site)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -128,7 +128,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @change="emit('togglePi', id, surface, site)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -145,7 +145,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('rec', site, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -162,7 +162,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('pd', site, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400 bg-slate-50/30">
+      <div class="flex h-6 border-b border-slate-200 bg-slate-50/30">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -182,7 +182,7 @@ const getToothColumnStyle = (id: ToothId) => {
     <!-- Palatal template: CAL, PD, Rec, PI, BOP, Furcation, KTW -->
     <template v-else-if="order === 'palatal'">
       <!-- CAL - 3 cells (readonly) -->
-      <div class="flex h-6 border-b border-slate-400 bg-slate-50/30">
+      <div class="flex h-6 border-b border-slate-200 bg-slate-50/30">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -198,7 +198,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- PD - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -216,7 +216,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- Rec - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -234,7 +234,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- PI - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -250,7 +250,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- BOP - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -266,14 +266,14 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- Furcation - 3 cells per tooth -->
-      <div class="h-6 border-b border-slate-400 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
         <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
           <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
-          <div v-else class="w-3 h-3 border border-slate-400 rounded-full bg-white/50"></div>
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
         </div>
       </div>
       <!-- KTW - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -293,7 +293,7 @@ const getToothColumnStyle = (id: ToothId) => {
     <!-- Lingual template (reversed): KTW, Furcation, BOP, PI, Rec, PD, CAL -->
     <template v-else-if="order === 'lingual'">
       <!-- KTW - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -309,14 +309,14 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- Furcation - 3 cells per tooth -->
-      <div class="h-6 border-b border-slate-400 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
         <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
           <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
-          <div v-else class="w-3 h-3 border border-slate-400 rounded-full bg-white/50"></div>
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
         </div>
       </div>
       <!-- BOP - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -332,7 +332,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- PI - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -348,7 +348,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- Rec - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -366,7 +366,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- PD - 3 cells -->
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -384,7 +384,7 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
       <!-- CAL - 3 cells (readonly) -->
-      <div class="flex h-6 border-b border-slate-400 bg-slate-50/30">
+      <div class="flex h-6 border-b border-slate-200 bg-slate-50/30">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -403,7 +403,7 @@ const getToothColumnStyle = (id: ToothId) => {
 
     <!-- Reverse template for lower buccal -->
     <template v-else>
-      <div class="flex h-6 border-b border-slate-400 bg-slate-50/30">
+      <div class="flex h-6 border-b border-slate-200 bg-slate-50/30">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -418,7 +418,7 @@ const getToothColumnStyle = (id: ToothId) => {
           readonly
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -435,7 +435,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('pd', site, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -452,7 +452,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('rec', site, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -467,7 +467,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @change="emit('togglePi', id, surface, site)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
           :key="site"
@@ -482,13 +482,13 @@ const getToothColumnStyle = (id: ToothId) => {
           @change="emit('toggleBop', id, surface, site)"
         />
       </div>
-      <div class="h-6 border-b border-slate-400 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
         <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
           <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
-          <div v-else class="w-3 h-3 border border-slate-400 rounded-full bg-white/50"></div>
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
         </div>
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -503,7 +503,7 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('ktw', 0, state)"
         />
       </div>
-      <div class="flex h-6 border-b border-slate-400">
+      <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
           :tooth-number="id"
@@ -525,7 +525,7 @@ const getToothColumnStyle = (id: ToothId) => {
 
     <div
       v-if="headerPosition === 'bottom'"
-      class="h-7 flex items-center justify-center font-black text-[11px] border-t border-slate-400 cursor-pointer transition-all duration-200"
+      class="h-7 flex items-center justify-center font-black text-[11px] border-t border-slate-200 cursor-pointer transition-all duration-200"
       :class="selected ? 'bg-[#0052ff] text-white' : 'bg-slate-50 text-slate-800 hover:bg-[#0052ff] hover:text-white'"
       @click.stop="select"
     >

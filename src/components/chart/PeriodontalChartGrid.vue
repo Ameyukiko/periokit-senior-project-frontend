@@ -302,13 +302,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Upper Arch Buccal -->
         <div class="flex items-end mb-1" data-section="upper-buccal">
-          <div class="flex flex-col bg-white border-l border-t border-slate-400 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
-            <div class="h-7 border-b border-r border-slate-400"></div>
-            <div v-for="row in BUCCAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-400">{{ row }}</div>
+          <div class="flex flex-col bg-white border-l border-t border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
+            <div class="h-7 border-b border-r border-slate-200"></div>
+            <div v-for="row in BUCCAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-200">{{ row }}</div>
           </div>
           <div class="flex">
             <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
-              <div class="flex border-l border-t border-r border-slate-400 bg-white">
+              <div class="flex border-l border-t border-r border-slate-200 bg-white">
                 <ToothColumn
                   v-for="(id, idx) in group"
                   :id="id"
@@ -360,12 +360,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Upper Arch Palatal -->
         <div class="flex mt-4 mb-10" data-section="upper-palatal">
-          <div class="flex flex-col bg-white border-l border-y border-slate-400 text-[9px] font-bold text-slate-500 w-20 sticky left-0 z-20">
+          <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 w-20 sticky left-0 z-20">
             <div v-for="row in PALATAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
           </div>
           <div class="flex">
             <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
-              <div class="flex border border-slate-400 bg-white">
+              <div class="flex border border-slate-200 bg-white">
                 <ToothColumn
                   v-for="(id, idx) in group"
                   :id="id"
@@ -396,12 +396,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Lower Arch Lingual -->
         <div class="flex mb-1 mt-8" data-section="lower-lingual">
-          <div class="flex flex-col bg-white border-l border-y border-slate-400 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
+          <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in LINGUAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
           </div>
           <div class="flex">
             <template v-for="(group, gIdx) in LOWER_ARCH" :key="gIdx">
-              <div class="flex border border-slate-400 bg-white">
+              <div class="flex border border-slate-200 bg-white">
                 <ToothColumn
                   v-for="(id, idx) in group"
                   :id="id"
@@ -452,13 +452,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Lower Arch Buccal -->
         <div class="flex mb-4" data-section="lower-buccal">
-          <div class="flex flex-col bg-white border-l border-y border-slate-400 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
+          <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in INNER_SURFACE_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
-            <div class="h-7 border-t border-r border-slate-400 bg-slate-50"></div>
+            <div class="h-7 border-t border-r border-slate-200 bg-slate-50"></div>
           </div>
           <div class="flex">
             <template v-for="(group, gIdx) in LOWER_ARCH" :key="gIdx">
-              <div class="flex border border-slate-400 bg-white">
+              <div class="flex border border-slate-200 bg-white">
                 <ToothColumn
                   v-for="(id, idx) in group"
                   :id="id"
