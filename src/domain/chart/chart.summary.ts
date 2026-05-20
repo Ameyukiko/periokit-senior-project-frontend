@@ -92,10 +92,10 @@ export const getTeethByMobility = (
 }
 
 /**
- * Get teeth by furcation grade
+ * Get teeth by furcation grade (highest grade only)
  * @param chartData - Chart data
- * @param grade - Furcation grade (0-3), use 0 for no furcation
- * @returns Array of tooth IDs with furcation >= specified grade
+ * @param grade - Furcation grade (1-3)
+ * @returns Array of tooth IDs with maximum furcation equal to specified grade
  */
 export const getTeethByFurcation = (
   chartData: ChartData,
@@ -107,15 +107,20 @@ export const getTeethByFurcation = (
   Object.entries(chartData).forEach(([toothId, tooth]) => {
     if (tooth.extracted || tooth.implant) return
 
+    // Find maximum furcation value for this tooth
+    let maxFur = 0
     surfaces.forEach((surface) => {
       tooth.fur[surface].forEach((furValue) => {
-        if (furValue >= grade) {
-          if (!result.includes(Number.parseInt(toothId, 10))) {
-            result.push(Number.parseInt(toothId, 10))
-          }
+        if (furValue > maxFur) {
+          maxFur = furValue
         }
       })
     })
+
+    // Only include if max furcation equals the requested grade
+    if (maxFur === grade) {
+      result.push(Number.parseInt(toothId, 10))
+    }
   })
 
   return result.sort((a, b) => a - b)
