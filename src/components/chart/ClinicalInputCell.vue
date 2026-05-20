@@ -63,7 +63,7 @@ const handleInput = (event: Event) => {
 
   if (props.inputType === "numeric") {
     const fieldKeyInfo = getFieldKey(props.fieldName);
-    const allowNegative = fieldKeyInfo === "cal";
+    const allowNegative = fieldKeyInfo === "cal" || fieldKeyInfo === "rec";
     let filteredValue = filterNumericInput(inputValue, allowNegative);
 
     // Special validation for Mobility (Miller's Classification: 0-3 only)
