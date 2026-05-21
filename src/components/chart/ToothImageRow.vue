@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getFurImage, getFurMarkerStyle, getToothColumnWidth, getToothImage, getToothImageTopOffset } from '@/domain/chart/chart.image'
+import { getFurImage, getFurMarkerStyle, getToothColumnWidth, getToothImage, getToothImageTopOffset, getKtwWarningStyle, shouldShowKtwWarning } from '@/domain/chart/chart.image'
 import PdLineChartLayer from './PdLineChartLayer.vue'
 import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
 
@@ -33,6 +33,10 @@ defineProps<{
   baselineY?: number  // Custom baseline position for PD graph
 }>()
 
+const emit = defineEmits<{
+  selectTooth: [id: ToothId]
+}>()
+
 </script>
 
 <template>
@@ -50,9 +54,10 @@ defineProps<{
           <div
             v-for="id in group"
             :key="id"
-            class="h-full flex shrink-0 justify-center group relative z-10 cursor-default transition-all duration-200 rounded-xl"
+            class="h-full flex shrink-0 justify-center group relative z-10 cursor-pointer transition-all duration-200 rounded-xl hover:bg-blue-50/30"
             :class="selectedToothId === id ? 'bg-blue-50 ring-2 ring-[#0052ff] ring-inset' : ''"
             :style="getToothColumnStyle(id)"
+            @click="emit('selectTooth', id)"
           >
             <img
               :src="getToothImage(id, surface, chartData[id])"
@@ -68,6 +73,19 @@ defineProps<{
               :style="getFurMarkerStyle(id, surface, fIdx, chartData[id].fur[surface].length)"
             >
               <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3 h-3 object-contain" />
+            </div>
+            <!-- KTW Warning Symbol (displayed when KTW < 2mm) -->
+            <div
+              v-if="!chartData[id].extracted && shouldShowKtwWarning(chartData[id][surface].ktw)"
+              class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2"
+              :style="getKtwWarningStyle(id, surface)"
+            >
+              <div class="relative w-4 h-4">
+                <svg viewBox="0 0 24 24" class="w-full h-full text-amber-500 drop-shadow-sm">
+                  <path fill="currentColor" d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16v2h2v-2h-2zm0-6v4h2v-4h-2z"/>
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-amber-900">K</span>
+              </div>
             </div>
           </div>
         </div>

@@ -57,7 +57,7 @@ const register = async () => {
   );
 
   // 2. Validate ทุกช่องพร้อมกัน
-  if (!form.studentId) errors.studentId = "Please enter your Student ID";
+  if (!form.studentId) errors.studentId = "Please enter your Doctor ID";
   if (!form.firstName) errors.firstName = "Please enter your First Name";
   if (!form.surname) errors.surname = "Please enter your Surname";
 
@@ -169,9 +169,9 @@ const register = async () => {
   <div
     class="min-h-screen bg-[#f3f6ff] flex flex-col items-center justify-center py-8 px-4 font-sans"
   >
-    <div class="w-full max-w-[650px]">
+    <div class="w-full max-w-162.5">
       <div
-        class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-10"
+        class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-10"
       >
         <!-- Logo & Header -->
         <div class="mb-6">
@@ -197,7 +197,7 @@ const register = async () => {
 
             <div
               @click="triggerFileInput"
-              class="w-[100px] h-[100px] rounded-full bg-[#f1f5f9] border-2 border-dashed border-[#e2e8f0] mb-4 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#0052ff] transition-all group relative"
+              class="w-25 h-25 rounded-full bg-[#f1f5f9] border-2 border-dashed border-[#e2e8f0] mb-4 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#0052ff] transition-all group relative"
             >
               <img
                 v-if="previewUrl"
@@ -232,22 +232,22 @@ const register = async () => {
             <button
               type="button"
               @click="triggerFileInput"
-              class="flex items-center gap-2 px-4 py-1.5 border border-[#e2e8f0] rounded-[8px] text-[13px] font-medium text-[#374151] hover:bg-gray-50 transition-colors"
+              class="flex items-center gap-2 px-4 py-1.5 border border-[#e2e8f0] rounded-lg text-[13px] font-medium text-[#374151] hover:bg-gray-50 transition-colors"
             >
               <Upload class="w-3.5 h-3.5" />
               {{ previewUrl ? "Change Photo" : "Upload Photo" }}
             </button>
           </div>
 
-          <!-- Student ID -->
+          <!-- Doctor ID -->
           <div>
             <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
-              >Student ID</label
+              >Doctor ID</label
             >
             <input
               v-model="form.studentId"
               type="text"
-              placeholder="66xxxxxxx"
+              placeholder="Doctor ID"
               :class="[
                 'w-full bg-[#f1f5f9] border-none rounded-[10px] py-2.5 px-4 text-[#1f2937] placeholder-[#9ca3af] focus:ring-2 focus:ring-[#0052ff] outline-none transition-all',
                 errors.studentId ? 'ring-2 ring-red-500 bg-red-50' : '',

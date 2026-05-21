@@ -37,16 +37,22 @@ const clearWarning = () => {
   }, 3000);
 };
 
-// Critical value (>=4) - existing logic
+// Critical PD value (>4) - PD values greater than 4 are red
 const isCriticalValue = computed(() => {
   if (props.inputType !== "numeric") return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  // Only apply to PD field
+  if (fieldKeyInfo !== "pd") return false;
   const val = parseInt(String(props.value));
-  return !isNaN(val) && val >= 4;
+  return !isNaN(val) && val > 4;
 });
 
 // Abnormal value (exceeds normal threshold but within absolute limit)
 const isAbnormal = computed(() => {
   if (props.inputType !== "numeric" || !props.value) return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  // CAL should not be styled red
+  if (fieldKeyInfo === "cal") return false;
   return isAbnormalValue(String(props.value), props.fieldName);
 });
 
@@ -57,7 +63,7 @@ const handleInput = (event: Event) => {
 
   if (props.inputType === "numeric") {
     const fieldKeyInfo = getFieldKey(props.fieldName);
-    const allowNegative = fieldKeyInfo === "cal";
+    const allowNegative = fieldKeyInfo === "cal" || fieldKeyInfo === "rec";
     let filteredValue = filterNumericInput(inputValue, allowNegative);
 
     // Special validation for Mobility (Miller's Classification: 0-3 only)
@@ -114,13 +120,13 @@ const handleToggle = () => {
 const toggleColorClass = computed(() => {
   if (props.inputType !== "toggle" || !props.value) return "";
   const name = props.fieldName.toLowerCase();
-  if (name.includes("bop")) return "bg-red-500 shadow-inner";
-  if (name.includes("pi")) return "bg-blue-500 shadow-inner";
-  return "bg-slate-500";
+  if (name.includes("bop")) return props.disabled ? "bg-red-800/50" : "bg-red-500 shadow-inner";
+  if (name.includes("pi")) return props.disabled ? "bg-blue-800/50" : "bg-blue-500 shadow-inner";
+  return props.disabled ? "bg-slate-600/60" : "bg-slate-500";
 });
 
 const containerClasses = computed(() => ({
-  "opacity-50 pointer-events-none": props.disabled,
+  "bg-slate-800/70 opacity-80 pointer-events-none": props.disabled,
   "bg-slate-50/50": props.readonly,
   "hover:bg-slate-50/80": !props.disabled && !props.readonly && props.inputType === "numeric",
 }));
@@ -149,7 +155,7 @@ const containerClasses = computed(() => ({
         :class="[
           isAbnormal ? 'text-red-600 font-bold' : '',
           isCriticalValue && !isAbnormal ? 'text-red-600 font-extrabold' : '',
-          !isAbnormal && !isCriticalValue ? 'text-slate-700' : '',
+          !isAbnormal && !isCriticalValue ? (disabled ? 'text-slate-500' : 'text-slate-700') : '',
           readonly ? 'font-bold cursor-default' : 'cursor-text font-medium',
         ]"
       />
@@ -190,7 +196,7 @@ const containerClasses = computed(() => ({
         :class="[toggleColorClass]"
       >
         <div v-if="value" class="w-full h-full opacity-100"></div>
-        <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-200/50 group-hover:bg-slate-300 transition-colors"></div>
+        <div v-else class="w-1.5 h-1.5 rounded-full transition-colors" :class="disabled ? 'bg-slate-500/40' : 'bg-slate-200/50 group-hover:bg-slate-300'"></div>
       </div>
     </template>
 

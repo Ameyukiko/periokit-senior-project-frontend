@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
+import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
 import PatientChartHeader from '@/components/chart/PatientChartHeader.vue'
 import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
@@ -28,6 +29,7 @@ const {
 
 const editingChartId = ref<string | null>(null)
 const editingChartName = ref('')
+const showOverviewModal = ref(false)
 
 const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
   chartStore.updateNote(Number(id) as ToothId, note)
@@ -117,7 +119,11 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
 
     <main class="max-w-400 mx-auto px-4 py-3">
       <div class="flex items-center justify-between mb-3">
-        <button class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500" :class="selectedToothId !== null ? 'ml-18' : 'ml-63'">
+        <button
+          class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
+          :class="selectedToothId !== null ? 'ml-18' : 'ml-63'"
+          @click="showOverviewModal = true"
+        >
           <FileText class="w-3.5 h-3.5" /> Overview
         </button>
 
@@ -205,6 +211,13 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           :tooth-data="selectedToothData"
           @close="selectedToothId = null"
           @update-note="handleUpdateNote"
+        />
+
+        <!-- Overview Modal -->
+        <ChartOverviewModal
+          :show="showOverviewModal"
+          :chart-data="teethData"
+          @close="showOverviewModal = false"
         />
       </div>
     </main>

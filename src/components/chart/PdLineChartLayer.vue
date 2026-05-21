@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { getToothColumnWidth } from '@/domain/chart/chart.image'
-import type { ChartData, Surface } from '@/domain/chart/chart.types'
+import { isUpperTooth } from '@/domain/chart/chart.rules'
+import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
 
 const props = defineProps<{
   arch: number[][]
@@ -12,6 +13,18 @@ const props = defineProps<{
 }>()
 
 const toNumber = (value: string) => Number.parseInt(value, 10) || 0
+
+// Determine PD graph direction based on surface and arch
+// Upper BUCCAL = points UP (-1)
+// Upper PALATAL (lingual for upper) = points DOWN (+1)
+// Lower LINGUAL = points UP (-1)
+// Lower BUCCAL = points DOWN (+1)
+const getPdDirection = (toothId: ToothId, surface: Surface): 1 | -1 => {
+  if (isUpperTooth(toothId) && surface === 'buccal') return -1  // Upper BUCCAL points UP
+  if (isUpperTooth(toothId) && surface === 'lingual') return 1  // Upper PALATAL points DOWN
+  if (!isUpperTooth(toothId) && surface === 'lingual') return -1  // Lower LINGUAL points UP
+  return 1  // Lower BUCCAL points DOWN
+}
 
 interface BaselinePoint {
   x: number
@@ -25,58 +38,9 @@ const getGapWidth = (gapClass: string): number => {
   return 16
 }
 
-// Calculate baseline points based on REC values
-const baselinePoints = computed(() => {
-  const points: BaselinePoint[] = []
-  let currentX = 0
-  const gapWidth = getGapWidth(props.groupGapClass)
-  const defaultY = props.baselineY ?? 60
-
-  for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
-    const group = props.arch[gIdx]
-
-    for (const toothId of group) {
-      const tooth = props.chartData[toothId]
-      if (!tooth || tooth.extracted) {
-        currentX += getToothColumnWidth(toothId)
-        continue
-      }
-
-      const toothCenter = currentX + getToothColumnWidth(toothId) / 2
-      const siteXOffsets = [-12, 0, 12]
-
-      for (const site of [0, 1, 2] as const) {
-        const recValue = toNumber(tooth[props.surface].rec[site])
-        // Y position: baseline adjusted by recession (higher REC = lower Y)
-        const y = defaultY + (recValue * 6)
-
-        points.push({
-          x: toothCenter + siteXOffsets[site],
-          y
-        })
-      }
-
-      currentX += getToothColumnWidth(toothId)
-    }
-
-    if (gIdx < props.arch.length - 1) {
-      currentX += gapWidth
-    }
-  }
-
-  return points
-})
-
-// Generate polyline points string
-const baselinePolylinePoints = computed(() => {
-  return baselinePoints.value
-    .map(p => `${p.x},${p.y}`)
-    .join(' ')
-})
-
-// GM Points (Gingival Margin) - สำหรับสร้างเส้นสีเขียว
-// y = cejY - (recValue * 6)
-// REC + (เหงือกร่น) → GM อยู่ใต้ CEJ, REC - (เหงือกบวม) → GM อยู่เหนือ CEJ
+// GM Points (Gingival Margin) - สำหรับสร้างเส้นสีแดง
+// GM = CEJ + REC (REC+ = เหงือกร่น, REC- = เหงือกบวม)
+// Direction: LINGUAL points UP (-), Lower BUCCAL points DOWN (+)
 const gmPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -93,9 +57,11 @@ const gmPoints = computed(() => {
       }
       const toothCenter = currentX + getToothColumnWidth(toothId) / 2
       const siteXOffsets = [-12, 0, 12]
+      const direction = getPdDirection(toothId, props.surface)
       for (const site of [0, 1, 2] as const) {
         const recValue = toNumber(tooth[props.surface].rec[site])
-        const y = cejY - (recValue * 6)
+        // Apply direction: -1 for UP (LINGUAL), +1 for DOWN (Lower BUCCAL)
+        const y = cejY + (recValue * 6 * direction)
         points.push({ x: toothCenter + siteXOffsets[site], y })
       }
       currentX += getToothColumnWidth(toothId)
@@ -104,12 +70,26 @@ const gmPoints = computed(() => {
       currentX += gapWidth
     }
   }
+
+  // เพิ่มจุดยื่นที่ต้นและท้าย เพื่อให้เส้นยาวขึ้น (แนวนอน ที่ระดับ CEJ)
+  if (points.length > 0) {
+    const extension = 30 // ยื่นออก 30px
+    const firstPoint = points[0]
+    const lastPoint = points[points.length - 1]
+
+    // ยืดจุดแรกไปทางซ้าย - ใช้ระดับ CEJ
+    points.unshift({ x: firstPoint.x - extension, y: cejY })
+
+    // ยืดจุดสุดท้ายไปทางขวา - ใช้ระดับ CEJ
+    points.push({ x: lastPoint.x + extension, y: cejY })
+  }
+
   return points
 })
 
 // CAL Points (Clinical Attachment Level) - สำหรับสร้างเส้นสีน้ำเงิน (ระดับกระดูก)
-// y = cejY + (calValue * 6)
-// CAL = PD + REC, เป็นระยะลงมาจาก CEJ
+// CAL = PD + REC, เป็นระยะจาก CEJ
+// Direction: LINGUAL points UP (-), Lower BUCCAL points DOWN (+)
 const calPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -126,9 +106,11 @@ const calPoints = computed(() => {
       }
       const toothCenter = currentX + getToothColumnWidth(toothId) / 2
       const siteXOffsets = [-12, 0, 12]
+      const direction = getPdDirection(toothId, props.surface)
       for (const site of [0, 1, 2] as const) {
         const calValue = toNumber(tooth[props.surface].cal[site])
-        const y = cejY + (calValue * 6)
+        // Apply direction: -1 for UP (LINGUAL), +1 for DOWN (Lower BUCCAL)
+        const y = cejY + (calValue * 6 * direction)
         points.push({ x: toothCenter + siteXOffsets[site], y })
       }
       currentX += getToothColumnWidth(toothId)
@@ -137,12 +119,40 @@ const calPoints = computed(() => {
       currentX += gapWidth
     }
   }
+
+  // เพิ่มจุดยื่นที่ต้นและท้าย เพื่อให้เส้นยาวขึ้น (แนวนอน ที่ระดับ CEJ)
+  if (points.length > 0) {
+    const extension = 30 // ยื่นออก 30px
+    const firstPoint = points[0]
+    const lastPoint = points[points.length - 1]
+
+    // ยืดจุดแรกไปทางซ้าย - ใช้ระดับ CEJ
+    points.unshift({ x: firstPoint.x - extension, y: cejY })
+
+    // ยืดจุดสุดท้ายไปทางขวา - ใช้ระดับ CEJ
+    points.push({ x: lastPoint.x + extension, y: cejY })
+
+
+  }
+
   return points
 })
 
 // Generate polyline strings for GM and CAL
 const gmPolylinePoints = computed(() => gmPoints.value.map(p => `${p.x},${p.y}`).join(' '))
 const calPolylinePoints = computed(() => calPoints.value.map(p => `${p.x},${p.y}`).join(' '))
+
+// PD Area (Probing Depth) - พื้นที่สีม่วงฉากระหว่าง GM ถึง CAL
+// สร้าง polygon โดยเชื่อม GM points (บน) → CAL points (ล่าง) → ย้อนกลับ
+const pdAreaPoints = computed(() => {
+  if (gmPoints.value.length === 0 || calPoints.value.length === 0) return ''
+  if (gmPoints.value.length !== calPoints.value.length) return ''
+
+  // GM points (บน) → CAL points (ล่าง, ย้อนลำดับ)
+  const forward = gmPoints.value.map(p => `${p.x},${p.y}`)
+  const backward = [...calPoints.value].reverse().map(p => `${p.x},${p.y}`)
+  return [...forward, ...backward].join(' ')
+})
 
 // Calculate total width for SVG viewBox
 const svgWidth = computed(() => {
@@ -169,6 +179,14 @@ const svgWidth = computed(() => {
       class="w-full h-full"
       preserveAspectRatio="xMidYMin meet"
     >
+      <!-- PD Area (Probing Depth) - สีม่วงฉาก - พื้นที่ระหว่าง GM ถึง CAL -->
+      <polygon
+        v-if="pdAreaPoints"
+        :points="pdAreaPoints"
+        fill="#a855f7"
+        fill-opacity="0.3"
+        stroke="none"
+      />
       <!-- CAL Line (Bone Level) - สีน้ำเงิน - ระดับกระดูก -->
       <polyline
         v-if="calPoints.length > 1"
@@ -179,26 +197,28 @@ const svgWidth = computed(() => {
         stroke-linejoin="round"
         stroke-linecap="round"
       />
-      <!-- GM Line (Gingival Margin) - สีเขียว - ขอบเหงือก -->
+      <!-- GM Line (Gingival Margin) - สีแดง - ขอบเหงือก -->
       <polyline
         v-if="gmPoints.length > 1"
         :points="gmPolylinePoints"
-        fill="none"
-        stroke="#22c55e"
-        stroke-width="2"
-        stroke-linejoin="round"
-        stroke-linecap="round"
-      />
-      <!-- CEJ Baseline - สีแดง - เส้นอ้างอิง -->
-      <polyline
-        v-if="baselinePoints.length > 1"
-        :points="baselinePolylinePoints"
         fill="none"
         stroke="#ef4444"
         stroke-width="2"
         stroke-linejoin="round"
         stroke-linecap="round"
       />
+      <!-- CEJ Baseline - ซ่อนไว้ (ไม่แสดงตามมาตรฐาน periodontal chart) -->
+      <!-- <polyline
+        v-if="baselinePoints.length > 1"
+        :points="baselinePolylinePoints"
+        fill="none"
+        stroke="#ef4444"
+        stroke-width="1"
+        stroke-dasharray="4 4"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+        opacity="0.3"
+      /> -->
     </svg>
   </div>
 </template>

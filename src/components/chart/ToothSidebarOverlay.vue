@@ -24,7 +24,7 @@ const emit = defineEmits<{
   >
     <aside
       v-if="isOpen && toothId"
-      class="w-80 sticky top-32 h-[calc(100vh-160px)] flex-shrink-0"
+      class="w-80 sticky top-32 h-[calc(100vh-160px)] shrink-0"
     >
       <ToothSidebar
         :toothId="toothId"

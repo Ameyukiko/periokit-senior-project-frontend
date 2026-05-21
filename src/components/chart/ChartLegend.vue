@@ -82,6 +82,25 @@
               </div>
             </div>
           </div>
+
+          <div class="mt-2 pt-2 border-t border-slate-100">
+            <h4 class="text-[8px] font-black text-slate-800 uppercase tracking-wider mb-1.5">KTW Warning</h4>
+            <div class="flex items-center gap-1.5">
+              <div class="relative w-3 h-3">
+                <svg viewBox="0 0 24 24" class="w-full h-full text-amber-500">
+                  <path fill="currentColor" d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16v2h2v-2h-2zm0-6v4h2v-4h-2z"/>
+                </svg>
+              </div>
+              <span class="text-[8px] font-bold text-slate-500">&lt; 2mm (inadequate)</span>
+            </div>
+          </div>
+
+          <div class="mt-1.5 pt-1.5 border-t border-slate-100">
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] font-bold text-red-600">Red numbers</span>
+              <span class="text-[11px] font-medium text-slate-400">= Abnormal (warning only)</span>
+            </div>
+          </div>
         </div>
       </Transition>
     </div>
@@ -121,6 +140,25 @@
             </div>
             <span class="text-[9px] font-bold text-slate-500">: Grade III</span>
           </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-amber-100 p-2.5 shadow-sm">
+        <div class="flex items-center gap-1.5">
+          <div class="relative w-3.5 h-3.5">
+            <svg viewBox="0 0 24 24" class="w-full h-full text-amber-500">
+              <path fill="currentColor" d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16v2h2v-2h-2zm0-6v4h2v-4h-2z"/>
+            </svg>
+            <span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-amber-900">K</span>
+          </div>
+          <span class="text-[9px] font-bold text-slate-600">KTW &lt; 2mm (inadequate)</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-red-100 p-2.5 shadow-sm">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] font-bold text-red-600">Red numbers</span>
+          <span class="text-[10px] font-medium text-slate-400">= Abnormal (warning only)</span>
         </div>
       </div>
     </template>

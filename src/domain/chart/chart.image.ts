@@ -197,3 +197,26 @@ export const getFurMarkerStyle = (id: ToothId, surface: Surface, index: number, 
     left: totalSites > 1 ? (index === 0 ? position.firstLeft : position.secondLeft) : position.singleLeft
   }
 }
+
+// KTW Warning marker positions (displayed when KTW < 2mm)
+// Positioned at the top of upper teeth, bottom of lower teeth
+type KtwWarningPosition = {
+  top: string
+  left: string
+}
+
+const KTW_WARNING_BASE_POSITIONS: Record<'upper' | 'lower', KtwWarningPosition> = {
+  upper: { top: '8%', left: '50%' },   // Top of upper teeth
+  lower: { top: '92%', left: '50%' }   // Bottom of lower teeth
+}
+
+export const getKtwWarningStyle = (id: ToothId, _surface: Surface): KtwWarningPosition => {
+  // Base position depends on arch
+  return KTW_WARNING_BASE_POSITIONS[isUpperTooth(id) ? 'upper' : 'lower']
+}
+
+// Check if KTW warning should be displayed (KTW < 2mm and has a value)
+export const shouldShowKtwWarning = (ktwValue: string): boolean => {
+  const num = parseInt(ktwValue) || 0
+  return num > 0 && num < 2
+}

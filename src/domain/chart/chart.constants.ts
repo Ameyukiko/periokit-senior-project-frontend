@@ -23,14 +23,14 @@ export const PALATAL_ROWS = ['CAL', 'PD', 'Recession', 'PI', 'BOP', 'Furcation',
 export const SITE_INDEXES: SiteIndex[] = [0, 1, 2]
 
 export const CHART_LEGEND_ITEMS = {
-  Implant: 'Dental Implant',
-  Mobility: 'Mobility (Grade 0-3)',
-  Keratinized: 'Keratinized tissue width',
-  Furcation: 'Furcation involvement',
-  BOP: 'Bleeding on probing',
-  PI: 'Plaque Index',
-  Recession: 'Gingival recession',
-  PD: 'Probing depth',
-  CAL: 'Clinical attachment level',
-  Ext: 'Missing or Extracted tooth'
+  Implant: 'Implant marker',
+  Mobility: 'Grade 0-3',
+  Keratinized: 'Width in mm',
+  Furcation: 'Grade 0-3',
+  BOP: '0 = No, 1 = Yes',
+  PI: '0 = No, 1 = Yes',
+  Recession: 'Recession in mm',
+  PD: 'Depth in mm',
+  CAL: 'Level in mm',
+  Ext: 'Extracted tooth'
 }
