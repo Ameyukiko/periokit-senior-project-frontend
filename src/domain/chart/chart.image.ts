@@ -216,7 +216,8 @@ export const getKtwWarningStyle = (id: ToothId, _surface: Surface): KtwWarningPo
 }
 
 // Check if KTW warning should be displayed (KTW < 2mm and has a value)
+// Uses parseFloat to support decimal values like 1.5, 1.9
 export const shouldShowKtwWarning = (ktwValue: string): boolean => {
-  const num = parseInt(ktwValue) || 0
+  const num = parseFloat(ktwValue) || 0
   return num > 0 && num < 2
 }

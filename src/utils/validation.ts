@@ -29,27 +29,34 @@ export const getFieldKey = (fieldName: string): FieldKey | null => {
   return null;
 };
 
-export const filterNumericInput = (value: string, allowNegative = false): string => {
+export const filterNumericInput = (value: string, allowNegative = false, allowDecimal = false): string => {
   if (!value) return "";
   let result = "";
   let hasNegative = false;
+  let hasDecimal = false;
 
   for (let i = 0; i < value.length; i++) {
     const char = value[i];
     if (allowNegative && char === "-" && !hasNegative && i === 0) {
       result += char;
       hasNegative = true;
+    } else if (allowDecimal && char === "." && !hasDecimal) {
+      result += char;
+      hasDecimal = true;
     } else if (/^[0-9]$/.test(char)) {
       result += char;
     }
   }
 
   // Strip leading zeros for multi-digit numbers, keeping single "0" or "-0".
-  while (result.startsWith("0") && result.length > 1) {
-    result = result.substring(1);
-  }
-  while (result.startsWith("-0") && result.length > 2) {
-    result = "-" + result.substring(2);
+  // Preserve decimal point
+  if (!hasDecimal) {
+    while (result.startsWith("0") && result.length > 1) {
+      result = result.substring(1);
+    }
+    while (result.startsWith("-0") && result.length > 2) {
+      result = "-" + result.substring(2);
+    }
   }
 
   return result;
@@ -59,7 +66,8 @@ export const isAbnormalValue = (value: string, fieldName: string): boolean => {
   const fieldKey = getFieldKey(fieldName);
   if (!fieldKey) return false;
 
-  const num = parseInt(value) || 0;
+  // Use parseFloat for KTW to support decimals
+  const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
   const range = FIELD_RANGES[fieldKey];
   return num > range.normal && num <= range.absolute;
 };
@@ -68,7 +76,8 @@ export const exceedsAbsoluteLimit = (value: string, fieldName: string): boolean 
   const fieldKey = getFieldKey(fieldName);
   if (!fieldKey) return false;
 
-  const num = parseInt(value) || 0;
+  // Use parseFloat for KTW to support decimals
+  const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
   return num > FIELD_RANGES[fieldKey].absolute;
 };
 
