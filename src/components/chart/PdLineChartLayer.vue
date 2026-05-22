@@ -15,15 +15,18 @@ const props = defineProps<{
 const toNumber = (value: string) => Number.parseInt(value, 10) || 0
 
 // Determine PD graph direction based on surface and arch
-// Upper BUCCAL = points UP (-1)
-// Upper PALATAL (lingual for upper) = points DOWN (+1)
-// Lower LINGUAL = points UP (-1)
-// Lower BUCCAL = points DOWN (+1)
+// Upper BUCCAL = points DOWN (+1)
+// Upper PALATAL (lingual for upper) = points UP (-1)
+// Lower LINGUAL = points DOWN (+1)
+// Lower BUCCAL = points UP (-1)
 const getPdDirection = (toothId: ToothId, surface: Surface): 1 | -1 => {
-  if (isUpperTooth(toothId) && surface === 'buccal') return -1  // Upper BUCCAL points UP
-  if (isUpperTooth(toothId) && surface === 'lingual') return 1  // Upper PALATAL points DOWN
-  if (!isUpperTooth(toothId) && surface === 'lingual') return -1  // Lower LINGUAL points UP
-  return 1  // Lower BUCCAL points DOWN
+  const isUpper = isUpperTooth(toothId)
+  // Upper BUCCAL and Lower LINGUAL have grids extending UP (baselineY = 99)
+  // Upper PALATAL and Lower BUCCAL have grids extending DOWN (baselineY = 62)
+  if ((isUpper && surface === 'buccal') || (!isUpper && surface === 'lingual')) {
+    return -1 // Points UP (apical, towards the roots)
+  }
+  return 1 // Points DOWN (apical, towards the roots)
 }
 
 interface BaselinePoint {
@@ -40,7 +43,6 @@ const getGapWidth = (gapClass: string): number => {
 
 // GM Points (Gingival Margin) - สำหรับสร้างเส้นสีแดง
 // GM = CEJ + REC (REC+ = เหงือกร่น, REC- = เหงือกบวม)
-// Direction: LINGUAL points UP (-), Lower BUCCAL points DOWN (+)
 const gmPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -50,38 +52,28 @@ const gmPoints = computed(() => {
   for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
     const group = props.arch[gIdx]
     for (const toothId of group) {
+      const toothWidth = getToothColumnWidth(toothId)
       const tooth = props.chartData[toothId]
       if (!tooth || tooth.extracted) {
-        currentX += getToothColumnWidth(toothId)
+        currentX += toothWidth
         continue
       }
-      const toothCenter = currentX + getToothColumnWidth(toothId) / 2
-      const siteXOffsets = [-12, 0, 12]
       const direction = getPdDirection(toothId, props.surface)
+
+      // 3 measurement sites positioned proportionally across tooth width
+      // Site 0 (mesial): 20%, Site 1 (middle): 50%, Site 2 (distal): 80%
+      const sitePositions = [0.2, 0.5, 0.8]
       for (const site of [0, 1, 2] as const) {
         const recValue = toNumber(tooth[props.surface].rec[site])
-        // Apply direction: -1 for UP (LINGUAL), +1 for DOWN (Lower BUCCAL)
         const y = cejY + (recValue * 6 * direction)
-        points.push({ x: toothCenter + siteXOffsets[site], y })
+        points.push({ x: currentX + toothWidth * sitePositions[site], y })
       }
-      currentX += getToothColumnWidth(toothId)
+      
+      currentX += toothWidth
     }
     if (gIdx < props.arch.length - 1) {
       currentX += gapWidth
     }
-  }
-
-  // เพิ่มจุดยื่นที่ต้นและท้าย เพื่อให้เส้นยาวขึ้น (แนวนอน ที่ระดับ CEJ)
-  if (points.length > 0) {
-    const extension = 30 // ยื่นออก 30px
-    const firstPoint = points[0]
-    const lastPoint = points[points.length - 1]
-
-    // ยืดจุดแรกไปทางซ้าย - ใช้ระดับ CEJ
-    points.unshift({ x: firstPoint.x - extension, y: cejY })
-
-    // ยืดจุดสุดท้ายไปทางขวา - ใช้ระดับ CEJ
-    points.push({ x: lastPoint.x + extension, y: cejY })
   }
 
   return points
@@ -89,7 +81,6 @@ const gmPoints = computed(() => {
 
 // CAL Points (Clinical Attachment Level) - สำหรับสร้างเส้นสีน้ำเงิน (ระดับกระดูก)
 // CAL = PD + REC, เป็นระยะจาก CEJ
-// Direction: LINGUAL points UP (-), Lower BUCCAL points DOWN (+)
 const calPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -99,40 +90,28 @@ const calPoints = computed(() => {
   for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
     const group = props.arch[gIdx]
     for (const toothId of group) {
+      const toothWidth = getToothColumnWidth(toothId)
       const tooth = props.chartData[toothId]
       if (!tooth || tooth.extracted) {
-        currentX += getToothColumnWidth(toothId)
+        currentX += toothWidth
         continue
       }
-      const toothCenter = currentX + getToothColumnWidth(toothId) / 2
-      const siteXOffsets = [-12, 0, 12]
       const direction = getPdDirection(toothId, props.surface)
+
+      // 3 measurement sites positioned proportionally across tooth width
+      // Site 0 (mesial): 20%, Site 1 (middle): 50%, Site 2 (distal): 80%
+      const sitePositions = [0.2, 0.5, 0.8]
       for (const site of [0, 1, 2] as const) {
         const calValue = toNumber(tooth[props.surface].cal[site])
-        // Apply direction: -1 for UP (LINGUAL), +1 for DOWN (Lower BUCCAL)
         const y = cejY + (calValue * 6 * direction)
-        points.push({ x: toothCenter + siteXOffsets[site], y })
+        points.push({ x: currentX + toothWidth * sitePositions[site], y })
       }
-      currentX += getToothColumnWidth(toothId)
+      
+      currentX += toothWidth
     }
     if (gIdx < props.arch.length - 1) {
       currentX += gapWidth
     }
-  }
-
-  // เพิ่มจุดยื่นที่ต้นและท้าย เพื่อให้เส้นยาวขึ้น (แนวนอน ที่ระดับ CEJ)
-  if (points.length > 0) {
-    const extension = 30 // ยื่นออก 30px
-    const firstPoint = points[0]
-    const lastPoint = points[points.length - 1]
-
-    // ยืดจุดแรกไปทางซ้าย - ใช้ระดับ CEJ
-    points.unshift({ x: firstPoint.x - extension, y: cejY })
-
-    // ยืดจุดสุดท้ายไปทางขวา - ใช้ระดับ CEJ
-    points.push({ x: lastPoint.x + extension, y: cejY })
-
-
   }
 
   return points
@@ -143,7 +122,7 @@ const gmPolylinePoints = computed(() => gmPoints.value.map(p => `${p.x},${p.y}`)
 const calPolylinePoints = computed(() => calPoints.value.map(p => `${p.x},${p.y}`).join(' '))
 
 // PD Area (Probing Depth) - พื้นที่สีม่วงฉากระหว่าง GM ถึง CAL
-// สร้าง polygon โดยเชื่อม GM points (บน) → CAL points (ล่าง) → ย้อนกลับ
+// สร้าง polygon โดยเชื่อม GM points → CAL points (ย้อนลำดับ)
 const pdAreaPoints = computed(() => {
   if (gmPoints.value.length === 0 || calPoints.value.length === 0) return ''
   if (gmPoints.value.length !== calPoints.value.length) return ''
