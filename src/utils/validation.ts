@@ -43,6 +43,15 @@ export const filterNumericInput = (value: string, allowNegative = false): string
       result += char;
     }
   }
+
+  // Strip leading zeros for multi-digit numbers, keeping single "0" or "-0".
+  while (result.startsWith("0") && result.length > 1) {
+    result = result.substring(1);
+  }
+  while (result.startsWith("-0") && result.length > 2) {
+    result = "-" + result.substring(2);
+  }
+
   return result;
 };
 

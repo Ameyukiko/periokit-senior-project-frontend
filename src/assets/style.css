@@ -133,3 +133,26 @@ input[type="number"] {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Style horizontal and vertical borders of disabled/extracted periodontal chart cells */
+div[class*="bg-slate-800"],
+div[class*="bg-slate-900"] {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+div.border-b[class*="bg-slate-800"],
+div.border-b[class*="bg-slate-900"] {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+div.border-b:has(> [class*="bg-slate-800"]),
+div.border-b:has(> [class*="bg-slate-900"]) {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Focus behavior for group elements in chart grid to raise z-index */
+.group:focus-within {
+  z-index: 20;
+}
+
+

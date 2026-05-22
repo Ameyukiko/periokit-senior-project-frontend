@@ -208,8 +208,3 @@ const containerClasses = computed(() => ({
   </div>
 </template>
 
-<style scoped>
-.group:focus-within {
-  z-index: 20;
-}
-</style>
