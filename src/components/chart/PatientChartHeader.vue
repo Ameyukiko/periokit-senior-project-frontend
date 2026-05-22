@@ -68,16 +68,16 @@ const sortedPdBreakdown = computed(() => {
     </div>
 
     <!-- Mini Summary Bar -->
-    <div class="px-6 py-3 bg-linear-to-r from-slate-50 to-white border-t border-slate-100 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    <div class="px-6 py-3 bg-linear-to-r from-slate-50 to-white border-t border-slate-100">
+      <div class="flex items-center gap-3 overflow-x-auto">
         <!-- Full-mouth Summary Label -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
           <Activity class="w-3.5 h-3.5 text-blue-500" />
           <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
         </div>
 
         <!-- Teeth Badge -->
-        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-50 border border-slate-200">
+        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
           <span class="text-[11px] font-black text-slate-600">
             {{ props.summary.totalTeeth - props.summary.missingTeeth }}/{{ props.summary.totalTeeth }}
@@ -85,7 +85,7 @@ const sortedPdBreakdown = computed(() => {
         </div>
 
         <!-- Implants Badge -->
-        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-violet-50 border border-violet-200">
+        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
           <span class="text-[11px] font-black text-violet-600">
             {{ props.summary.implantTeeth }}
@@ -93,7 +93,7 @@ const sortedPdBreakdown = computed(() => {
         </div>
 
         <!-- BoP Badge -->
-        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200">
+        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
           <span class="text-[11px] font-black text-rose-600">
             {{ props.summary.bopPercentage }}%
@@ -101,7 +101,7 @@ const sortedPdBreakdown = computed(() => {
         </div>
 
         <!-- PI Badge -->
-        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-100">
+        <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
           <span class="text-[11px] font-black text-blue-600">
             {{ props.summary.piPercentage }}%
@@ -109,35 +109,35 @@ const sortedPdBreakdown = computed(() => {
         </div>
 
         <!-- Mobility Badge -->
-        <div v-if="props.summary.mobilityCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200">
+        <div v-if="props.summary.mobilityCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
           <span class="text-[11px] font-black text-amber-600">
-            {{ props.summary.mobilityCount }} teeth
+            {{ props.summary.mobilityCount }}
           </span>
         </div>
 
         <!-- Furcation Badge -->
-        <div v-if="props.summary.furcationCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-50 border border-purple-200">
+        <div v-if="props.summary.furcationCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
           <span class="text-[11px] font-black text-purple-600">
-            {{ props.summary.furcationCount }} teeth
+            {{ props.summary.furcationCount }}
           </span>
         </div>
 
         <!-- Keratinized Badge -->
-        <div v-if="props.summary.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200">
+        <div v-if="props.summary.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
           <span class="text-[11px] font-black text-teal-600">
-            {{ props.summary.keratinizedLowCount }} teeth
+            {{ props.summary.keratinizedLowCount }} 
           </span>
         </div>
 
         <!-- PD Breakdown -->
         <template v-for="item in sortedPdBreakdown" :key="item.depth">
-          <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200">
+          <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
             <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
             <span class="text-[11px] font-black text-rose-600">
-              {{ item.count }} teeth
+              {{ item.count }}
             </span>
           </div>
         </template>
