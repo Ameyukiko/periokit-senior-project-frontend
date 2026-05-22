@@ -4,6 +4,7 @@ import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X } fr
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
+import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import PatientChartHeader from '@/components/chart/PatientChartHeader.vue'
 import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
@@ -30,6 +31,8 @@ const {
 const editingChartId = ref<string | null>(null)
 const editingChartName = ref('')
 const showOverviewModal = ref(false)
+const showDeleteConfirmModal = ref(false)
+const chartToDelete = ref<string | null>(null)
 
 const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
   chartStore.updateNote(Number(id) as ToothId, note)
@@ -46,9 +49,21 @@ const handleSwitchChart = (chartId: string) => {
 const handleDeleteChart = (chartId: string, event: Event) => {
   event.stopPropagation()
   if (charts.value.length <= 1) return
-  if (confirm('Delete this chart?')) {
-    chartStore.deleteChart(chartId)
+  chartToDelete.value = chartId
+  showDeleteConfirmModal.value = true
+}
+
+const confirmDeleteChart = () => {
+  if (chartToDelete.value) {
+    chartStore.deleteChart(chartToDelete.value)
   }
+  showDeleteConfirmModal.value = false
+  chartToDelete.value = null
+}
+
+const cancelDeleteChart = () => {
+  showDeleteConfirmModal.value = false
+  chartToDelete.value = null
 }
 
 const startEditingChartName = (chart: { id: string; name: string }) => {
@@ -132,7 +147,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
           </button>
           <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewChart">
-            <Plus class="w-3.5 h-3.5" /> New Chart
+            <Plus class="w-3.5 h-3.5" /> New Visit
           </button>
           <button class="flex items-center gap-1.5 px-3 py-1.5 bg-[#7aa4f0] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-[#6b94e0] transition-colors">
             <Save class="w-3.5 h-3.5" /> Save Chart
@@ -218,6 +233,18 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           :show="showOverviewModal"
           :chart-data="teethData"
           @close="showOverviewModal = false"
+        />
+
+        <!-- Delete Chart Confirmation Modal -->
+        <ConfirmModal
+          :show="showDeleteConfirmModal"
+          title="Delete Chart"
+          message="Are you sure you want to delete this chart?<br>This action cannot be undone."
+          confirm-text="Delete"
+          cancel-text="Cancel"
+          type="danger"
+          @confirm="confirmDeleteChart"
+          @cancel="cancelDeleteChart"
         />
       </div>
     </main>

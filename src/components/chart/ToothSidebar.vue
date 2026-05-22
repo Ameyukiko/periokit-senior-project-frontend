@@ -166,8 +166,7 @@ const analysisData = computed(() => {
           <!-- Buccal Card -->
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
-              <span v-for="(val, i) in analysisData?.buccalCAL" :key="i"
-                :class="parseInt(val) > 4 ? 'text-red-500' : 'text-[#0052ff]'">
+              <span v-for="(val, i) in analysisData?.buccalCAL" :key="i" class="text-[#0052ff]">
                 {{ val }}{{ Number(i) < 2 ? '-' : '' }}
               </span>
             </div>
@@ -176,8 +175,7 @@ const analysisData = computed(() => {
           <!-- Inner surface card -->
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
-              <span v-for="(val, i) in analysisData?.innerSurfaceCAL" :key="i"
-                :class="parseInt(val) > 4 ? 'text-red-500' : 'text-[#0052ff]'">
+              <span v-for="(val, i) in analysisData?.innerSurfaceCAL" :key="i" class="text-[#0052ff]">
                 {{ val }}{{ Number(i) < 2 ? '-' : '' }}
               </span>
             </div>
@@ -189,62 +187,6 @@ const analysisData = computed(() => {
 
       <!-- Visual Indicators Section (Standard 6-Site Hexagonal Diagrams) -->
       <section class="grid grid-cols-2 gap-4" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
-        <!-- Plaque Diagram -->
-        <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/pi">
-          <!-- Percentage Badge -->
-          <div
-            v-if="analysisData?.piPercentage !== '0%'"
-            class="absolute top-2.5 right-2.5 px-2 py-0.5 bg-blue-50 text-blue-500 text-[9px] font-black rounded-lg border border-blue-100 shadow-sm animate-in fade-in zoom-in duration-300"
-          >
-            {{ analysisData?.piPercentage }}
-          </div>
-
-
-          <div class="relative w-20 h-20 mb-2">
-            <svg viewBox="0 0 100 100" class="w-full h-full transform rotate-90">
-              <!-- Outer Hexagon Frame -->
-              <polygon points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25" fill="white" stroke="#e2e8f0" stroke-width="2" />
-
-              <!-- Left Side: Buccal for Upper, Lingual for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Buccal on Left -->
-                <path v-if="toothData.buccal.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
-              </template>
-              <template v-else>
-                <!-- Lower: Lingual on Left -->
-                <path v-if="toothData.lingual.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
-              </template>
-
-              <!-- Right Side: Lingual/Palatal for Upper, Buccal for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Palatal on Right -->
-                <path v-if="toothData.lingual.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
-              </template>
-              <template v-else>
-                <!-- Lower: Buccal on Right -->
-                <path v-if="toothData.buccal.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
-              </template>
-
-              <!-- Divider Lines -->
-              <line x1="50" y1="50" x2="50" y2="0" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="25" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="50" y2="100" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="25" stroke="#e2e8f0" stroke-width="1" />
-            </svg>
-          </div>
-          <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">PI (6 Sites)</p>
-        </div>
-
         <!-- BoP Diagram -->
         <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/bop">
           <!-- Percentage Badge -->
@@ -299,6 +241,62 @@ const analysisData = computed(() => {
             </svg>
           </div>
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">BOP (6 Sites)</p>
+        </div>
+
+        <!-- Plaque Diagram -->
+        <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/pi">
+          <!-- Percentage Badge -->
+          <div
+            v-if="analysisData?.piPercentage !== '0%'"
+            class="absolute top-2.5 right-2.5 px-2 py-0.5 bg-blue-50 text-blue-500 text-[9px] font-black rounded-lg border border-blue-100 shadow-sm animate-in fade-in zoom-in duration-300"
+          >
+            {{ analysisData?.piPercentage }}
+          </div>
+
+
+          <div class="relative w-20 h-20 mb-2">
+            <svg viewBox="0 0 100 100" class="w-full h-full transform rotate-90">
+              <!-- Outer Hexagon Frame -->
+              <polygon points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25" fill="white" stroke="#e2e8f0" stroke-width="2" />
+
+              <!-- Left Side: Buccal for Upper, Lingual for Lower -->
+              <template v-if="isUpperTooth(toothId)">
+                <!-- Upper: Buccal on Left -->
+                <path v-if="toothData.buccal.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
+                <path v-if="toothData.buccal.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
+                <path v-if="toothData.buccal.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
+              </template>
+              <template v-else>
+                <!-- Lower: Lingual on Left -->
+                <path v-if="toothData.lingual.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
+                <path v-if="toothData.lingual.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
+                <path v-if="toothData.lingual.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
+              </template>
+
+              <!-- Right Side: Lingual/Palatal for Upper, Buccal for Lower -->
+              <template v-if="isUpperTooth(toothId)">
+                <!-- Upper: Palatal on Right -->
+                <path v-if="toothData.lingual.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
+                <path v-if="toothData.lingual.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
+                <path v-if="toothData.lingual.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
+              </template>
+              <template v-else>
+                <!-- Lower: Buccal on Right -->
+                <path v-if="toothData.buccal.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
+                <path v-if="toothData.buccal.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
+                <path v-if="toothData.buccal.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
+              </template>
+
+              <!-- Divider Lines -->
+              <line x1="50" y1="50" x2="50" y2="0" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="50" y1="50" x2="93.3" y2="25" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="50" y1="50" x2="93.3" y2="75" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="50" y1="50" x2="50" y2="100" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="50" y1="50" x2="6.7" y2="75" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="50" y1="50" x2="6.7" y2="25" stroke="#e2e8f0" stroke-width="1" />
+            </svg>
+          </div>
+          <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">PI (6 Sites)</p>
         </div>
 
 

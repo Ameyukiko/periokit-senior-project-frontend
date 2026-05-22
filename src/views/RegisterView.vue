@@ -57,7 +57,6 @@ const register = async () => {
   );
 
   // 2. Validate ทุกช่องพร้อมกัน
-  if (!form.studentId) errors.studentId = "Please enter your Doctor ID";
   if (!form.firstName) errors.firstName = "Please enter your First Name";
   if (!form.surname) errors.surname = "Please enter your Surname";
 
@@ -242,7 +241,7 @@ const register = async () => {
           <!-- Doctor ID -->
           <div>
             <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
-              >Doctor ID</label
+              >Doctor ID <span class="text-[#9ca3af] font-normal">(Optional)</span></label
             >
             <input
               v-model="form.studentId"

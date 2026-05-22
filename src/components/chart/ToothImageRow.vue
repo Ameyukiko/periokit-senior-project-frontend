@@ -35,6 +35,7 @@ defineProps<{
 
 const emit = defineEmits<{
   selectTooth: [id: ToothId]
+  toggleFur: [id: ToothId, surface: Surface, index: number]
 }>()
 
 </script>
@@ -54,25 +55,32 @@ const emit = defineEmits<{
           <div
             v-for="id in group"
             :key="id"
-            class="h-full flex shrink-0 justify-center group relative z-10 cursor-pointer transition-all duration-200 rounded-xl hover:bg-blue-50/30"
-            :class="selectedToothId === id ? 'bg-blue-50 ring-2 ring-[#0052ff] ring-inset' : ''"
+            class="h-full flex shrink-0 justify-center group relative cursor-pointer transition-all duration-200 rounded-xl hover:bg-blue-50/30"
+            :class="selectedToothId === id ? 'bg-blue-50/20' : ''"
             :style="getToothColumnStyle(id)"
             @click="emit('selectTooth', id)"
           >
             <img
               :src="getToothImage(id, surface, chartData[id])"
               :alt="`Tooth ${id} ${label}`"
-              class="absolute h-35.25 w-auto max-w-none object-contain transition-all duration-300"
+              class="absolute h-35.25 w-auto max-w-none object-contain transition-all duration-300 z-10"
               :class="imageClass"
               :style="getToothImageStyle(id, surface)"
             />
+            <!-- Selection Ring Overlay (renders on top of the graph and grid lines) -->
+            <div
+              v-if="selectedToothId === id"
+              class="absolute inset-0 ring-2 ring-[#0052ff] ring-inset rounded-xl pointer-events-none z-35"
+            ></div>
             <div
               v-for="(grade, fIdx) in chartData[id].fur[surface]"
               :key="fIdx"
-              class="absolute z-40 pointer-events-none -translate-x-1/2"
+              class="absolute z-40 -translate-x-1/2 cursor-pointer flex items-center justify-center"
               :style="getFurMarkerStyle(id, surface, fIdx, chartData[id].fur[surface].length)"
+              @click.stop="!chartData[id].extracted && !chartData[id].implant && emit('toggleFur', id, surface, fIdx)"
             >
-              <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3 h-3 object-contain" />
+              <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain hover:scale-110 transition-transform" />
+              <div v-else-if="!chartData[id].extracted && !chartData[id].implant" class="w-3 h-3 border border-dashed border-slate-400/50 rounded-full bg-white/70 opacity-0 hover:opacity-100 transition-opacity" title="Add Furcation"></div>
             </div>
             <!-- KTW Warning Symbol (displayed when KTW < 2mm) -->
             <div

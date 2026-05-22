@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { X } from 'lucide-vue-next'
 import type { ChartData, Surface } from '@/domain/chart/chart.types'
 import { calculateBopPercentage, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import { UPPER_TEETH, LOWER_TEETH } from '@/domain/chart/chart.constants'
 import {
-  getTeethByPdRange,
   getTeethByMobility,
   getTeethByFurcation
 } from '@/domain/chart/chart.summary'
@@ -19,12 +18,14 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// Tab state
+type Tab = 'clinical' | 'bop-pi'
+const activeTab = ref<Tab>('clinical')
+
 const bopPercentage = computed(() => calculateBopPercentage(props.chartData))
 const piPercentage = computed(() => calculatePiPercentage(props.chartData))
 
 // Detailed summary computed properties
-const pdModerateTeeth = computed(() => getTeethByPdRange(props.chartData, 5, 5))
-const pdSevereTeeth = computed(() => getTeethByPdRange(props.chartData, 6))
 const mobility1Teeth = computed(() => getTeethByMobility(props.chartData, 1))
 const mobility2Teeth = computed(() => getTeethByMobility(props.chartData, 2))
 const mobility3Teeth = computed(() => getTeethByMobility(props.chartData, 3))
@@ -61,7 +62,7 @@ const pdByValue = computed<Record<number, number[]>>(() => {
   return result
 })
 
-// Sorted computed properties for cleaner template
+// Sorted computed properties for PD
 const sortedPdValues = computed(() =>
   Object.entries(pdByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
@@ -72,27 +73,135 @@ const formatToothNumbers = (teeth: number[]): string => {
   return teeth.map(t => `#${t}`).join(', ')
 }
 
-// Color helpers: premium red/rose gradient styling for abnormal PD values
-const getPdTextClass = (value: number) => {
-  if (value >= 8) return 'bg-rose-600 text-white font-extrabold shadow-sm shadow-rose-200/50' // critical severe
-  if (value === 7) return 'bg-rose-500 text-white font-bold' // high severe
-  if (value === 6) return 'bg-rose-200 text-rose-800 font-bold' // moderate severe
-  return 'bg-rose-100 text-rose-700 font-semibold' // value === 5, mild abnormal
+// Styling helper functions for tables
+const getRowTextColorClass = (sectionTitle: string, label: string) => {
+  if (sectionTitle.includes('PD')) {
+    const val = parseInt(label, 10)
+    if (val >= 8) return 'text-rose-800 font-bold'
+    if (val === 7) return 'text-rose-700 font-bold'
+    if (val === 6) return 'text-rose-600 font-bold'
+    return 'text-rose-500 font-semibold' // val === 5
+  }
+  
+  // Mobility or Furcation
+  if (label.endsWith('III')) return 'text-rose-800 font-bold'
+  if (label.endsWith('II')) return 'text-rose-600 font-bold'
+  return 'text-rose-400 font-semibold' // Grade I
 }
 
-const getPdBgClass = (value: number) => {
-  if (value >= 8) return 'bg-rose-50/95 border-rose-200/80 shadow-xs'
-  if (value === 7) return 'bg-rose-50/70 border-rose-200/40'
-  if (value === 6) return 'bg-rose-50/40 border-rose-100/70'
-  return 'bg-rose-50/15 border-rose-100/30' // value === 5
+const getRowBorderClass = (sectionTitle: string, label: string) => {
+  if (sectionTitle.includes('PD')) {
+    return ''
+  }
+  
+  // Mobility or Furcation has left border
+  if (label.endsWith('III')) return 'border-l-[3px] border-l-rose-800 pl-3'
+  if (label.endsWith('II')) return 'border-l-[3px] border-l-rose-500 pl-3'
+  return 'border-l-[3px] border-l-rose-300 pl-3' // Grade I
 }
 
-const getPdCountClass = (value: number) => {
-  if (value >= 8) return 'text-rose-800 font-extrabold'
-  if (value === 7) return 'text-rose-700 font-bold'
-  if (value === 6) return 'text-rose-600 font-bold'
-  return 'text-rose-500 font-semibold' // value === 5
+// Clinical data section type
+interface SeverityItem {
+  label: string
+  count: number
+  teeth: string
+  badgeClass: string
+  countClass: string
 }
+
+interface ClinicalSection {
+  title: string
+  items: SeverityItem[]
+}
+
+// PD sections grouped by category
+const pdSection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = sortedPdValues.value.map(([pd, teeth]) => {
+    return {
+      label: `${pd}`,
+      count: teeth.length,
+      teeth: formatToothNumbers(teeth),
+      badgeClass: '',
+      countClass: ''
+    }
+  })
+  return { title: 'PD (mm)', items }
+})
+
+// Mobility section
+const mobilitySection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = []
+  if (mobility1Teeth.value.length) {
+    items.push({
+      label: 'Grade I',
+      count: mobility1Teeth.value.length,
+      teeth: formatToothNumbers(mobility1Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (mobility2Teeth.value.length) {
+    items.push({
+      label: 'Grade II',
+      count: mobility2Teeth.value.length,
+      teeth: formatToothNumbers(mobility2Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (mobility3Teeth.value.length) {
+    items.push({
+      label: 'Grade III',
+      count: mobility3Teeth.value.length,
+      teeth: formatToothNumbers(mobility3Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  return { title: 'Mobility', items }
+})
+
+// Furcation section
+const furcationSection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = []
+  if (furcation1Teeth.value.length) {
+    items.push({
+      label: 'Grade I',
+      count: furcation1Teeth.value.length,
+      teeth: formatToothNumbers(furcation1Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (furcation2Teeth.value.length) {
+    items.push({
+      label: 'Grade II',
+      count: furcation2Teeth.value.length,
+      teeth: formatToothNumbers(furcation2Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (furcation3Teeth.value.length) {
+    items.push({
+      label: 'Grade III',
+      count: furcation3Teeth.value.length,
+      teeth: formatToothNumbers(furcation3Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  return { title: 'Furcation', items }
+})
+
+// All clinical sections
+const clinicalSections = computed<ClinicalSection[]>(() => {
+  const sections: ClinicalSection[] = []
+  if (pdSection.value.items.length > 0) sections.push(pdSection.value)
+  if (mobilitySection.value.items.length > 0) sections.push(mobilitySection.value)
+  if (furcationSection.value.items.length > 0) sections.push(furcationSection.value)
+  return sections
+})
 
 // Proportional widths matching clinical charts scaled for layout
 const TOOTH_WIDTHS: Record<number, number> = {
@@ -143,7 +252,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
       <Transition name="scale">
         <div
           v-if="show"
-          class="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 w-full max-w-180 max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/60"
+          class="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/60"
         >
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 bg-linear-to-r from-slate-50 to-white border-b border-slate-200/60">
@@ -162,85 +271,110 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
           </div>
 
           <!-- Body -->
-          <div class="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
+          <div class="flex flex-col flex-1 overflow-hidden">
+            <!-- Tab Bar -->
+            <div class="flex border-b border-slate-200/60 px-6">
+              <button
+                @click="activeTab = 'clinical'"
+                :class="[
+                  'px-4 py-3 text-sm font-medium transition-colors relative',
+                  activeTab === 'clinical'
+                    ? 'text-blue-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                Clinical Data Summary
+                <div
+                  v-if="activeTab === 'clinical'"
+                  class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t"
+                ></div>
+              </button>
+              <button
+                @click="activeTab = 'bop-pi'"
+                :class="[
+                  'px-4 py-3 text-sm font-medium transition-colors relative',
+                  activeTab === 'bop-pi'
+                    ? 'text-blue-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                %BoP & PI
+                <div
+                  v-if="activeTab === 'bop-pi'"
+                  class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t"
+                ></div>
+              </button>
+            </div>
 
-            <!-- Clinical Data Summary -->
-            <div v-if="pdModerateTeeth.length || pdSevereTeeth.length || mobility1Teeth.length || mobility2Teeth.length || mobility3Teeth.length || furcation1Teeth.length || furcation2Teeth.length || furcation3Teeth.length" class="space-y-3">
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-y-auto p-5 scrollbar-hide relative">
+              <Transition name="tab-fade" mode="out-in">
+                <!-- Clinical Data Summary Tab -->
+                <div v-if="activeTab === 'clinical'" key="clinical">
+            <div v-if="clinicalSections.length > 0" class="space-y-6">
               <h3 class="text-sm font-semibold text-slate-900">Clinical Data Summary</h3>
 
-              <div class="grid grid-cols-3 gap-3">
-                <!-- PD Card -->
-                <div v-if="sortedPdValues.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">PD (mm)</h4>
-                  <div class="space-y-2">
-                    <div v-for="pd in sortedPdValues" :key="pd[0]" class="rounded-lg p-2 border transition-all duration-200" :class="getPdBgClass(Number(pd[0]))">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPdTextClass(Number(pd[0]))">{{ pd[0] }}</span>
-                        <span class="text-lg font-bold" :class="getPdCountClass(Number(pd[0]))">{{ pd[1].length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(pd[1]) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Mobility Card -->
-                <div v-if="mobility1Teeth.length || mobility2Teeth.length || mobility3Teeth.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Mobility</h4>
-                  <div class="space-y-2">
-                    <div v-if="mobility1Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-slate-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600">Grade I</span>
-                        <span class="text-lg font-bold text-slate-500">{{ mobility1Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility1Teeth) }}</div>
-                    </div>
-                    <div v-if="mobility2Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-200 text-rose-700">Grade II</span>
-                        <span class="text-lg font-bold text-rose-600">{{ mobility2Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility2Teeth) }}</div>
-                    </div>
-                    <div v-if="mobility3Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/80">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-300 text-rose-800">Grade III</span>
-                        <span class="text-lg font-bold text-rose-700">{{ mobility3Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility3Teeth) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Furcation Card -->
-                <div v-if="furcation1Teeth.length || furcation2Teeth.length || furcation3Teeth.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Furcation</h4>
-                  <div class="space-y-2">
-                    <div v-if="furcation1Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-slate-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600">Grade I</span>
-                        <span class="text-lg font-bold text-slate-500">{{ furcation1Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation1Teeth) }}</div>
-                    </div>
-                    <div v-if="furcation2Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-200 text-rose-700">Grade II</span>
-                        <span class="text-lg font-bold text-rose-600">{{ furcation2Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation2Teeth) }}</div>
-                    </div>
-                    <div v-if="furcation3Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/80">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-300 text-rose-800">Grade III</span>
-                        <span class="text-lg font-bold text-rose-700">{{ furcation3Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation3Teeth) }}</div>
-                    </div>
-                  </div>
+              <!-- Clinical Data Tables -->
+              <div class="space-y-6">
+                <div
+                  v-for="section in clinicalSections"
+                  :key="section.title"
+                  class="w-full"
+                >
+                  <table class="w-full border-collapse">
+                    <thead>
+                      <tr class="bg-slate-50 border-b border-slate-200">
+                        <th class="text-left py-2.5 pl-3 pr-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[30%] rounded-l-lg">
+                          {{ section.title }}
+                        </th>
+                        <th class="text-center py-2.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[20%]">
+                          Count
+                        </th>
+                        <th class="text-left py-2.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[50%] rounded-r-lg">
+                          Teeth
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="item in section.items"
+                        :key="item.label"
+                        class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+                      >
+                        <!-- Column 1: Value / Grade / Class -->
+                        <td
+                          class="py-2.5 pr-3 text-sm"
+                          :class="getRowBorderClass(section.title, item.label)"
+                        >
+                          <span :class="getRowTextColorClass(section.title, item.label)">
+                            {{ item.label }}
+                          </span>
+                        </td>
+                        <!-- Column 2: Count -->
+                        <td class="py-2.5 px-3 text-center text-sm">
+                          <span :class="getRowTextColorClass(section.title, item.label)">
+                            {{ item.count }}
+                          </span>
+                        </td>
+                        <!-- Column 3: Teeth List -->
+                        <td class="py-2.5 px-3 text-sm text-slate-600 font-medium">
+                          {{ item.teeth }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
+            <!-- Empty state for clinical tab -->
+            <div v-else class="text-center py-12 text-slate-400">
+              <p class="text-sm">No clinical data abnormalities detected.</p>
+            </div>
+                </div>
+
+                <!-- %BoP & PI Tab -->
+                <div v-else key="bop-pi" class="space-y-4">
             <!-- PI (%) Section -->
             <div class="bg-slate-50/50 rounded-xl p-3 border border-slate-100/80">
               <div class="flex justify-between items-end mb-2">
@@ -584,7 +718,10 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 </div>
               </div>
             </div>
+                </div>
+              </Transition>
 
+            </div>
           </div>
         </div>
       </Transition>
@@ -612,6 +749,22 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
 .scale-leave-to {
   opacity: 0;
   transform: scale(0.96);
+}
+
+/* Tab transition - smooth fade and slide */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 /* Hide scrollbar but allow scrolling */
