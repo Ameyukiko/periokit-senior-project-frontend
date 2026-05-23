@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getToothColumnWidth } from '@/domain/chart/chart.image'
+import { getToothColumnWidth, getToothSitePositions } from '@/domain/chart/chart.image'
 import { isUpperTooth } from '@/domain/chart/chart.rules'
 import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
 
@@ -61,12 +61,12 @@ const gmPoints = computed(() => {
       const direction = getPdDirection(toothId, props.surface)
 
       // 3 measurement sites positioned proportionally across tooth width
-      // Site 0 (mesial): 20%, Site 1 (middle): 50%, Site 2 (distal): 80%
-      const sitePositions = [0.2, 0.5, 0.8]
+      const sitePositions = getToothSitePositions(toothId, props.surface)
       for (const site of [0, 1, 2] as const) {
         const recValue = toNumber(tooth[props.surface].rec[site])
         const y = cejY + (recValue * 6 * direction)
-        points.push({ x: currentX + toothWidth * sitePositions[site], y })
+        const x = currentX + toothWidth * sitePositions[site]
+        points.push({ x, y })
       }
       
       currentX += toothWidth
@@ -74,6 +74,11 @@ const gmPoints = computed(() => {
     if (gIdx < props.arch.length - 1) {
       currentX += gapWidth
     }
+  }
+
+  if (points.length > 0) {
+    points.unshift({ x: 0, y: points[0].y })
+    points.push({ x: svgWidth.value, y: points[points.length - 1].y })
   }
 
   return points
@@ -99,12 +104,12 @@ const calPoints = computed(() => {
       const direction = getPdDirection(toothId, props.surface)
 
       // 3 measurement sites positioned proportionally across tooth width
-      // Site 0 (mesial): 20%, Site 1 (middle): 50%, Site 2 (distal): 80%
-      const sitePositions = [0.2, 0.5, 0.8]
+      const sitePositions = getToothSitePositions(toothId, props.surface)
       for (const site of [0, 1, 2] as const) {
         const calValue = toNumber(tooth[props.surface].cal[site])
         const y = cejY + (calValue * 6 * direction)
-        points.push({ x: currentX + toothWidth * sitePositions[site], y })
+        const x = currentX + toothWidth * sitePositions[site]
+        points.push({ x, y })
       }
       
       currentX += toothWidth
@@ -112,6 +117,11 @@ const calPoints = computed(() => {
     if (gIdx < props.arch.length - 1) {
       currentX += gapWidth
     }
+  }
+
+  if (points.length > 0) {
+    points.unshift({ x: 0, y: points[0].y })
+    points.push({ x: svgWidth.value, y: points[points.length - 1].y })
   }
 
   return points
@@ -152,7 +162,10 @@ const svgWidth = computed(() => {
 </script>
 
 <template>
-  <div class="pd-line-chart-layer absolute inset-0 pointer-events-none z-20">
+  <div 
+    class="pd-line-chart-layer absolute top-0 left-0 pointer-events-none z-20"
+    :style="{ width: `${svgWidth}px` }"
+  >
     <svg
       :viewBox="`0 0 ${svgWidth} 150`"
       class="w-full h-full"
@@ -207,7 +220,6 @@ const svgWidth = computed(() => {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
   height: 100%;
   pointer-events: none;
   z-index: 20;

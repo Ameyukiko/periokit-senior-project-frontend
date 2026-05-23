@@ -155,4 +155,14 @@ div.border-b:has(> [class*="bg-slate-900"]) {
   z-index: 20;
 }
 
+/* PD Line Chart Layer */
+.pd-line-chart-layer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
 
