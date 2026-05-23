@@ -97,3 +97,37 @@ export async function logoutUser(): Promise<void> {
     auth: true,
   });
 }
+
+export async function getMe(): Promise<UserProfile> {
+  const response = await apiRequest<{
+    user: { id: string; email: string };
+    profile: {
+      firstName: string;
+      lastName: string;
+      role: string;
+      studentId?: number | null;
+      profileImageUrl?: string | null;
+    };
+  }>("/auth/me", {
+    method: "GET",
+    auth: true,
+  });
+
+  const rawUser = response.data?.user;
+  const rawProfile = response.data?.profile;
+
+  if (!rawUser || !rawProfile) {
+    throw new Error("Invalid response from server structure");
+  }
+
+  return {
+    id: rawUser.id,
+    email: rawUser.email || "",
+    first_name: rawProfile.firstName || "",
+    last_name: rawProfile.lastName || "",
+    student_id: rawProfile.studentId?.toString(),
+    role: rawProfile.role,
+    profile_image_url: rawProfile.profileImageUrl || undefined,
+  };
+}
+

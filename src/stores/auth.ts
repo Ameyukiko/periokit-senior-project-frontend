@@ -4,8 +4,10 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  getMe,
   type RegisterInput,
 } from "../services/api/auth.api";
+import { ApiError } from "../services/api/http";
 import {
   clearClientSession,
   handleUnauthorizedSession,
@@ -34,6 +36,20 @@ export const useAuthStore = defineStore("auth", () => {
   const userProfile = computed(() => user.value);
 
   // Actions
+  async function fetchProfile() {
+    if (!token.value) return;
+    try {
+      const userProfile = await getMe();
+      user.value = userProfile;
+      saveSession(token.value, userProfile);
+    } catch (error: any) {
+      console.error("Failed to fetch profile:", error);
+      if (error instanceof ApiError && error.status === 401) {
+        await handleUnauthorized();
+      }
+    }
+  }
+
   async function login(email: string, password: string) {
     try {
       const result = await loginUser(email, password);
@@ -42,7 +58,10 @@ export const useAuthStore = defineStore("auth", () => {
       token.value = result.token;
       user.value = result.user;
 
-      return { success: true, user: result.user, token: result.token };
+      // Fetch the full profile from backend
+      await fetchProfile();
+
+      return { success: true, user: user.value, token: result.token };
     } catch (error: any) {
       console.error("Login Error:", error);
       return {
@@ -100,5 +119,6 @@ export const useAuthStore = defineStore("auth", () => {
     logout,
     handleUnauthorized,
     getAuthHeaders,
+    fetchProfile,
   };
 });
