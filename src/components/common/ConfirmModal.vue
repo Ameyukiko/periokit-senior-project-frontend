@@ -65,8 +65,8 @@ const emit = defineEmits(["confirm", "cancel"]);
             </h3>
             <p
               class="text-gray-500 font-medium leading-relaxed whitespace-pre-line"
+              v-html="message"
             >
-              {{ message }}
             </p>
           </div>
 

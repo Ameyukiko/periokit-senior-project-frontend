@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { X } from 'lucide-vue-next'
 import type { ChartData, Surface } from '@/domain/chart/chart.types'
 import { calculateBopPercentage, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import { UPPER_TEETH, LOWER_TEETH } from '@/domain/chart/chart.constants'
 import {
-  getTeethByPdRange,
-  getTeethByCalRange,
   getTeethByMobility,
   getTeethByFurcation
 } from '@/domain/chart/chart.summary'
@@ -20,14 +18,14 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// Tab state
+type Tab = 'clinical' | 'bop-pi'
+const activeTab = ref<Tab>('clinical')
+
 const bopPercentage = computed(() => calculateBopPercentage(props.chartData))
 const piPercentage = computed(() => calculatePiPercentage(props.chartData))
 
 // Detailed summary computed properties
-const pdModerateTeeth = computed(() => getTeethByPdRange(props.chartData, 4, 5))
-const pdSevereTeeth = computed(() => getTeethByPdRange(props.chartData, 6))
-const calModerateTeeth = computed(() => getTeethByCalRange(props.chartData, 4, 5))
-const calSevereTeeth = computed(() => getTeethByCalRange(props.chartData, 6))
 const mobility1Teeth = computed(() => getTeethByMobility(props.chartData, 1))
 const mobility2Teeth = computed(() => getTeethByMobility(props.chartData, 2))
 const mobility3Teeth = computed(() => getTeethByMobility(props.chartData, 3))
@@ -35,7 +33,7 @@ const furcation1Teeth = computed(() => getTeethByFurcation(props.chartData, 1))
 const furcation2Teeth = computed(() => getTeethByFurcation(props.chartData, 2))
 const furcation3Teeth = computed(() => getTeethByFurcation(props.chartData, 3))
 
-// Group teeth by actual PD values
+// Group teeth by actual PD values (only abnormal values > 4mm)
 const pdByValue = computed<Record<number, number[]>>(() => {
   const result: Record<number, number[]> = {}
   const surfaces: Surface[] = ['buccal', 'lingual']
@@ -46,7 +44,7 @@ const pdByValue = computed<Record<number, number[]>>(() => {
     surfaces.forEach((surface) => {
       tooth[surface].pd.forEach((value) => {
         const pd = parseInt(value, 10)
-        if (pd >= 4) { // Only show PD >= 4mm
+        if (pd > 4) { // Only show abnormal PD (> 4mm)
           if (!result[pd]) result[pd] = []
           if (!result[pd].includes(Number.parseInt(toothId, 10))) {
             result[pd].push(Number.parseInt(toothId, 10))
@@ -64,41 +62,9 @@ const pdByValue = computed<Record<number, number[]>>(() => {
   return result
 })
 
-// Group teeth by actual CAL values
-const calByValue = computed<Record<number, number[]>>(() => {
-  const result: Record<number, number[]> = {}
-  const surfaces: Surface[] = ['buccal', 'lingual']
-
-  Object.entries(props.chartData).forEach(([toothId, tooth]) => {
-    if (tooth.extracted) return
-
-    surfaces.forEach((surface) => {
-      tooth[surface].cal.forEach((value) => {
-        const cal = parseInt(value, 10)
-        if (cal >= 4) { // Only show CAL >= 4mm
-          if (!result[cal]) result[cal] = []
-          if (!result[cal].includes(Number.parseInt(toothId, 10))) {
-            result[cal].push(Number.parseInt(toothId, 10))
-          }
-        }
-      })
-    })
-  })
-
-  // Sort teeth within each CAL value
-  Object.keys(result).forEach(cal => {
-    result[Number(cal)].sort((a, b) => a - b)
-  })
-
-  return result
-})
-
-// Sorted computed properties for cleaner template
+// Sorted computed properties for PD
 const sortedPdValues = computed(() =>
   Object.entries(pdByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
-)
-const sortedCalValues = computed(() =>
-  Object.entries(calByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
 // Helper to format tooth numbers for display
@@ -107,60 +73,135 @@ const formatToothNumbers = (teeth: number[]): string => {
   return teeth.map(t => `#${t}`).join(', ')
 }
 
-// Color helpers: gray for normal/mild, pastel red for abnormal
-const getPdTextClass = (value: number) => {
-  if (value >= 6) return 'bg-rose-200 text-rose-700'  // severe = pastel red
-  if (value === 5) return 'bg-rose-100 text-rose-600'  // moderate = light pastel
-  return 'bg-slate-100 text-slate-600'  // mild/normal = gray
-}
-
-const getPdBgClass = (value: number) => {
-  if (value >= 6) return 'bg-rose-50/80'
-  if (value === 5) return 'bg-rose-50/40'
-  return 'bg-slate-50/50'
-}
-
-const getPdCountClass = (value: number) => {
-  if (value >= 6) return 'text-rose-600'
-  if (value === 5) return 'text-rose-500'
-  return 'text-slate-500'
-}
-
-// Highly detailed anatomical tooth configurations (matching mockup's organic outlines)
-const TOOTH_TYPES = {
-  molar: {
-    paths: {
-      top: 'M 50 50 L 20 20 C 32 10, 42 18, 50 14 C 58 18, 68 10, 80 20 Z',
-      right: 'M 50 50 L 80 20 C 90 32, 90 68, 80 80 Z',
-      bottom: 'M 50 50 L 80 80 C 68 90, 58 82, 50 86 C 42 82, 32 90, 20 80 Z',
-      left: 'M 50 50 L 20 80 C 10 68, 10 32, 20 20 Z'
-    }
-  },
-  premolar: {
-    paths: {
-      top: 'M 50 50 L 24 24 C 34 16, 44 20, 50 18 C 56 20, 66 16, 76 24 Z',
-      right: 'M 50 50 L 76 24 C 84 34, 84 66, 76 76 Z',
-      bottom: 'M 50 50 L 76 76 C 66 84, 56 80, 50 82 C 44 80, 34 84, 24 76 Z',
-      left: 'M 50 50 L 24 76 C 16 66, 16 34, 24 24 Z'
-    }
-  },
-  canine: {
-    paths: {
-      top: 'M 50 50 L 26 26 C 36 16, 44 14, 50 12 C 56 14, 64 16, 74 26 Z',
-      right: 'M 50 50 L 74 26 C 82 36, 80 64, 72 74 Z',
-      bottom: 'M 50 50 L 72 74 C 64 80, 56 78, 50 80 C 44 78, 36 80, 28 74 Z',
-      left: 'M 50 50 L 28 74 C 20 64, 18 36, 26 26 Z'
-    }
-  },
-  incisor: {
-    paths: {
-      top: 'M 50 50 L 30 25 C 40 18, 60 18, 70 25 Z',
-      right: 'M 50 50 L 70 25 C 76 34, 76 66, 70 75 Z',
-      bottom: 'M 50 50 L 70 75 C 60 82, 40 82, 30 75 Z',
-      left: 'M 50 50 L 30 75 C 24 66, 24 34, 30 25 Z'
-    }
+// Styling helper functions for tables
+const getRowTextColorClass = (sectionTitle: string, label: string) => {
+  if (sectionTitle.includes('PD')) {
+    const val = parseInt(label, 10)
+    if (val >= 8) return 'text-rose-800 font-bold'
+    if (val === 7) return 'text-rose-700 font-bold'
+    if (val === 6) return 'text-rose-600 font-bold'
+    return 'text-rose-500 font-semibold' // val === 5
   }
+  
+  // Mobility or Furcation
+  if (label.endsWith('III')) return 'text-rose-800 font-bold'
+  if (label.endsWith('II')) return 'text-rose-600 font-bold'
+  return 'text-rose-400 font-semibold' // Grade I
 }
+
+const getRowBorderClass = (sectionTitle: string, label: string) => {
+  if (sectionTitle.includes('PD')) {
+    return ''
+  }
+  
+  // Mobility or Furcation has left border
+  if (label.endsWith('III')) return 'border-l-[3px] border-l-rose-800 pl-3'
+  if (label.endsWith('II')) return 'border-l-[3px] border-l-rose-500 pl-3'
+  return 'border-l-[3px] border-l-rose-300 pl-3' // Grade I
+}
+
+// Clinical data section type
+interface SeverityItem {
+  label: string
+  count: number
+  teeth: string
+  badgeClass: string
+  countClass: string
+}
+
+interface ClinicalSection {
+  title: string
+  items: SeverityItem[]
+}
+
+// PD sections grouped by category
+const pdSection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = sortedPdValues.value.map(([pd, teeth]) => {
+    return {
+      label: `${pd}`,
+      count: teeth.length,
+      teeth: formatToothNumbers(teeth),
+      badgeClass: '',
+      countClass: ''
+    }
+  })
+  return { title: 'PD (mm)', items }
+})
+
+// Mobility section
+const mobilitySection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = []
+  if (mobility1Teeth.value.length) {
+    items.push({
+      label: 'Grade I',
+      count: mobility1Teeth.value.length,
+      teeth: formatToothNumbers(mobility1Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (mobility2Teeth.value.length) {
+    items.push({
+      label: 'Grade II',
+      count: mobility2Teeth.value.length,
+      teeth: formatToothNumbers(mobility2Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (mobility3Teeth.value.length) {
+    items.push({
+      label: 'Grade III',
+      count: mobility3Teeth.value.length,
+      teeth: formatToothNumbers(mobility3Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  return { title: 'Mobility', items }
+})
+
+// Furcation section
+const furcationSection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = []
+  if (furcation1Teeth.value.length) {
+    items.push({
+      label: 'Grade I',
+      count: furcation1Teeth.value.length,
+      teeth: formatToothNumbers(furcation1Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (furcation2Teeth.value.length) {
+    items.push({
+      label: 'Grade II',
+      count: furcation2Teeth.value.length,
+      teeth: formatToothNumbers(furcation2Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  if (furcation3Teeth.value.length) {
+    items.push({
+      label: 'Grade III',
+      count: furcation3Teeth.value.length,
+      teeth: formatToothNumbers(furcation3Teeth.value),
+      badgeClass: '',
+      countClass: ''
+    })
+  }
+  return { title: 'Furcation', items }
+})
+
+// All clinical sections
+const clinicalSections = computed<ClinicalSection[]>(() => {
+  const sections: ClinicalSection[] = []
+  if (pdSection.value.items.length > 0) sections.push(pdSection.value)
+  if (mobilitySection.value.items.length > 0) sections.push(mobilitySection.value)
+  if (furcationSection.value.items.length > 0) sections.push(furcationSection.value)
+  return sections
+})
 
 // Proportional widths matching clinical charts scaled for layout
 const TOOTH_WIDTHS: Record<number, number> = {
@@ -170,63 +211,8 @@ const TOOTH_WIDTHS: Record<number, number> = {
   31: 26, 32: 29, 33: 34, 34: 34, 35: 34, 36: 53, 37: 50, 38: 48
 }
 
-const getToothType = (id: number): 'molar' | 'premolar' | 'canine' | 'incisor' => {
-  if ([18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(id)) return 'molar'
-  if ([15, 14, 24, 25, 45, 44, 34, 35].includes(id)) return 'premolar'
-  if ([13, 23, 43, 33].includes(id)) return 'canine'
-  return 'incisor'
-}
-
 const getToothWidth = (id: number): number => {
   return TOOTH_WIDTHS[id] ?? 25
-}
-
-const TOOTH_GEOMETRY = {
-  molar: { viewBox: '12.5 12.5 75 75', aspect: 75 / 75 },
-  premolar: { viewBox: '18 18 64 64', aspect: 64 / 64 },
-  canine: { viewBox: '21 12 58 68', aspect: 68 / 58 },
-  incisor: { viewBox: '25.5 18 49 64', aspect: 64 / 49 }
-}
-
-const getToothViewBox = (id: number): string => {
-  const type = getToothType(id)
-  return TOOTH_GEOMETRY[type].viewBox
-}
-
-const getToothHeight = (id: number): number => {
-  const type = getToothType(id)
-  const width = getToothWidth(id)
-  return width * TOOTH_GEOMETRY[type].aspect
-}
-
-const getToothPath = (id: number, direction: 'top' | 'right' | 'bottom' | 'left'): string => {
-  const type = getToothType(id)
-  return TOOTH_TYPES[type].paths[direction]
-}
-
-// Quadrant active states based on 6-site data
-const getToothPiActiveQuadrants = (id: number) => {
-  const tooth = props.chartData[id]
-  if (!tooth) return { top: false, right: false, bottom: false, left: false }
-
-  return {
-    top: !!tooth.buccal?.pi?.[1],
-    bottom: !!tooth.lingual?.pi?.[1],
-    left: !!(tooth.buccal?.pi?.[0] || tooth.lingual?.pi?.[0]),
-    right: !!(tooth.buccal?.pi?.[2] || tooth.lingual?.pi?.[2]),
-  }
-}
-
-const getToothBopActiveQuadrants = (id: number) => {
-  const tooth = props.chartData[id]
-  if (!tooth) return { top: false, right: false, bottom: false, left: false }
-
-  return {
-    top: !!tooth.buccal?.bop?.[1],
-    bottom: !!tooth.lingual?.bop?.[1],
-    left: !!(tooth.buccal?.bop?.[0] || tooth.lingual?.bop?.[0]),
-    right: !!(tooth.buccal?.bop?.[2] || tooth.lingual?.bop?.[2]),
-  }
 }
 
 // Smile-line arch curve styling
@@ -266,7 +252,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
       <Transition name="scale">
         <div
           v-if="show"
-          class="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 w-full max-w-180 max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/60"
+          class="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/60"
         >
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 bg-linear-to-r from-slate-50 to-white border-b border-slate-200/60">
@@ -285,99 +271,110 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
           </div>
 
           <!-- Body -->
-          <div class="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
+          <div class="flex flex-col flex-1 overflow-hidden">
+            <!-- Tab Bar -->
+            <div class="flex border-b border-slate-200/60 px-6">
+              <button
+                @click="activeTab = 'clinical'"
+                :class="[
+                  'px-4 py-3 text-sm font-medium transition-colors relative',
+                  activeTab === 'clinical'
+                    ? 'text-blue-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                Clinical Data Summary
+                <div
+                  v-if="activeTab === 'clinical'"
+                  class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t"
+                ></div>
+              </button>
+              <button
+                @click="activeTab = 'bop-pi'"
+                :class="[
+                  'px-4 py-3 text-sm font-medium transition-colors relative',
+                  activeTab === 'bop-pi'
+                    ? 'text-blue-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                %BoP & PI
+                <div
+                  v-if="activeTab === 'bop-pi'"
+                  class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t"
+                ></div>
+              </button>
+            </div>
 
-            <!-- Clinical Data Summary -->
-            <div v-if="pdModerateTeeth.length || pdSevereTeeth.length || calModerateTeeth.length || calSevereTeeth.length || mobility1Teeth.length || mobility2Teeth.length || mobility3Teeth.length || furcation1Teeth.length || furcation2Teeth.length || furcation3Teeth.length" class="space-y-3">
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-y-auto p-5 scrollbar-hide relative">
+              <Transition name="tab-fade" mode="out-in">
+                <!-- Clinical Data Summary Tab -->
+                <div v-if="activeTab === 'clinical'" key="clinical">
+            <div v-if="clinicalSections.length > 0" class="space-y-6">
               <h3 class="text-sm font-semibold text-slate-900">Clinical Data Summary</h3>
 
-              <div class="grid grid-cols-2 gap-3">
-                <!-- PD Card -->
-                <div v-if="sortedPdValues.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">PD (mm)</h4>
-                  <div class="space-y-2">
-                    <div v-for="pd in sortedPdValues" :key="pd[0]" class="rounded-lg p-2 border border-slate-100" :class="getPdBgClass(Number(pd[0]))">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPdTextClass(Number(pd[0]))">{{ pd[0] }}</span>
-                        <span class="text-lg font-bold" :class="getPdCountClass(Number(pd[0]))">{{ pd[1].length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(pd[1]) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- CAL Card -->
-                <div v-if="sortedCalValues.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">CAL (mm)</h4>
-                  <div class="space-y-2">
-                    <div v-for="cal in sortedCalValues" :key="cal[0]" class="rounded-lg p-2 border border-slate-100" :class="getPdBgClass(Number(cal[0]))">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPdTextClass(Number(cal[0]))">{{ cal[0] }}</span>
-                        <span class="text-lg font-bold" :class="getPdCountClass(Number(cal[0]))">{{ cal[1].length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(cal[1]) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Mobility Card -->
-                <div v-if="mobility1Teeth.length || mobility2Teeth.length || mobility3Teeth.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Mobility</h4>
-                  <div class="space-y-2">
-                    <div v-if="mobility1Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-slate-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600">Grade I</span>
-                        <span class="text-lg font-bold text-slate-500">{{ mobility1Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility1Teeth) }}</div>
-                    </div>
-                    <div v-if="mobility2Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-200 text-rose-700">Grade II</span>
-                        <span class="text-lg font-bold text-rose-600">{{ mobility2Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility2Teeth) }}</div>
-                    </div>
-                    <div v-if="mobility3Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/80">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-300 text-rose-800">Grade III</span>
-                        <span class="text-lg font-bold text-rose-700">{{ mobility3Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(mobility3Teeth) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Furcation Card -->
-                <div v-if="furcation1Teeth.length || furcation2Teeth.length || furcation3Teeth.length" class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Furcation</h4>
-                  <div class="space-y-2">
-                    <div v-if="furcation1Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-slate-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-600">Grade I</span>
-                        <span class="text-lg font-bold text-slate-500">{{ furcation1Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation1Teeth) }}</div>
-                    </div>
-                    <div v-if="furcation2Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/50">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-200 text-rose-700">Grade II</span>
-                        <span class="text-lg font-bold text-rose-600">{{ furcation2Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation2Teeth) }}</div>
-                    </div>
-                    <div v-if="furcation3Teeth.length" class="rounded-lg p-2 border border-slate-100 bg-rose-50/80">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-300 text-rose-800">Grade III</span>
-                        <span class="text-lg font-bold text-rose-700">{{ furcation3Teeth.length }}</span>
-                      </div>
-                      <div class="text-xs text-slate-500">{{ formatToothNumbers(furcation3Teeth) }}</div>
-                    </div>
-                  </div>
+              <!-- Clinical Data Tables -->
+              <div class="space-y-6">
+                <div
+                  v-for="section in clinicalSections"
+                  :key="section.title"
+                  class="w-full"
+                >
+                  <table class="w-full border-collapse">
+                    <thead>
+                      <tr class="bg-slate-50 border-b border-slate-200">
+                        <th class="text-left py-2.5 pl-3 pr-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[30%] rounded-l-lg">
+                          {{ section.title }}
+                        </th>
+                        <th class="text-center py-2.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[20%]">
+                          Count
+                        </th>
+                        <th class="text-left py-2.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[50%] rounded-r-lg">
+                          Teeth
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="item in section.items"
+                        :key="item.label"
+                        class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+                      >
+                        <!-- Column 1: Value / Grade / Class -->
+                        <td
+                          class="py-2.5 pr-3 text-sm"
+                          :class="getRowBorderClass(section.title, item.label)"
+                        >
+                          <span :class="getRowTextColorClass(section.title, item.label)">
+                            {{ item.label }}
+                          </span>
+                        </td>
+                        <!-- Column 2: Count -->
+                        <td class="py-2.5 px-3 text-center text-sm">
+                          <span :class="getRowTextColorClass(section.title, item.label)">
+                            {{ item.count }}
+                          </span>
+                        </td>
+                        <!-- Column 3: Teeth List -->
+                        <td class="py-2.5 px-3 text-sm text-slate-600 font-medium">
+                          {{ item.teeth }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
+            <!-- Empty state for clinical tab -->
+            <div v-else class="text-center py-12 text-slate-400">
+              <p class="text-sm">No clinical data abnormalities detected.</p>
+            </div>
+                </div>
+
+                <!-- %BoP & PI Tab -->
+                <div v-else key="bop-pi" class="space-y-4">
             <!-- PI (%) Section -->
             <div class="bg-slate-50/50 rounded-xl p-3 border border-slate-100/80">
               <div class="flex justify-between items-end mb-2">
@@ -397,51 +394,66 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
-                    
+
                     <svg
-                      :viewBox="getToothViewBox(id)"
+                      viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
-                      :height="getToothHeight(id)"
-                      class="select-none transition-opacity duration-200"
+                      :height="getToothWidth(id)"
+                      class="select-none transition-opacity duration-200 transform rotate-90"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Top (Buccal) Quadrant -->
+                        <!-- Background Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="white"
+                        />
+                        <!-- Left Side: Buccal -->
                         <path
-                          :d="getToothPath(id, 'top')"
-                          :fill="getToothPiActiveQuadrants(id).top ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 25 L50 0 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Right Quadrant -->
                         <path
-                          :d="getToothPath(id, 'right')"
-                          :fill="getToothPiActiveQuadrants(id).right ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 75 L6.7 25 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Bottom (Lingual) Quadrant -->
                         <path
-                          :d="getToothPath(id, 'bottom')"
-                          :fill="getToothPiActiveQuadrants(id).bottom ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 100 L6.7 75 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Left Quadrant -->
+                        <!-- Right Side: Palatal -->
                         <path
-                          :d="getToothPath(id, 'left')"
-                          :fill="getToothPiActiveQuadrants(id).left ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 0 L93.3 25 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
+                        <path
+                          d="M50 50 L93.3 25 L93.3 75 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <path
+                          d="M50 50 L93.3 75 L50 100 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <!-- Outer Stroke Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="none"
+                          stroke="#cbd5e1"
+                          stroke-width="2"
+                        />
+                        <!-- Divider Lines -->
+                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -463,51 +475,66 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
-                    
+
                     <svg
-                      :viewBox="getToothViewBox(id)"
+                      viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
-                      :height="getToothHeight(id)"
-                      class="select-none transition-opacity duration-200"
+                      :height="getToothWidth(id)"
+                      class="select-none transition-opacity duration-200 transform rotate-90"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Top (Buccal) Quadrant -->
+                        <!-- Background Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="white"
+                        />
+                        <!-- Left Side: Lingual -->
                         <path
-                          :d="getToothPath(id, 'top')"
-                          :fill="getToothPiActiveQuadrants(id).top ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 25 L50 0 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Right Quadrant -->
                         <path
-                          :d="getToothPath(id, 'right')"
-                          :fill="getToothPiActiveQuadrants(id).right ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 75 L6.7 25 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Bottom (Lingual) Quadrant -->
                         <path
-                          :d="getToothPath(id, 'bottom')"
-                          :fill="getToothPiActiveQuadrants(id).bottom ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 100 L6.7 75 Z"
+                          :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Left Quadrant -->
+                        <!-- Right Side: Buccal -->
                         <path
-                          :d="getToothPath(id, 'left')"
-                          :fill="getToothPiActiveQuadrants(id).left ? '#3b82f6' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 0 L93.3 25 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                           class="transition-all duration-200"
                         />
+                        <path
+                          d="M50 50 L93.3 25 L93.3 75 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <path
+                          d="M50 50 L93.3 75 L50 100 Z"
+                          :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <!-- Outer Stroke Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="none"
+                          stroke="#cbd5e1"
+                          stroke-width="2"
+                        />
+                        <!-- Divider Lines -->
+                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -539,51 +566,66 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
-                    
+
                     <svg
-                      :viewBox="getToothViewBox(id)"
+                      viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
-                      :height="getToothHeight(id)"
-                      class="select-none transition-opacity duration-200"
+                      :height="getToothWidth(id)"
+                      class="select-none transition-opacity duration-200 transform rotate-90"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Top (Buccal) Quadrant -->
+                        <!-- Background Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="white"
+                        />
+                        <!-- Left Side: Buccal -->
                         <path
-                          :d="getToothPath(id, 'top')"
-                          :fill="getToothBopActiveQuadrants(id).top ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 25 L50 0 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Right Quadrant -->
                         <path
-                          :d="getToothPath(id, 'right')"
-                          :fill="getToothBopActiveQuadrants(id).right ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 75 L6.7 25 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Bottom (Lingual) Quadrant -->
                         <path
-                          :d="getToothPath(id, 'bottom')"
-                          :fill="getToothBopActiveQuadrants(id).bottom ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 100 L6.7 75 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Left Quadrant -->
+                        <!-- Right Side: Palatal -->
                         <path
-                          :d="getToothPath(id, 'left')"
-                          :fill="getToothBopActiveQuadrants(id).left ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 0 L93.3 25 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
+                        <path
+                          d="M50 50 L93.3 25 L93.3 75 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <path
+                          d="M50 50 L93.3 75 L50 100 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <!-- Outer Stroke Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="none"
+                          stroke="#cbd5e1"
+                          stroke-width="2"
+                        />
+                        <!-- Divider Lines -->
+                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -605,51 +647,66 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
-                    
+
                     <svg
-                      :viewBox="getToothViewBox(id)"
+                      viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
-                      :height="getToothHeight(id)"
-                      class="select-none transition-opacity duration-200"
+                      :height="getToothWidth(id)"
+                      class="select-none transition-opacity duration-200 transform rotate-90"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Top (Buccal) Quadrant -->
+                        <!-- Background Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="white"
+                        />
+                        <!-- Left Side: Lingual -->
                         <path
-                          :d="getToothPath(id, 'top')"
-                          :fill="getToothBopActiveQuadrants(id).top ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 25 L50 0 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Right Quadrant -->
                         <path
-                          :d="getToothPath(id, 'right')"
-                          :fill="getToothBopActiveQuadrants(id).right ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L6.7 75 L6.7 25 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Bottom (Lingual) Quadrant -->
                         <path
-                          :d="getToothPath(id, 'bottom')"
-                          :fill="getToothBopActiveQuadrants(id).bottom ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 100 L6.7 75 Z"
+                          :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
-                        <!-- Left Quadrant -->
+                        <!-- Right Side: Buccal -->
                         <path
-                          :d="getToothPath(id, 'left')"
-                          :fill="getToothBopActiveQuadrants(id).left ? '#ef4444' : '#ffffff'"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                          stroke-linejoin="round"
+                          d="M50 50 L50 0 L93.3 25 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
                           class="transition-all duration-200"
                         />
+                        <path
+                          d="M50 50 L93.3 25 L93.3 75 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <path
+                          d="M50 50 L93.3 75 L50 100 Z"
+                          :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                          class="transition-all duration-200"
+                        />
+                        <!-- Outer Stroke Frame -->
+                        <polygon
+                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
+                          fill="none"
+                          stroke="#cbd5e1"
+                          stroke-width="2"
+                        />
+                        <!-- Divider Lines -->
+                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
+                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -661,7 +718,10 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 </div>
               </div>
             </div>
+                </div>
+              </Transition>
 
+            </div>
           </div>
         </div>
       </Transition>
@@ -689,6 +749,22 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
 .scale-leave-to {
   opacity: 0;
   transform: scale(0.96);
+}
+
+/* Tab transition - smooth fade and slide */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 /* Hide scrollbar but allow scrolling */

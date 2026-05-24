@@ -29,6 +29,7 @@ const emit = defineEmits<{
 // Warning state
 const showWarning = ref(false);
 const warningMessage = ref("");
+const isFocused = ref(false);
 
 const clearWarning = () => {
   setTimeout(() => {
@@ -43,9 +44,34 @@ const isCriticalValue = computed(() => {
   const fieldKeyInfo = getFieldKey(props.fieldName);
   // Only apply to PD field
   if (fieldKeyInfo !== "pd") return false;
-  const val = parseInt(String(props.value));
+  const val = parseFloat(String(props.value));
   return !isNaN(val) && val > 4;
 });
+
+// Low KTW value (< 2mm) - KTW values less than 2 are red (high risk of gingival recession)
+const isLowKtw = computed(() => {
+  if (props.inputType !== "numeric") return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  // Only apply to KTW field
+  if (fieldKeyInfo !== "ktw") return false;
+  const val = parseFloat(String(props.value));
+  return !isNaN(val) && val > 0 && val < 2;
+});
+
+// Format KTW value - show decimals for values < 2
+const formatKtwValue = (value: any): string => {
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  if (fieldKeyInfo !== "ktw") return String(value);
+
+  const val = parseFloat(String(value));
+  if (isNaN(val) || val === 0) return String(value);
+
+  // Show one decimal place for values < 2 (e.g., 1.5)
+  if (val < 2) {
+    return val.toFixed(1);
+  }
+  return String(value);
+};
 
 // Abnormal value (exceeds normal threshold but within absolute limit)
 const isAbnormal = computed(() => {
@@ -64,7 +90,8 @@ const handleInput = (event: Event) => {
   if (props.inputType === "numeric") {
     const fieldKeyInfo = getFieldKey(props.fieldName);
     const allowNegative = fieldKeyInfo === "cal" || fieldKeyInfo === "rec";
-    let filteredValue = filterNumericInput(inputValue, allowNegative);
+    const allowDecimal = fieldKeyInfo === "ktw";
+    let filteredValue = filterNumericInput(inputValue, allowNegative, allowDecimal);
 
     // Special validation for Mobility (Miller's Classification: 0-3 only)
     if (fieldKeyInfo === "mo" && filteredValue !== "") {
@@ -141,10 +168,12 @@ const containerClasses = computed(() => ({
     <template v-if="inputType === 'numeric'">
       <input
         type="text"
-        :value="value"
+        :value="isFocused ? value : formatKtwValue(value)"
         :disabled="disabled"
         :readonly="readonly"
         @input="handleInput"
+        @focus="isFocused = true"
+        @blur="isFocused = false"
         :data-tooth="toothNumber"
         :data-surface="surface"
         :data-section="section"
@@ -155,7 +184,8 @@ const containerClasses = computed(() => ({
         :class="[
           isAbnormal ? 'text-red-600 font-bold' : '',
           isCriticalValue && !isAbnormal ? 'text-red-600 font-extrabold' : '',
-          !isAbnormal && !isCriticalValue ? (disabled ? 'text-slate-500' : 'text-slate-700') : '',
+          isLowKtw && !isAbnormal && !isCriticalValue ? 'text-red-600 font-bold' : '',
+          !isAbnormal && !isCriticalValue && !isLowKtw ? (disabled ? 'text-slate-500' : 'text-slate-700') : '',
           readonly ? 'font-bold cursor-default' : 'cursor-text font-medium',
         ]"
       />
@@ -208,8 +238,3 @@ const containerClasses = computed(() => ({
   </div>
 </template>
 
-<style scoped>
-.group:focus-within {
-  z-index: 20;
-}
-</style>
