@@ -20,8 +20,8 @@ const createDefaultPatientInfo = (): PatientInfo => {
 
   return {
     hn: '',
-    doctor: user?.first_name ? `${user.first_name} ${user.last_name}` : 'Aj. Dr. Chatchai',
-    studentId: user?.student_id || '6310210000',
+    doctor: user?.first_name ? `${user.first_name} ${user.last_name}` : '',
+    studentId: user?.student_id || '',
     patientName: '',
     age: null,
     nationality: '',
