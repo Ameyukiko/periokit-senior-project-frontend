@@ -54,21 +54,18 @@ const gmPoints = computed(() => {
     for (const toothId of group) {
       const toothWidth = getToothColumnWidth(toothId)
       const tooth = props.chartData[toothId]
-      if (!tooth || tooth.extracted) {
-        currentX += toothWidth
-        continue
-      }
-      const direction = getPdDirection(toothId, props.surface)
 
-      // 3 measurement sites positioned proportionally across tooth width
+      const direction = getPdDirection(toothId, props.surface)
       const sitePositions = getToothSitePositions(toothId, props.surface)
+
       for (const site of [0, 1, 2] as const) {
-        const recValue = toNumber(tooth[props.surface].rec[site])
+        // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
+        const recValue = tooth ? toNumber(tooth[props.surface].rec[site]) : 0
         const y = cejY + (recValue * 6 * direction)
         const x = currentX + toothWidth * sitePositions[site]
         points.push({ x, y })
       }
-      
+
       currentX += toothWidth
     }
     if (gIdx < props.arch.length - 1) {
@@ -97,21 +94,18 @@ const calPoints = computed(() => {
     for (const toothId of group) {
       const toothWidth = getToothColumnWidth(toothId)
       const tooth = props.chartData[toothId]
-      if (!tooth || tooth.extracted) {
-        currentX += toothWidth
-        continue
-      }
-      const direction = getPdDirection(toothId, props.surface)
 
-      // 3 measurement sites positioned proportionally across tooth width
+      const direction = getPdDirection(toothId, props.surface)
       const sitePositions = getToothSitePositions(toothId, props.surface)
+
       for (const site of [0, 1, 2] as const) {
-        const calValue = toNumber(tooth[props.surface].cal[site])
+        // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
+        const calValue = tooth ? toNumber(tooth[props.surface].cal[site]) : 0
         const y = cejY + (calValue * 6 * direction)
         const x = currentX + toothWidth * sitePositions[site]
         points.push({ x, y })
       }
-      
+
       currentX += toothWidth
     }
     if (gIdx < props.arch.length - 1) {
@@ -132,7 +126,6 @@ const gmPolylinePoints = computed(() => gmPoints.value.map(p => `${p.x},${p.y}`)
 const calPolylinePoints = computed(() => calPoints.value.map(p => `${p.x},${p.y}`).join(' '))
 
 // PD Area (Probing Depth) - พื้นที่สีม่วงฉากระหว่าง GM ถึง CAL
-// สร้าง polygon โดยเชื่อม GM points → CAL points (ย้อนลำดับ)
 const pdAreaPoints = computed(() => {
   if (gmPoints.value.length === 0 || calPoints.value.length === 0) return ''
   if (gmPoints.value.length !== calPoints.value.length) return ''
@@ -199,18 +192,6 @@ const svgWidth = computed(() => {
         stroke-linejoin="round"
         stroke-linecap="round"
       />
-      <!-- CEJ Baseline - ซ่อนไว้ (ไม่แสดงตามมาตรฐาน periodontal chart) -->
-      <!-- <polyline
-        v-if="baselinePoints.length > 1"
-        :points="baselinePolylinePoints"
-        fill="none"
-        stroke="#ef4444"
-        stroke-width="1"
-        stroke-dasharray="4 4"
-        stroke-linejoin="round"
-        stroke-linecap="round"
-        opacity="0.3"
-      /> -->
     </svg>
   </div>
 </template>
