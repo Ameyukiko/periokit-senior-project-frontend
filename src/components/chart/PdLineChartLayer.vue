@@ -60,7 +60,7 @@ const gmPoints = computed(() => {
 
       for (const site of [0, 1, 2] as const) {
         // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
-        const recValue = tooth ? toNumber(tooth[props.surface].rec[site]) : 0
+        const recValue = (tooth && !tooth.extracted) ? toNumber(tooth[props.surface].rec[site]) : 0
         const y = cejY + (recValue * 6 * direction)
         const x = currentX + toothWidth * sitePositions[site]
         points.push({ x, y })
@@ -100,7 +100,7 @@ const calPoints = computed(() => {
 
       for (const site of [0, 1, 2] as const) {
         // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
-        const calValue = tooth ? toNumber(tooth[props.surface].cal[site]) : 0
+        const calValue = (tooth && !tooth.extracted) ? toNumber(tooth[props.surface].cal[site]) : 0
         const y = cejY + (calValue * 6 * direction)
         const x = currentX + toothWidth * sitePositions[site]
         points.push({ x, y })
