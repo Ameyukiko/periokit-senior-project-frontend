@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ClinicalInputCell from './ClinicalInputCell.vue'
 import { SITE_INDEXES } from '@/domain/chart/chart.constants'
-import { getToothColumnWidth } from '@/domain/chart/chart.image'
+import { getFurImage, getToothColumnWidth } from '@/domain/chart/chart.image'
 import type { SiteIndex, Surface, ToothData, ToothId } from '@/domain/chart/chart.types'
 
 const props = defineProps<{
@@ -93,6 +93,12 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
 
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+        <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
+          <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
+        </div>
+      </div>
       <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           v-for="site in SITE_INDEXES"
@@ -261,6 +267,13 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
 
+      <!-- Furcation - 3 cells per tooth -->
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+        <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
+          <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
+        </div>
+      </div>
       <!-- KTW - 3 cells -->
       <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
@@ -298,6 +311,13 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
 
+      <!-- Furcation - 3 cells per tooth -->
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+        <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
+          <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
+        </div>
+      </div>
       <!-- BOP - 3 cells -->
       <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
@@ -466,6 +486,12 @@ const getToothColumnStyle = (id: ToothId) => {
         />
       </div>
 
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center select-none text-slate-800" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted || toothData.implant }">
+        <div v-for="(grade, fIdx) in toothData.fur[surface]" :key="fIdx" class="flex-1 h-full flex items-center justify-center cursor-pointer" @click.stop="emit('toggleFur', id, surface, fIdx)">
+          <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain" />
+          <div v-else class="w-3 h-3 border border-slate-200 rounded-full bg-white/50"></div>
+        </div>
+      </div>
       <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
           :section="section"
