@@ -30,6 +30,15 @@ const emit = defineEmits<{
 const showWarning = ref(false);
 const warningMessage = ref("");
 const isFocused = ref(false);
+const isHovered = ref(false);
+
+const isRecessionUnderMinusTen = computed(() => {
+  if (props.inputType !== "numeric" || !props.value) return false;
+  const fieldKeyInfo = getFieldKey(props.fieldName);
+  if (fieldKeyInfo !== "rec") return false;
+  const val = parseInt(String(props.value));
+  return !isNaN(val) && val < -10;
+});
 
 const clearWarning = () => {
   setTimeout(() => {
@@ -102,9 +111,15 @@ const handleInput = (event: Event) => {
       const absLimit = { pd: 99, rec: 99, cal: 99, mo: 3, ktw: 20, furcation: 3 };
       const limit = absLimit[fieldKeyInfo as keyof typeof absLimit] || 99;
 
+      const isNegative = filteredValue.startsWith("-");
+
       filteredValue = "";
       target.value = "";
-      warningMessage.value = `${getFieldDisplayName(props.fieldName)}: Max ${limit}`;
+      if (isNegative) {
+        warningMessage.value = `${getFieldDisplayName(props.fieldName)}: Min -${limit}`;
+      } else {
+        warningMessage.value = `${getFieldDisplayName(props.fieldName)}: Max ${limit}`;
+      }
       showWarning.value = true;
       clearWarning();
       return;
@@ -165,6 +180,8 @@ const containerClasses = computed(() => ({
         @input="handleInput"
         @focus="isFocused = true"
         @blur="isFocused = false"
+        @mouseenter="isHovered = true"
+        @mouseleave="isHovered = false"
         :data-tooth="toothNumber"
         :data-surface="surface"
         :data-section="section"
@@ -190,10 +207,10 @@ const containerClasses = computed(() => ({
         leave-to-class="opacity-0 translate-y-1"
       >
         <div
-          v-if="showWarning"
-          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-red-600 text-white text-[9px] font-bold rounded-md whitespace-nowrap z-50 shadow-lg"
+          v-if="showWarning || (isFocused && isRecessionUnderMinusTen) || (isHovered && isRecessionUnderMinusTen)"
+          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-red-600 text-white text-[9px] font-bold rounded-md whitespace-nowrap z-50 shadow-lg pointer-events-none"
         >
-          {{ warningMessage }}
+          {{ showWarning ? warningMessage : `${getFieldDisplayName(fieldName)}: ${value} (Exceeds threshold)` }}
           <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
             <div class="border-4 border-transparent border-t-red-600"></div>
           </div>

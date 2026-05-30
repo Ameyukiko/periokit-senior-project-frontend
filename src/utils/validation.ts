@@ -69,6 +69,11 @@ export const isAbnormalValue = (value: string, fieldName: string): boolean => {
   // Use parseFloat for KTW to support decimals
   const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
   const range = FIELD_RANGES[fieldKey];
+  
+  if (fieldKey === "rec" && num < 0) {
+    return num < -10 && num >= -range.absolute;
+  }
+  
   return num > range.normal && num <= range.absolute;
 };
 
@@ -78,6 +83,14 @@ export const exceedsAbsoluteLimit = (value: string, fieldName: string): boolean 
 
   // Use parseFloat for KTW to support decimals
   const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
+  
+  if (num < 0) {
+    // Only check negative limit for fields that allow negative numbers
+    if (fieldKey === "rec" || fieldKey === "cal") {
+      return num < -FIELD_RANGES[fieldKey].absolute;
+    }
+  }
+  
   return num > FIELD_RANGES[fieldKey].absolute;
 };
 
