@@ -72,7 +72,10 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if (!target.classList.contains('chart-input')) return
 
   const key = event.key
-  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(key)) return
+
+  const isTextInput = target.tagName === 'INPUT'
+  if (key === ' ' && !isTextInput) return
 
   event.preventDefault()
 
@@ -125,7 +128,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         break
       }
     }
-  } else if (key === 'ArrowRight' || key === 'Enter') {
+  } else if (key === 'ArrowRight' || key === 'Enter' || key === ' ') {
     if (isSingleCell) {
       // Single-cell field: go directly to next tooth (same field, same surface)
       for (let i = currentIndex + 1; i < allInputs.length; i += 1) {
