@@ -58,7 +58,18 @@ const getToothColumnStyle = (id: ToothId) => {
       {{ id }}
     </div>
 
-    <template v-if="order === 'standard'">
+    <!-- Extracted tooth state: render a solid black block with no internal grid lines -->
+    <div
+      v-if="toothData.extracted"
+      class="bg-gray-500 w-full transition-all duration-200"
+      :class="[
+        order === 'standard' || order === 'reverse' ? 'h-[13.5rem]' : 'h-[10.5rem]',
+        headerPosition !== 'bottom' ? 'border-b border-slate-200' : ''
+      ]"
+    ></div>
+
+    <template v-else>
+      <template v-if="order === 'standard'">
       <div class="h-6 border-b border-slate-200 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && (toothData.implant = !toothData.implant)">
         <input v-model="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
       </div>
@@ -526,6 +537,7 @@ const getToothColumnStyle = (id: ToothId) => {
         <input v-model="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
       </div>
     </template>
+  </template>
 
     <div
       v-if="headerPosition === 'bottom'"
