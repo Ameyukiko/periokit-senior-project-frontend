@@ -62,7 +62,7 @@ const isFocusableChartInput = (input: HTMLElement) => {
 }
 
 // Single-cell fields: only one value per tooth (no site navigation)
-const SINGLE_CELL_FIELDS = ['mo'] as const
+const SINGLE_CELL_FIELDS = ['mo', 'ktw'] as const
 const isSingleCellField = (field: string | null) => field && SINGLE_CELL_FIELDS.includes(field as any)
 
 // Mirrors the legacy PeriodontalChartView keyboard navigation, but keeps
