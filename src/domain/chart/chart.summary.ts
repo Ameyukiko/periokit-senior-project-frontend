@@ -232,3 +232,29 @@ export const getPrognosisSummary = (
 
   return summary
 }
+
+/**
+ * Get teeth with keratinized tissue width (KTW) less than 2mm on any surface
+ * @param chartData - Chart data
+ * @returns Array of tooth IDs with KTW < 2mm on at least one surface
+ */
+export const getTeethByKtwLessThanTwo = (chartData: ChartData): number[] => {
+  const result: number[] = []
+  const surfaces: Surface[] = ['buccal', 'lingual']
+
+  Object.entries(chartData).forEach(([toothId, tooth]) => {
+    if (tooth.extracted) return
+
+    const hasLowKtw = surfaces.some((surface) => {
+      const val = parseFloat(tooth[surface].ktw)
+      return val > 0 && val < 2
+    })
+
+    if (hasLowKtw) {
+      result.push(Number.parseInt(toothId, 10))
+    }
+  })
+
+  return result.sort((a, b) => a - b)
+}
+
