@@ -67,6 +67,40 @@ const sortedPdValues = computed(() =>
   Object.entries(pdByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
+// Group teeth by actual KTW values (values > 0 and < 2mm)
+const ktwByValue = computed<Record<string, number[]>>(() => {
+  const result: Record<string, number[]> = {}
+  const surfaces: Surface[] = ['buccal', 'lingual']
+
+  Object.entries(props.chartData).forEach(([toothId, tooth]) => {
+    if (tooth.extracted) return
+
+    surfaces.forEach((surface) => {
+      const valStr = tooth[surface].ktw
+      const val = parseFloat(valStr)
+      if (val > 0 && val < 2) {
+        const key = String(val)
+        if (!result[key]) result[key] = []
+        if (!result[key].includes(Number.parseInt(toothId, 10))) {
+          result[key].push(Number.parseInt(toothId, 10))
+        }
+      }
+    })
+  })
+
+  // Sort teeth within each KTW value
+  Object.keys(result).forEach(key => {
+    result[key].sort((a, b) => a - b)
+  })
+
+  return result
+})
+
+// Sorted computed properties for KTW
+const sortedKtwValues = computed(() =>
+  Object.entries(ktwByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
+)
+
 // Helper to format tooth numbers for display
 const formatToothNumbers = (teeth: number[]): string => {
   if (teeth.length === 0) return '-'
@@ -83,6 +117,10 @@ const getRowTextColorClass = (sectionTitle: string, label: string) => {
     return 'text-rose-500 font-semibold' // val === 5
   }
   
+  if (sectionTitle.includes('KTW')) {
+    return 'text-teal-600 font-bold'
+  }
+  
   // Mobility or Furcation
   if (label.endsWith('III')) return 'text-rose-800 font-bold'
   if (label.endsWith('II')) return 'text-rose-600 font-bold'
@@ -92,6 +130,10 @@ const getRowTextColorClass = (sectionTitle: string, label: string) => {
 const getRowBorderClass = (sectionTitle: string, label: string) => {
   if (sectionTitle.includes('PD')) {
     return ''
+  }
+  
+  if (sectionTitle.includes('KTW')) {
+    return 'border-l-[3px] border-l-teal-500 pl-3'
   }
   
   // Mobility or Furcation has left border
@@ -194,12 +236,27 @@ const furcationSection = computed<ClinicalSection>(() => {
   return { title: 'Furcation', items }
 })
 
+// KTW section
+const ktwSection = computed<ClinicalSection>(() => {
+  const items: SeverityItem[] = sortedKtwValues.value.map(([ktw, teeth]) => {
+    return {
+      label: `${ktw} mm`,
+      count: teeth.length,
+      teeth: formatToothNumbers(teeth),
+      badgeClass: '',
+      countClass: ''
+    }
+  })
+  return { title: 'KTW (mm)', items }
+})
+
 // All clinical sections
 const clinicalSections = computed<ClinicalSection[]>(() => {
   const sections: ClinicalSection[] = []
   if (pdSection.value.items.length > 0) sections.push(pdSection.value)
   if (mobilitySection.value.items.length > 0) sections.push(mobilitySection.value)
   if (furcationSection.value.items.length > 0) sections.push(furcationSection.value)
+  if (ktwSection.value.items.length > 0) sections.push(ktwSection.value)
   return sections
 })
 
