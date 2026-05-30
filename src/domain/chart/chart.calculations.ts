@@ -95,12 +95,16 @@ export const calculateChartSummary = (chartData: ChartData): ChartSummary => {
     })
   }).length
 
-  // Count teeth with keratinized width < 2mm
+  // Count teeth with keratinized width < 2mm on either surface
   const keratinizedLowCount = Object.values(chartData).filter(tooth => {
     if (tooth.extracted) return false
-    const ktwValue = toNumber(tooth.buccal.ktw)
-    return ktwValue > 0 && ktwValue < 2
+    const surfaces: Surface[] = ['buccal', 'lingual']
+    return surfaces.some(surface => {
+      const ktwValue = parseFloat(tooth[surface].ktw) || 0
+      return ktwValue > 0 && ktwValue < 2
+    })
   }).length
+
 
   // Health distribution based on PD categories (standard periodontal classification)
   const totalSites = pdCategories.healthy + pdCategories.warning + pdCategories.deep || 1
