@@ -58,18 +58,9 @@ const isLowKtw = computed(() => {
   return !isNaN(val) && val > 0 && val < 2;
 });
 
-// Format KTW value - show decimals for values < 2
+// Format KTW value - show original string value
 const formatKtwValue = (value: any): string => {
-  const fieldKeyInfo = getFieldKey(props.fieldName);
-  if (fieldKeyInfo !== "ktw") return String(value);
-
-  const val = parseFloat(String(value));
-  if (isNaN(val) || val === 0) return String(value);
-
-  // Show one decimal place for values < 2 (e.g., 1.5)
-  if (val < 2) {
-    return val.toFixed(1);
-  }
+  if (value === undefined || value === null) return "";
   return String(value);
 };
 
