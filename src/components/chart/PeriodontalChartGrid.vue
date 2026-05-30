@@ -74,9 +74,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
   const key = event.key
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(key)) return
 
-  const isTextInput = target.tagName === 'INPUT'
-  if (key === ' ' && !isTextInput) return
-
   event.preventDefault()
 
   const currentTooth = target.getAttribute('data-tooth')
