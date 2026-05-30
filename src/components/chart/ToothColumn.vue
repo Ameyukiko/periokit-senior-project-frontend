@@ -26,6 +26,7 @@ const emit = defineEmits<{
   updateMobility: [id: ToothId, value: string]
   updateKtw: [id: ToothId, surface: Surface, value: string]
   validateField: [id: ToothId, surface: Surface, field: string, site: number, state: 'valid' | 'invalid' | 'none']
+  toggleImplant: [id: ToothId]
 }>()
 
 const select = () => emit('select', props.id)
@@ -70,8 +71,8 @@ const getToothColumnStyle = (id: ToothId) => {
 
     <template v-else>
       <template v-if="order === 'standard'">
-      <div class="h-6 border-b border-slate-200 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && (toothData.implant = !toothData.implant)">
-        <input v-model="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
+      <div class="h-6 border-b border-slate-200 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-800/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && emit('toggleImplant', id)">
+        <input :checked="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
       </div>
       <div class="flex h-6 border-b border-slate-200">
         <ClinicalInputCell
@@ -533,8 +534,8 @@ const getToothColumnStyle = (id: ToothId) => {
           @validate="state => validateField('mo', 0, state)"
         />
       </div>
-      <div class="h-6 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-900/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && (toothData.implant = !toothData.implant)">
-        <input v-model="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
+      <div class="h-6 flex items-center justify-center cursor-pointer" :class="{ 'bg-slate-900/60 pointer-events-none': toothData.extracted }" @click.stop="!toothData.extracted && emit('toggleImplant', id)">
+        <input :checked="toothData.implant" type="checkbox" :disabled="toothData.extracted" class="w-3.5 h-3.5 accent-slate-800 disabled:opacity-50 pointer-events-none" />
       </div>
     </template>
   </template>

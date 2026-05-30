@@ -217,6 +217,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             :get-field-validation="validationStore.getFieldValidation"
             @validate-field="validationStore.setFieldValidation"
             @toggle-extracted="chartStore.toggleExtracted"
+            @toggle-implant="chartStore.toggleImplant"
           />
         </div>
 

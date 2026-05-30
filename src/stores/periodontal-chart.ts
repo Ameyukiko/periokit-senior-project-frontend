@@ -183,6 +183,18 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       tooth.fur[surface][index] = (tooth.fur[surface][index] + 1) % 4
     },
 
+    toggleImplant(id: ToothId) {
+      const chart = getActiveChart(this)
+      const tooth = chart.teethData[id]
+      if (!tooth || tooth.extracted) return
+      tooth.implant = !tooth.implant
+
+      // เมื่อ Implant toggle ให้ reset ค่า mobility/furcation ที่มีอยู่ก่อน
+      tooth.mo = ''
+      tooth.fur.buccal = tooth.fur.buccal.map(() => 0)
+      tooth.fur.lingual = tooth.fur.lingual.map(() => 0)
+    },
+
     toggleExtracted(id: ToothId) {
       const chart = getActiveChart(this)
       const tooth = chart.teethData[id]

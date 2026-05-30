@@ -23,6 +23,7 @@ const emit = defineEmits<{
   updateKtw: [id: ToothId, surface: Surface, value: string]
   validateField: [id: ToothId, surface: Surface, field: string, site: number, state: 'valid' | 'invalid' | 'none']
   toggleExtracted: [id: ToothId]
+  toggleImplant: [id: ToothId]
 }>()
 
 const chartContainerRef = ref<HTMLElement | null>(null)
@@ -328,6 +329,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   @update-rec="(...args) => emit('updateRec', ...args)"
                   @update-mobility="(...args) => emit('updateMobility', ...args)"
                   @update-ktw="(...args) => emit('updateKtw', ...args)"
+                  @toggle-implant="emit('toggleImplant', $event)"
                   :get-field-validation="getFieldValidation"
                   @validate-field="(...args) => emit('validateField', ...args)"
                 />
@@ -385,6 +387,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   @update-rec="(...args) => emit('updateRec', ...args)"
                   @update-mobility="(...args) => emit('updateMobility', ...args)"
                   @update-ktw="(...args) => emit('updateKtw', ...args)"
+                  @toggle-implant="emit('toggleImplant', $event)"
                   :get-field-validation="getFieldValidation"
                   @validate-field="(...args) => emit('validateField', ...args)"
                 />
@@ -421,6 +424,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   @update-rec="(...args) => emit('updateRec', ...args)"
                   @update-mobility="(...args) => emit('updateMobility', ...args)"
                   @update-ktw="(...args) => emit('updateKtw', ...args)"
+                  @toggle-implant="emit('toggleImplant', $event)"
                   :get-field-validation="getFieldValidation"
                   @validate-field="(...args) => emit('validateField', ...args)"
                 />
@@ -478,6 +482,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   @update-rec="(...args) => emit('updateRec', ...args)"
                   @update-mobility="(...args) => emit('updateMobility', ...args)"
                   @update-ktw="(...args) => emit('updateKtw', ...args)"
+                  @toggle-implant="emit('toggleImplant', $event)"
                   :get-field-validation="getFieldValidation"
                   @validate-field="(...args) => emit('validateField', ...args)"
                 />
