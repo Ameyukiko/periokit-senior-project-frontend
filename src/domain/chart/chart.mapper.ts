@@ -94,10 +94,6 @@ export interface DbSummaryPayload {
   bop_percentage:    number
   plaque_site_count: number
   plaque_percentage: number
-  pd_lt_4_count:     number
-  pd_eq_4_count:     number
-  pd_eq_5_count:     number
-  pd_gte_6_count:    number
 }
 
 export interface ChartPayload {
@@ -176,10 +172,6 @@ export function mapChartToPayload(chart: {
       bop_percentage:    summary.bopPercentage,
       plaque_site_count: Math.round(summary.piPercentage * totalSites / 100),
       plaque_percentage: summary.piPercentage,
-      pd_lt_4_count:     summary.pdCategories.healthy,
-      pd_eq_4_count:     summary.pdBreakdown[4] ?? 0,
-      pd_eq_5_count:     summary.pdBreakdown[5] ?? 0,
-      pd_gte_6_count:    summary.pdCategories.deep,
     },
   }
 }
