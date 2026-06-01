@@ -3,6 +3,8 @@ import { calculateBopPercentage, calculateCal, calculateChartSummary, calculateP
 import { createInitialChartData } from '@/domain/chart/chart.factory'
 import type { ChartData, PatientInfo, SiteIndex, Surface, ToothId } from '@/domain/chart/chart.types'
 import { useAuthStore } from './auth'
+import { useVisitStore } from './visit'
+import { useNotificationStore } from './notification'
 import { mapChartToPayload, mapPayloadToChart } from '@/domain/chart/chart.mapper'
 import { chartApi } from '@/services/api/chart.api'
 
@@ -14,10 +16,6 @@ interface Chart {
   patientInfo: PatientInfo
   teethData: ChartData
   createdAt: string
-  patientId?: string
-  visitId?: string
-  isSaving?: boolean
-  isLoading?: boolean
 }
 
 const createDefaultPatientInfo = (): PatientInfo => {
@@ -256,48 +254,49 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     async saveToBackend() {
+      const visitStore = useVisitStore()
+      const notifStore = useNotificationStore()
+      const visitId = visitStore.activeVisitId
+      if (!visitId) throw new Error('กรุณาเลือก Visit ก่อน Save')
+
       const chart = getActiveChart(this)
-      if (!chart.patientId || !chart.visitId) {
-        throw new Error('Cannot save chart without active patient and visit')
-      }
+      const payload = mapChartToPayload(chart)
 
       try {
-        chart.isSaving = true
-        const payload = mapChartToPayload({
-          name: chart.name,
-          patientInfo: chart.patientInfo,
-          teethData: chart.teethData
+        await chartApi.save({
+          visitId,
+          chartName: chart.name,
+          teethData: payload,
         })
-        const result = await chartApi.saveChart(payload, chart.patientId, chart.visitId)
-        return result
-      } finally {
-        chart.isSaving = false
+        notifStore.show('บันทึก Chart สำเร็จ', 'success')
+      } catch (err) {
+        notifStore.show('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error')
+        throw err
       }
     },
 
-    async loadFromBackend(patientId: string, visitId: string) {
-      const chart = getActiveChart(this)
-      chart.patientId = patientId
-      chart.visitId = visitId
-      chart.isLoading = true
-
+    async loadFromBackend(visitId: string) {
       try {
-        const payload = await chartApi.getChartByVisit(visitId)
-        if (payload) {
-          const rehydrated = mapPayloadToChart(payload)
-          chart.name = rehydrated.name || chart.name
-          chart.patientInfo = rehydrated.patientInfo || chart.patientInfo
-          chart.teethData = rehydrated.teethData || chart.teethData
-        } else {
+        const { data } = await chartApi.getByVisit(visitId)
+        const chartData = data?.chartByVisit
+        
+        if (!chartData || !chartData.teethData) {
           // If no chart found for visit, reset to empty
-          chart.patientInfo = createDefaultPatientInfo()
-          chart.teethData = createInitialChartData()
+          this.resetChart()
+          return
         }
+
+        // Rehydrate from DB payload
+        const rehydrated = mapPayloadToChart(chartData.teethData as any)
+        
+        const chart = getActiveChart(this)
+        chart.name = chartData.chartName || rehydrated.name || chart.name
+        chart.patientInfo = rehydrated.patientInfo || chart.patientInfo
+        chart.teethData = rehydrated.teethData || chart.teethData
+        
       } catch (error) {
         console.error('Failed to load chart from backend:', error)
         throw error
-      } finally {
-        chart.isLoading = false
       }
     }
   }
