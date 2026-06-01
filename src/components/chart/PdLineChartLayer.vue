@@ -41,8 +41,8 @@ const getGapWidth = (gapClass: string): number => {
   return 16
 }
 
-// GM Points (Gingival Margin) - สำหรับสร้างเส้นสีแดง
-// GM = CEJ + REC (REC+ = เหงือกร่น, REC- = เหงือกบวม)
+// GM Points (Gingival Margin) - For drawing the red line
+// GM = CEJ + REC (REC+ = Recession, REC- = Swelling)
 const gmPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -81,8 +81,8 @@ const gmPoints = computed(() => {
   return points
 })
 
-// CAL Points (Clinical Attachment Level) - สำหรับสร้างเส้นสีน้ำเงิน (ระดับกระดูก)
-// CAL = PD + REC, เป็นระยะจาก CEJ
+// CAL Points (Clinical Attachment Level) - For drawing the blue line (bone level)
+// CAL = PD + REC, distance from CEJ
 const calPoints = computed(() => {
   const points: BaselinePoint[] = []
   let currentX = 0
@@ -125,12 +125,12 @@ const calPoints = computed(() => {
 const gmPolylinePoints = computed(() => gmPoints.value.map(p => `${p.x},${p.y}`).join(' '))
 const calPolylinePoints = computed(() => calPoints.value.map(p => `${p.x},${p.y}`).join(' '))
 
-// PD Area (Probing Depth) - พื้นที่สีม่วงฉากระหว่าง GM ถึง CAL
+// PD Area (Probing Depth) - Purple area between GM and CAL
 const pdAreaPoints = computed(() => {
   if (gmPoints.value.length === 0 || calPoints.value.length === 0) return ''
   if (gmPoints.value.length !== calPoints.value.length) return ''
 
-  // GM points (บน) → CAL points (ล่าง, ย้อนลำดับ)
+  // GM points (top) -> CAL points (bottom, reversed order)
   const forward = gmPoints.value.map(p => `${p.x},${p.y}`)
   const backward = [...calPoints.value].reverse().map(p => `${p.x},${p.y}`)
   return [...forward, ...backward].join(' ')
@@ -164,7 +164,7 @@ const svgWidth = computed(() => {
       class="w-full h-full"
       preserveAspectRatio="xMidYMin meet"
     >
-      <!-- PD Area (Probing Depth) - สีม่วงฉาก - พื้นที่ระหว่าง GM ถึง CAL -->
+      <!-- PD Area (Probing Depth) - Purple area - Area between GM and CAL -->
       <polygon
         v-if="pdAreaPoints"
         :points="pdAreaPoints"
@@ -172,7 +172,7 @@ const svgWidth = computed(() => {
         fill-opacity="0.3"
         stroke="none"
       />
-      <!-- CAL Line (Bone Level) - สีน้ำเงิน - ระดับกระดูก -->
+      <!-- CAL Line (Bone Level) - Blue line - Bone level -->
       <polyline
         v-if="calPoints.length > 1"
         :points="calPolylinePoints"
@@ -182,7 +182,7 @@ const svgWidth = computed(() => {
         stroke-linejoin="round"
         stroke-linecap="round"
       />
-      <!-- GM Line (Gingival Margin) - สีแดง - ขอบเหงือก -->
+      <!-- GM Line (Gingival Margin) - Red line - Gingival margin -->
       <polyline
         v-if="gmPoints.length > 1"
         :points="gmPolylinePoints"

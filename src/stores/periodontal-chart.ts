@@ -189,7 +189,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       if (!tooth || tooth.extracted) return
       tooth.implant = !tooth.implant
 
-      // เมื่อ Implant toggle ให้ reset ค่า mobility/furcation ที่มีอยู่ก่อน
+      // When Implant toggles, reset the existing mobility/furcation values
       tooth.mo = ''
       tooth.fur.buccal = tooth.fur.buccal.map(() => 0)
       tooth.fur.lingual = tooth.fur.lingual.map(() => 0)

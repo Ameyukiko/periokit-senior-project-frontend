@@ -44,7 +44,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
     }
   }
 
-  // สำหรับ Network Error เช่น 401
+  // For Network Error, e.g., 401
   if (
     networkError &&
     "statusCode" in networkError &&

@@ -53,7 +53,7 @@ const { user } = storeToRefs(authStore);
 
 // Check if a route exists for "My Patient"
 const hasMyPatientRoute = computed(() => {
-  return router.hasRoute("my-patient");
+  return router.hasRoute("patient-list");
 });
 </script>
 
@@ -92,7 +92,7 @@ const hasMyPatientRoute = computed(() => {
 
         <router-link
           v-if="hasMyPatientRoute"
-          to="/my-patient"
+          to="/patients"
           class="flex items-center gap-2 text-[#4b5563] hover:text-[#0052ff] font-bold text-sm transition-colors"
           active-class="text-[#0052ff]"
         >
