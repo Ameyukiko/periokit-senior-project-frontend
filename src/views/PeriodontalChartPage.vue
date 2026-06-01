@@ -34,6 +34,7 @@ const editingChartId = ref<string | null>(null)
 const editingChartName = ref('')
 const showOverviewModal = ref(false)
 const showDeleteConfirmModal = ref(false)
+const showSaveConfirmModal = ref(false)
 const chartToDelete = ref<string | null>(null)
 
 const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
@@ -46,7 +47,13 @@ const handleNewChart = () => {
 
 const isSaving = ref(false)
 
-const handleSave = async () => {
+const handleSaveClick = () => {
+  if (!visitStore.activeVisitId || isSaving.value) return
+  showSaveConfirmModal.value = true
+}
+
+const confirmSaveChart = async () => {
+  showSaveConfirmModal.value = false
   if (isSaving.value) return
   isSaving.value = true
   try {
@@ -164,7 +171,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             <Plus class="w-3.5 h-3.5" /> New Visit
           </button>
           <button
-            @click="handleSave"
+            @click="handleSaveClick"
             :disabled="!visitStore.activeVisitId || isSaving"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
             :class="{ 'opacity-50 cursor-not-allowed bg-slate-300 text-slate-500': !visitStore.activeVisitId, 'bg-[#7aa4f0] text-white hover:bg-[#6b94e0]': visitStore.activeVisitId }"
@@ -267,6 +274,17 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           type="danger"
           @confirm="confirmDeleteChart"
           @cancel="cancelDeleteChart"
+        />
+
+        <!-- Save Chart Confirmation Modal -->
+        <ConfirmModal
+          :show="showSaveConfirmModal"
+          title="Save Chart"
+          message="Are you sure you want to save this chart?"
+          confirm-text="Save"
+          cancel-text="Cancel"
+          @confirm="confirmSaveChart"
+          @cancel="showSaveConfirmModal = false"
         />
       </div>
     </main>
