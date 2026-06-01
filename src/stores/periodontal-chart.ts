@@ -3,6 +3,8 @@ import { calculateBopPercentage, calculateCal, calculateChartSummary, calculateP
 import { createInitialChartData } from '@/domain/chart/chart.factory'
 import type { ChartData, PatientInfo, SiteIndex, Surface, ToothId } from '@/domain/chart/chart.types'
 import { useAuthStore } from './auth'
+import { mapChartToPayload, mapPayloadToChart } from '@/domain/chart/chart.mapper'
+import { chartApi } from '@/services/api/chart.api'
 
 type ChartId = string
 
@@ -12,6 +14,10 @@ interface Chart {
   patientInfo: PatientInfo
   teethData: ChartData
   createdAt: string
+  patientId?: string
+  visitId?: string
+  isSaving?: boolean
+  isLoading?: boolean
 }
 
 const createDefaultPatientInfo = (): PatientInfo => {
@@ -247,6 +253,52 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       chart.teethData = createInitialChartData()
       this.selectedToothId = null
       this.activeSubNav = 'chart'
+    },
+
+    async saveToBackend() {
+      const chart = getActiveChart(this)
+      if (!chart.patientId || !chart.visitId) {
+        throw new Error('Cannot save chart without active patient and visit')
+      }
+
+      try {
+        chart.isSaving = true
+        const payload = mapChartToPayload({
+          name: chart.name,
+          patientInfo: chart.patientInfo,
+          teethData: chart.teethData
+        })
+        const result = await chartApi.saveChart(payload, chart.patientId, chart.visitId)
+        return result
+      } finally {
+        chart.isSaving = false
+      }
+    },
+
+    async loadFromBackend(patientId: string, visitId: string) {
+      const chart = getActiveChart(this)
+      chart.patientId = patientId
+      chart.visitId = visitId
+      chart.isLoading = true
+
+      try {
+        const payload = await chartApi.getChartByVisit(visitId)
+        if (payload) {
+          const rehydrated = mapPayloadToChart(payload)
+          chart.name = rehydrated.name || chart.name
+          chart.patientInfo = rehydrated.patientInfo || chart.patientInfo
+          chart.teethData = rehydrated.teethData || chart.teethData
+        } else {
+          // If no chart found for visit, reset to empty
+          chart.patientInfo = createDefaultPatientInfo()
+          chart.teethData = createInitialChartData()
+        }
+      } catch (error) {
+        console.error('Failed to load chart from backend:', error)
+        throw error
+      } finally {
+        chart.isLoading = false
+      }
     }
   }
 })

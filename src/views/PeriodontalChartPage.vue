@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X, Loader2 } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -10,12 +10,14 @@ import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
+import { useVisitStore } from '@/stores/visit'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref } from 'vue'
 
 const chartStore = usePeriodontalChartStore()
 chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
+const visitStore = useVisitStore()
 
 const {
   patientInfo,
@@ -40,6 +42,18 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
 
 const handleNewChart = () => {
   chartStore.createNewChart()
+}
+
+const isSaving = ref(false)
+
+const handleSave = async () => {
+  if (isSaving.value) return
+  isSaving.value = true
+  try {
+    await chartStore.saveToBackend()
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const handleSwitchChart = (chartId: string) => {
@@ -149,8 +163,15 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewChart">
             <Plus class="w-3.5 h-3.5" /> New Visit
           </button>
-          <button class="flex items-center gap-1.5 px-3 py-1.5 bg-[#7aa4f0] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-[#6b94e0] transition-colors">
-            <Save class="w-3.5 h-3.5" /> Save Chart
+          <button
+            @click="handleSave"
+            :disabled="!visitStore.activeVisitId || isSaving"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
+            :class="{ 'opacity-50 cursor-not-allowed bg-slate-300 text-slate-500': !visitStore.activeVisitId, 'bg-[#7aa4f0] text-white hover:bg-[#6b94e0]': visitStore.activeVisitId }"
+          >
+            <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
+            <Save v-else class="w-3.5 h-3.5" />
+            {{ isSaving ? 'Saving...' : 'Save Chart' }}
           </button>
         </div>
       </div>
