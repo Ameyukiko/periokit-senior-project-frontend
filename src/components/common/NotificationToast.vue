@@ -75,7 +75,7 @@ const getIconClass = (type: string) => {
           "
         ></div>
 
-        <div class="flex-shrink-0 mr-3">
+        <div class="shrink-0 mr-3">
           <component
             :is="getIcon(notification.type)"
             :class="['w-6 h-6', getIconClass(notification.type)]"
@@ -96,7 +96,7 @@ const getIconClass = (type: string) => {
 
         <button
           @click="notificationStore.remove(notification.id)"
-          class="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+          class="shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition-colors"
         >
           <X class="w-4 h-4" />
         </button>
