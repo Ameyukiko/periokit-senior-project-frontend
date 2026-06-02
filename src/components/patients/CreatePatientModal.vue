@@ -17,6 +17,14 @@ const formData = ref({
   hn: ''
 });
 
+const calculateAge = (dobString: string): number | null => {
+  if (!dobString) return null;
+  const dob = new Date(dobString);
+  const diffMs = Date.now() - dob.getTime();
+  const ageDate = new Date(diffMs);
+  return Math.abs(ageDate.getUTCFullYear() - 1970);
+};
+
 const handleSubmit = async () => {
   error.value = '';
   loading.value = true;
@@ -25,7 +33,7 @@ const handleSubmit = async () => {
     const newPatient = await patientStore.createPatient({
       firstName: formData.value.firstName,
       lastName: formData.value.lastName,
-      dateOfBirth: formData.value.dateOfBirth,
+      age: calculateAge(formData.value.dateOfBirth),
       gender: formData.value.gender,
       hn: formData.value.hn || `HN${Math.floor(Math.random() * 10000)}`
     });

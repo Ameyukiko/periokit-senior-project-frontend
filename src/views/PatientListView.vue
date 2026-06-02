@@ -312,7 +312,7 @@ const nameChipText = computed(() => {
                   </div>
                 </td>
                 <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600">
-                  {{ new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear() }}
+                  {{ patient.age ?? '-' }}
                 </td>
                 <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600">
                   {{ patient.gender }}

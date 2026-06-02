@@ -44,8 +44,8 @@ export const usePatientStore = defineStore("patient", () => {
         filterMinAge.value,
         filterMaxAge.value
       );
-      patients.value = response.patients;
-      totalCount.value = response.totalCount;
+      patients.value = response.items;
+      totalCount.value = response.total;
     } catch (err: any) {
       error.value = err.message || "Failed to fetch patients";
       console.error(err);
