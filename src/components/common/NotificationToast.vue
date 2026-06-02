@@ -97,7 +97,7 @@ const getIconClass = (type: string) => {
         <button
           @click="notificationStore.remove(notification.id)"
           class="shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition-colors"
-        >
+          >
           <X class="w-4 h-4" />
         </button>
 

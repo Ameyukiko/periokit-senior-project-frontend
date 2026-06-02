@@ -16,6 +16,10 @@ import ConfirmModal from "../common/ConfirmModal.vue";
 const authStore = useAuthStore();
 const router = useRouter();
 
+const emit = defineEmits<{
+  (e: 'toggle-drawer'): void
+}>()
+
 const showLogoutConfirm = ref(false);
 const isProfileMenuOpen = ref(false);
 
@@ -65,7 +69,7 @@ const hasMyPatientRoute = computed(() => {
     <div class="flex items-center gap-8">
       <div class="flex items-center gap-6">
         <!-- Hamburger Menu (Placeholder) -->
-        <button class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+        <button @click="emit('toggle-drawer')" class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
           <Menu class="w-6 h-6 text-[#1f2937]" />
         </button>
 
