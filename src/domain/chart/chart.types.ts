@@ -34,6 +34,7 @@ export interface PatientInfo {
   nationality: string
   gender: string
   date: string
+  visitPhase?: string
 }
 
 export interface PdCategories {

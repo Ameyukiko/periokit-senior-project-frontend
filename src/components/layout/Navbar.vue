@@ -53,7 +53,7 @@ const { user } = storeToRefs(authStore);
 
 // Check if a route exists for "My Patient"
 const hasMyPatientRoute = computed(() => {
-  return router.hasRoute("patient-list");
+  return router.hasRoute("my-patients");
 });
 </script>
 

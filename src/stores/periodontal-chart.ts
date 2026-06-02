@@ -341,6 +341,19 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         console.error('Failed to load chart from backend:', error)
         throw error
       }
+    },
+
+    async loadPatientById(id: string) {
+      const { patientApi } = await import('@/services/api/patient.api')
+      const patient = await patientApi.getById(id)
+      if (patient) {
+        const chart = getActiveChart(this)
+        chart.patientInfo.hn = patient.hn || ''
+        chart.patientInfo.patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
+        chart.patientInfo.age = patient.age || null
+        chart.patientInfo.gender = patient.gender || ''
+        chart.patientInfo.date = patient.lastVisitDate ? patient.lastVisitDate.split('T')[0] : new Date().toISOString().split('T')[0]
+      }
     }
   }
 })

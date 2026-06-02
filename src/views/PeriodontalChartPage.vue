@@ -29,10 +29,22 @@ const urlVisitId = ref<string | null>(null)
 
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
-  if (visitId) {
+  const patientId = route.query.patientId as string | undefined
+  
+  if (patientId && visitId) {
+    urlVisitId.value = visitId
+    
+    try {
+      await chartStore.loadPatientById(patientId)
+      await visitStore.loadVisits(patientId)
+      visitStore.setActiveVisit(visitId)
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  } else if (visitId) {
     urlVisitId.value = visitId
     visitStore.setActiveVisit(visitId)
-    // Load chart data from backend for this visit
     try {
       await chartStore.loadFromBackend(visitId)
     } catch (error) {
@@ -232,7 +244,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             :class="[
               isSaving || !visitStore.activeVisitId
                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
-                : 'bg-[#7aa4f0] text-white hover:bg-[#6b94e0]'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
             ]"
           >
             <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
