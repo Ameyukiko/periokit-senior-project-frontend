@@ -296,7 +296,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
           patientNationality: patientInfo.nationality,
           // visit info
           visitDate: patientInfo.date,
-          visitPhase: 'before_hygienic', // default หรือดึงจาก visitStore
+          visitPhase: patientInfo.visitPhase || 'before_hygienic', // ใช้ค่าจาก patientInfo หรือ default
         })
 
         const savedChart = data?.saveChart

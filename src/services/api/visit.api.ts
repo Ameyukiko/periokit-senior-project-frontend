@@ -5,8 +5,10 @@ export interface Visit {
   id: string
   patientId: string
   visitDate: string
-  doctorName: string
-  type: string
+  phase: string
+  doctorName: string | null
+  studentId: number | null
+  status: string
   hasChart: boolean
 }
 
@@ -16,8 +18,10 @@ const VISITS_BY_PATIENT = gql`
       id
       patientId
       visitDate
+      phase
       doctorName
-      type
+      studentId
+      status
       hasChart
     }
   }

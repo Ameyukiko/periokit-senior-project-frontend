@@ -2,6 +2,17 @@ import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
 
 // Types
+export interface Visit {
+  id: string
+  patientId: string
+  visitDate: string
+  phase: string
+  doctorName: string | null
+  studentId: number | null
+  status: string
+  hasChart: boolean
+}
+
 export interface Patient {
   id: string
   hn: string
@@ -9,7 +20,10 @@ export interface Patient {
   lastName: string
   age: number | null
   gender: string | null
+  nationality?: string | null
   lastVisitDate: string | null
+  visitCount?: number
+  visits?: Visit[]
 }
 
 export interface PatientListResponse {
@@ -30,6 +44,7 @@ const MY_PATIENTS = gql`
         lastName
         age
         gender
+        nationality
         lastVisitDate
       }
       total
@@ -49,7 +64,19 @@ const PATIENT_BY_ID = gql`
       lastName
       age
       gender
+      nationality
+      visitCount
       lastVisitDate
+      visits {
+        id
+        patientId
+        visitDate
+        phase
+        doctorName
+        studentId
+        status
+        hasChart
+      }
     }
   }
 `
