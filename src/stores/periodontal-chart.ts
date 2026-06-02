@@ -257,20 +257,56 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       const visitStore = useVisitStore()
       const notifStore = useNotificationStore()
       const visitId = visitStore.activeVisitId
-      if (!visitId) throw new Error('กรุณาเลือก Visit ก่อน Save')
 
       const chart = getActiveChart(this)
+      const { patientInfo } = chart
+
+      // Validate visitId before save (BE requires it)
+      if (!visitId) {
+        notifStore.error('Please select a visit before saving')
+        throw new Error('VisitId is required')
+      }
+
+      // Validate patient info before save
+      if (!patientInfo.hn) {
+        notifStore.error('Please enter HN before saving')
+        throw new Error('HN is required')
+      }
+      if (!patientInfo.patientName) {
+        notifStore.error('Please enter patient name before saving')
+        throw new Error('Patient name is required')
+      }
+
       const payload = mapChartToPayload(chart)
 
+      // Split patient name: first word = firstName, rest = lastName
+      const names = patientInfo.patientName.trim().split(/\s+/)
+
       try {
-        await chartApi.save({
+        const { data } = await chartApi.save({
           visitId,
           chartName: chart.name,
           teethData: payload,
+          // patient info
+          patientHn: patientInfo.hn,
+          patientFirstName: names[0] ?? '',
+          patientLastName: names.length > 1 ? names.slice(1).join(' ') : '',
+          patientAge: patientInfo.age ?? undefined,
+          patientGender: patientInfo.gender,
+          patientNationality: patientInfo.nationality,
+          // visit info
+          visitDate: patientInfo.date,
+          visitPhase: 'before_hygienic', // default หรือดึงจาก visitStore
         })
-        notifStore.show('บันทึก Chart สำเร็จ', 'success')
+
+        const savedChart = data?.saveChart
+        if (savedChart?.visitId) {
+          visitStore.setActiveVisit(savedChart.visitId)
+        }
+
+        notifStore.success('Chart saved successfully')
       } catch (err) {
-        notifStore.show('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error')
+        notifStore.error('Failed to save chart, please try again')
         throw err
       }
     },
@@ -279,7 +315,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       try {
         const { data } = await chartApi.getByVisit(visitId)
         const chartData = data?.chartByVisit
-        
+
         if (!chartData || !chartData.teethData) {
           // If no chart found for visit, reset to empty
           this.resetChart()
@@ -287,13 +323,20 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         }
 
         // Rehydrate from DB payload
-        const rehydrated = mapPayloadToChart(chartData.teethData as any)
-        
+        const chartPayload = {
+          chart_name: chartData.chartName || 'Chart',
+          patient_info: chartData.patientInfo || this.charts[0].patientInfo,
+          teeth: chartData.teethData,
+          summary: chartData.summary || undefined
+        }
+
+        const rehydrated = mapPayloadToChart(chartPayload)
+
         const chart = getActiveChart(this)
         chart.name = chartData.chartName || rehydrated.name || chart.name
-        chart.patientInfo = rehydrated.patientInfo || chart.patientInfo
+        chart.patientInfo = chartData.patientInfo || rehydrated.patientInfo || chart.patientInfo
         chart.teethData = rehydrated.teethData || chart.teethData
-        
+
       } catch (error) {
         console.error('Failed to load chart from backend:', error)
         throw error

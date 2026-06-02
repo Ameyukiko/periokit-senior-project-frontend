@@ -6,6 +6,7 @@ import type { PatientInfo, ChartSummary, PdBreakdown } from '@/domain/chart/char
 const props = defineProps<{
   patientInfo: PatientInfo
   summary: ChartSummary
+  showValidation?: boolean
 }>()
 
 // Sort PD breakdown by depth (5, 6, 7, ...)
@@ -24,7 +25,17 @@ const sortedPdBreakdown = computed(() => {
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-2">
           <span class="text-sm font-black text-slate-800">HN-</span>
-          <input v-model="props.patientInfo.hn" type="text" placeholder="YY-XXX" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-sm font-bold w-40" />
+          <input
+            v-model="props.patientInfo.hn"
+            type="text"
+            placeholder="YY-XXX"
+            :class="[
+              'bg-slate-50 rounded-lg px-2.5 py-1.5 text-sm font-bold w-40 outline-none transition-all',
+              props.showValidation && !props.patientInfo.hn
+                ? 'border-2 border-red-400 bg-red-50 placeholder-red-300'
+                : 'border border-slate-100 focus:ring-2 focus:ring-blue-100'
+            ]"
+          />
         </div>
         <h1 class="text-3xl font-black text-slate-800 tracking-tight text-center">Periodontal Chart</h1>
         <div class="w-40"></div>
@@ -45,7 +56,17 @@ const sortedPdBreakdown = computed(() => {
         </div>
         <div class="col-span-4 flex items-center gap-2">
           <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Patient:</span>
-          <input v-model="props.patientInfo.patientName" type="text" placeholder="Full Name" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input
+            v-model="props.patientInfo.patientName"
+            type="text"
+            placeholder="Full Name"
+            :class="[
+              'rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none transition-all',
+              props.showValidation && !props.patientInfo.patientName
+                ? 'bg-red-50 border-2 border-red-400 placeholder-red-300'
+                : 'bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-100'
+            ]"
+          />
         </div>
         <div class="col-span-2 flex items-center gap-2">
           <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Age:</span>

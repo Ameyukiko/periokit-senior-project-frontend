@@ -11,13 +11,48 @@ import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
+import { useNotificationStore } from '@/stores/notification'
 import type { ToothId } from '@/domain/chart/chart.types'
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+const route = useRoute()
+const router = useRouter()
 const chartStore = usePeriodontalChartStore()
 chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
 const visitStore = useVisitStore()
+const notifStore = useNotificationStore()
+
+// Read visitId from URL query params
+const urlVisitId = ref<string | null>(null)
+
+onMounted(async () => {
+  const visitId = route.query.visitId as string | undefined
+  if (visitId) {
+    urlVisitId.value = visitId
+    visitStore.setActiveVisit(visitId)
+    // Load chart data from backend for this visit
+    try {
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  }
+})
+
+// Watch for visitId changes (when user navigates to different visit)
+watch(() => route.query.visitId, async (newVisitId) => {
+  if (newVisitId && typeof newVisitId === 'string') {
+    urlVisitId.value = newVisitId
+    visitStore.setActiveVisit(newVisitId)
+    try {
+      await chartStore.loadFromBackend(newVisitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  }
+})
 
 const {
   patientInfo,
@@ -36,6 +71,7 @@ const showOverviewModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const showSaveConfirmModal = ref(false)
 const chartToDelete = ref<string | null>(null)
+const showValidation = ref(false)
 
 const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
   chartStore.updateNote(Number(id) as ToothId, note)
@@ -48,7 +84,18 @@ const handleNewChart = () => {
 const isSaving = ref(false)
 
 const handleSaveClick = () => {
-  if (!visitStore.activeVisitId || isSaving.value) return
+  if (isSaving.value) return
+  // Show validation errors first
+  showValidation.value = true
+  // Check if required fields are filled
+  if (!patientInfo.value.hn) {
+    notifStore.error('Please enter HN before saving')
+    return
+  }
+  if (!patientInfo.value.patientName) {
+    notifStore.error('Please enter patient name before saving')
+    return
+  }
   showSaveConfirmModal.value = true
 }
 
@@ -58,6 +105,14 @@ const confirmSaveChart = async () => {
   isSaving.value = true
   try {
     await chartStore.saveToBackend()
+    
+    // Replace mock/old visitId in route query with the resolved visitId from the store
+    const activeVisitId = visitStore.activeVisitId
+    if (activeVisitId && route.query.visitId !== activeVisitId) {
+      router.replace({ query: { ...route.query, visitId: activeVisitId } })
+    }
+  } catch (error) {
+    console.error('Failed to save chart:', error)
   } finally {
     isSaving.value = false
   }
@@ -172,9 +227,13 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           </button>
           <button
             @click="handleSaveClick"
-            :disabled="!visitStore.activeVisitId || isSaving"
+            :disabled="isSaving || !visitStore.activeVisitId"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-            :class="{ 'opacity-50 cursor-not-allowed bg-slate-300 text-slate-500': !visitStore.activeVisitId, 'bg-[#7aa4f0] text-white hover:bg-[#6b94e0]': visitStore.activeVisitId }"
+            :class="[
+              isSaving || !visitStore.activeVisitId
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
+                : 'bg-[#7aa4f0] text-white hover:bg-[#6b94e0]'
+            ]"
           >
             <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
             <Save v-else class="w-3.5 h-3.5" />
@@ -229,7 +288,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             </button>
           </div>
 
-          <PatientChartHeader :patient-info="patientInfo" :summary="summary" />
+          <PatientChartHeader :patient-info="patientInfo" :summary="summary" :show-validation="showValidation" />
 
           <PeriodontalChartGrid
             :chart-data="teethData"
