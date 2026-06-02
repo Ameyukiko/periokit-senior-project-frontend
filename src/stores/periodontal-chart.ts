@@ -112,6 +112,11 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       if (chart) chart.name = name
     },
 
+    updatePatientInfo(value: PatientInfo) {
+      const chart = getActiveChart(this)
+      chart.patientInfo = { ...value }
+    },
+
     // Original chart data methods (now work on active chart)
     initializeChart() {
       const chart = getActiveChart(this)
@@ -261,13 +266,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       const chart = getActiveChart(this)
       const { patientInfo } = chart
 
-      // Validate visitId before save (BE requires it)
-      if (!visitId) {
-        notifStore.error('Please select a visit before saving')
-        throw new Error('VisitId is required')
-      }
-
-      // Validate patient info before save
+      // Validate patient info before save (HN and Patient Name are required)
       if (!patientInfo.hn) {
         notifStore.error('Please enter HN before saving')
         throw new Error('HN is required')
@@ -282,6 +281,11 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       // Split patient name: first word = firstName, rest = lastName
       const names = patientInfo.patientName.trim().split(/\s+/)
 
+      // Convert empty strings to null for optional fields
+      // Convert gender to lowercase for backend enum (male/female/other)
+      const patientGender = patientInfo.gender?.trim().toLowerCase() || null
+      const patientNationality = patientInfo.nationality?.trim() || null
+
       try {
         const { data } = await chartApi.save({
           visitId,
@@ -291,9 +295,9 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
           patientHn: patientInfo.hn,
           patientFirstName: names[0] ?? '',
           patientLastName: names.length > 1 ? names.slice(1).join(' ') : '',
-          patientAge: patientInfo.age ?? undefined,
-          patientGender: patientInfo.gender,
-          patientNationality: patientInfo.nationality,
+          patientAge: patientInfo.age ?? null,
+          patientGender,
+          patientNationality,
           // visit info
           visitDate: patientInfo.date,
           visitPhase: patientInfo.visitPhase || 'before_hygienic', // ใช้ค่าจาก patientInfo หรือ default
@@ -306,6 +310,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
 
         notifStore.success('Chart saved successfully')
       } catch (err) {
+        console.error('Save chart error:', err)
         notifStore.error('Failed to save chart, please try again')
         throw err
       }

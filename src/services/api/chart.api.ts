@@ -48,16 +48,16 @@ const CHART_BY_VISIT = gql`
 
 export const chartApi = {
   save: (input: {
-    visitId: string
-    chartName?: string
+    visitId?: string | null
+    chartName?: string | null
     teethData: unknown
     // Patient info
     patientHn?: string
     patientFirstName: string
     patientLastName: string
-    patientAge?: number
-    patientGender?: string
-    patientNationality?: string
+    patientAge?: number | null
+    patientGender?: string | null
+    patientNationality?: string | null
     // Visit info
     visitDate: string
     visitPhase?: string
