@@ -37,7 +37,7 @@ const handleFileChange = (event: Event) => {
 
 const loading = ref(false);
 
-// เพิ่ม state สำหรับเก็บ error แยกแต่ละช่อง
+// Add state to store errors for each field separately
 const errors = reactive({
   studentId: "",
   firstName: "",
@@ -51,12 +51,12 @@ const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 
 const register = async () => {
-  // 1. ล้าง error เก่าทั้งหมดก่อน
+  // 1. Clear all previous errors first
   Object.keys(errors).forEach(
     (key) => (errors[key as keyof typeof errors] = ""),
   );
 
-  // 2. Validate ทุกช่องพร้อมกัน
+  // 2. Validate all fields simultaneously
   if (!form.firstName) errors.firstName = "Please enter your First Name";
   if (!form.surname) errors.surname = "Please enter your Surname";
 
@@ -82,7 +82,7 @@ const register = async () => {
     errors.confirmPassword = "Passwords do not match";
   }
 
-  // 3. เช็คว่ามี error ในช่องใดๆ หรือไม่
+  // 3. Check if there are any errors in any field
   const hasErrors = Object.values(errors).some((error) => error !== "");
   if (hasErrors) return;
 

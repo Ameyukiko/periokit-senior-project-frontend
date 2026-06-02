@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, X, Loader2 } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -10,12 +10,61 @@ import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
+import { useVisitStore } from '@/stores/visit'
+import { useNotificationStore } from '@/stores/notification'
 import type { ToothId } from '@/domain/chart/chart.types'
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+const route = useRoute()
+const router = useRouter()
 const chartStore = usePeriodontalChartStore()
 chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
+const visitStore = useVisitStore()
+const notifStore = useNotificationStore()
+
+// Read visitId from URL query params
+const urlVisitId = ref<string | null>(null)
+
+onMounted(async () => {
+  const visitId = route.query.visitId as string | undefined
+  const patientId = route.query.patientId as string | undefined
+  
+  if (patientId && visitId) {
+    urlVisitId.value = visitId
+    
+    try {
+      await chartStore.loadPatientById(patientId)
+      await visitStore.loadVisits(patientId)
+      visitStore.setActiveVisit(visitId)
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  } else if (visitId) {
+    urlVisitId.value = visitId
+    visitStore.setActiveVisit(visitId)
+    try {
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  }
+})
+
+// Watch for visitId changes (when user navigates to different visit)
+watch(() => route.query.visitId, async (newVisitId) => {
+  if (newVisitId && typeof newVisitId === 'string') {
+    urlVisitId.value = newVisitId
+    visitStore.setActiveVisit(newVisitId)
+    try {
+      await chartStore.loadFromBackend(newVisitId)
+    } catch (error) {
+      console.error('Failed to load chart:', error)
+    }
+  }
+})
 
 const {
   patientInfo,
@@ -32,7 +81,9 @@ const editingChartId = ref<string | null>(null)
 const editingChartName = ref('')
 const showOverviewModal = ref(false)
 const showDeleteConfirmModal = ref(false)
+const showSaveConfirmModal = ref(false)
 const chartToDelete = ref<string | null>(null)
+const showValidation = ref(false)
 
 const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
   chartStore.updateNote(Number(id) as ToothId, note)
@@ -40,6 +91,43 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
 
 const handleNewChart = () => {
   chartStore.createNewChart()
+}
+
+const isSaving = ref(false)
+
+const handleSaveClick = () => {
+  if (isSaving.value) return
+  // Show validation errors first
+  showValidation.value = true
+  // Check if required fields are filled
+  if (!patientInfo.value.hn) {
+    notifStore.error('Please enter HN before saving')
+    return
+  }
+  if (!patientInfo.value.patientName) {
+    notifStore.error('Please enter patient name before saving')
+    return
+  }
+  showSaveConfirmModal.value = true
+}
+
+const confirmSaveChart = async () => {
+  showSaveConfirmModal.value = false
+  if (isSaving.value) return
+  isSaving.value = true
+  try {
+    await chartStore.saveToBackend()
+    
+    // Replace mock/old visitId in route query with the resolved visitId from the store
+    const activeVisitId = visitStore.activeVisitId
+    if (activeVisitId && route.query.visitId !== activeVisitId) {
+      router.replace({ query: { ...route.query, visitId: activeVisitId } })
+    }
+  } catch (error) {
+    console.error('Failed to save chart:', error)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const handleSwitchChart = (chartId: string) => {
@@ -149,8 +237,19 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewChart">
             <Plus class="w-3.5 h-3.5" /> New Visit
           </button>
-          <button class="flex items-center gap-1.5 px-3 py-1.5 bg-[#7aa4f0] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-[#6b94e0] transition-colors">
-            <Save class="w-3.5 h-3.5" /> Save Chart
+          <button
+            @click="handleSaveClick"
+            :disabled="isSaving || !visitStore.activeVisitId"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
+            :class="[
+              isSaving || !visitStore.activeVisitId
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            ]"
+          >
+            <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
+            <Save v-else class="w-3.5 h-3.5" />
+            {{ isSaving ? 'Saving...' : 'Save Chart' }}
           </button>
         </div>
       </div>
@@ -201,7 +300,7 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             </button>
           </div>
 
-          <PatientChartHeader :patient-info="patientInfo" :summary="summary" />
+          <PatientChartHeader :patient-info="patientInfo" :summary="summary" :show-validation="showValidation" />
 
           <PeriodontalChartGrid
             :chart-data="teethData"
@@ -246,6 +345,17 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           type="danger"
           @confirm="confirmDeleteChart"
           @cancel="cancelDeleteChart"
+        />
+
+        <!-- Save Chart Confirmation Modal -->
+        <ConfirmModal
+          :show="showSaveConfirmModal"
+          title="Save Chart"
+          message="Are you sure you want to save this chart?"
+          confirm-text="Save"
+          cancel-text="Cancel"
+          @confirm="confirmSaveChart"
+          @cancel="showSaveConfirmModal = false"
         />
       </div>
     </main>

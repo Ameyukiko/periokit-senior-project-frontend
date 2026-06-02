@@ -19,8 +19,20 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
+      path: "/patients",
+      name: "my-patients",
+      component: () => import("../views/MyPatientListView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/patients/:patientId/visits",
+      name: "patient-visits",
+      component: () => import("../views/PatientVisitHistoryView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/chart",
-      name: "home",
+      name: "chart",
       component: () => import("../views/PeriodontalChartPage.vue"),
       meta: { requiresAuth: true },
     },
@@ -32,7 +44,7 @@ const router = createRouter({
     },
     {
       path: "/",
-      redirect: "/login",
+      redirect: "/patients",
     },
   ],
 });
@@ -46,8 +58,8 @@ router.beforeEach((to, _from, next) => {
     // If route requires auth and there's no token, redirect to login
     next({ name: "login" });
   } else if (requiresGuest && token) {
-    // If route is for guests only and there's a token, redirect to home
-    next({ name: "home" });
+    // If route is for guests only and there's a token, redirect to my-patients
+    next({ name: "my-patients" });
   } else {
     // Otherwise, proceed
     next();

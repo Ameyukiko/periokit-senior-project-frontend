@@ -6,6 +6,7 @@ import type { PatientInfo, ChartSummary, PdBreakdown } from '@/domain/chart/char
 const props = defineProps<{
   patientInfo: PatientInfo
   summary: ChartSummary
+  showValidation?: boolean
 }>()
 
 // Sort PD breakdown by depth (5, 6, 7, ...)
@@ -23,44 +24,100 @@ const sortedPdBreakdown = computed(() => {
     <div class="p-6 border-b border-slate-100 bg-white">
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-black text-slate-800">HN-</span>
-          <input v-model="props.patientInfo.hn" type="text" placeholder="YY-XXX" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-sm font-bold w-40" />
+          <span class="text-[16px] font-bold text-slate-800">HN-</span>
+          <input
+            v-model="props.patientInfo.hn"
+            type="text"
+            :class="[
+              'bg-slate-50 rounded-md px-2 py-1 text-[14px] w-40 outline-none transition-all',
+              props.showValidation && !props.patientInfo.hn
+                ? 'border-2 border-red-400 bg-red-50 placeholder-red-300'
+                : 'border border-slate-300 focus:ring-2 focus:ring-blue-100'
+            ]"
+          />
         </div>
-        <h1 class="text-3xl font-black text-slate-800 tracking-tight text-center">Periodontal Chart</h1>
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight text-center">Periodontal Chart</h1>
         <div class="w-40"></div>
       </div>
 
-      <div class="grid grid-cols-12 gap-y-3 gap-x-5 items-center">
-        <div class="col-span-2 flex items-center gap-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Date:</span>
-          <input v-model="props.patientInfo.date" type="date" class="bg-slate-50 border border-slate-100 rounded-lg px-2 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+      <div class="flex justify-center gap-8 mb-5">
+        <label class="flex items-center gap-2 cursor-pointer group">
+          <input 
+            type="checkbox" 
+            :checked="props.patientInfo.visitPhase === 'before_hygienic'"
+            @change="props.patientInfo.visitPhase = 'before_hygienic'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          />
+          <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Before hygienic phase</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer group">
+          <input 
+            type="checkbox" 
+            :checked="props.patientInfo.visitPhase === 'after_hygienic'"
+            @change="props.patientInfo.visitPhase = 'after_hygienic'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          />
+          <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After hygienic phase</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer group">
+          <input 
+            type="checkbox" 
+            :checked="props.patientInfo.visitPhase === 'after_corrective'"
+            @change="props.patientInfo.visitPhase = 'after_corrective'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          />
+          <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After corrective phase</span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-12 gap-y-4 gap-x-5 items-center">
+        <!-- Row 3 -->
+        <div class="col-span-3 flex items-center gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Date:</span>
+          <input v-model="props.patientInfo.date" type="date" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
-        <div class="col-span-5 flex items-center gap-2 ml-5">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Doctor:</span>
-          <input v-model="props.patientInfo.doctor" type="text" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
-        </div>
-        <div class="col-span-4 flex items-center gap-2 ml-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Doctor ID:</span>
-          <input v-model="props.patientInfo.studentId" type="text" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
-        </div>
-        <div class="col-span-4 flex items-center gap-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Patient:</span>
-          <input v-model="props.patientInfo.patientName" type="text" placeholder="Full Name" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
-        </div>
-        <div class="col-span-2 flex items-center gap-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Age:</span>
-          <input v-model="props.patientInfo.age" type="number" placeholder="0" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+        <div class="col-span-6 flex items-center gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor:</span>
+          <input v-model="props.patientInfo.doctor" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-3 flex items-center gap-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Nationality:</span>
-          <input v-model="props.patientInfo.nationality" type="text" placeholder="e.g. Thai" class="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor ID:</span>
+          <input v-model="props.patientInfo.studentId" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
-        <div class="col-span-3 flex items-center gap-3 pl-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap shrink-0">Gender:</span>
+
+        <!-- Row 4 -->
+        <div class="col-span-4 flex items-center gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Patient:</span>
+          <input
+            v-model="props.patientInfo.patientName"
+            type="text"
+            :class="[
+              'rounded-md px-2 py-1 text-[14px] w-full outline-none transition-all',
+              props.showValidation && !props.patientInfo.patientName
+                ? 'bg-red-50 border-2 border-red-400 placeholder-red-300'
+                : 'bg-slate-50 border border-slate-300 focus:ring-2 focus:ring-blue-100'
+            ]"
+          />
+        </div>
+        <div class="col-span-3 flex items-center gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Age:</span>
+          <input v-model="props.patientInfo.age" type="number" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <span class="text-[14px] text-slate-800 whitespace-nowrap shrink-0">years old</span>
+        </div>
+        <div class="col-span-2 flex items-center gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Nationality:</span>
+          <input v-model="props.patientInfo.nationality" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+        </div>
+        <div class="col-span-3 flex items-center gap-2 justify-end">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Gender:</span>
           <div class="flex gap-3">
-            <label v-for="gender in ['Male', 'Female']" :key="gender" class="flex items-center gap-1.5 cursor-pointer group">
-              <input v-model="props.patientInfo.gender" type="radio" :value="gender" class="w-3.5 h-3.5 text-[#0052ff] border-slate-300 focus:ring-blue-100" />
-              <span class="text-[11px] font-bold text-slate-600 group-hover:text-[#0052ff] transition-colors">{{ gender }}</span>
+            <label class="flex items-center gap-1.5 cursor-pointer group">
+              <input type="checkbox" :checked="props.patientInfo.gender === 'Male'" @change="props.patientInfo.gender = 'Male'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Male</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer group">
+              <input type="checkbox" :checked="props.patientInfo.gender === 'Female'" @change="props.patientInfo.gender = 'Female'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Female</span>
             </label>
           </div>
         </div>

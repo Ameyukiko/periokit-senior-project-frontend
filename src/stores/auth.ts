@@ -99,7 +99,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   /**
-   * เคลียร์ session และ redirect ไปหน้า login เมื่อ token หมดอายุ หรือไม่ถูกต้อง (401)
+   * Clear session and redirect to login page when token is expired or invalid (401)
    */
   async function handleUnauthorized() {
     await handleUnauthorizedSession();

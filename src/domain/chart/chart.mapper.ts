@@ -1,5 +1,6 @@
 import { isUpperTooth } from './chart.rules'
 import { calculateChartSummary } from './chart.calculations'
+import { createInitialChartData } from './chart.factory'
 import type { ChartData, PatientInfo, ToothData } from './chart.types'
 
 // ── Surface mapping ──────────────────────────────────────────────────────────
@@ -173,5 +174,58 @@ export function mapChartToPayload(chart: {
       plaque_site_count: Math.round(summary.piPercentage * totalSites / 100),
       plaque_percentage: summary.piPercentage,
     },
+  }
+}
+
+export function mapPayloadToChart(payload: ChartPayload): {
+  name: string
+  patientInfo: PatientInfo
+  teethData: ChartData
+} {
+  const chartData = createInitialChartData()
+
+  for (const tooth of payload.teeth) {
+    const fdi = tooth.tooth_number as any
+    const tData = chartData[fdi]
+    if (!tData) continue
+
+    tData.implant = tooth.status === 'implant'
+    tData.extracted = tooth.status === 'missing'
+    tData.mo = tooth.mobility !== null ? tooth.mobility.toString() : ''
+    tData.prognosisKC = tooth.prognosis_kc || ''
+    tData.prognosisMN = tooth.prognosis_mn || ''
+    tData.note = tooth.tooth_note || ''
+
+    for (const surface of tooth.surfaces) {
+      const frontendSurface = surface.surface === 'palatal' ? 'lingual' : surface.surface
+      const sData = tData[frontendSurface]
+
+      sData.ktw = surface.ktw_mm !== null ? surface.ktw_mm.toString() : ''
+
+      for (let i = 0; i < 3; i++) {
+        if (surface.sites[i]) {
+          const site = surface.sites[i]
+          sData.bop[i] = site.bop
+          sData.pi[i] = site.plaque
+          sData.pd[i] = site.pd_mm !== null ? site.pd_mm.toString() : ''
+          sData.rec[i] = site.recession_mm !== null ? site.recession_mm.toString() : ''
+          sData.cal[i] = site.cal_mm !== null ? site.cal_mm.toString() : ''
+        }
+      }
+    }
+
+    for (const furcation of tooth.furcations) {
+      const frontendSurface = furcation.surface === 'palatal' ? 'lingual' : furcation.surface
+      const grade = furcation.grade === 'none' ? 0 : parseInt(furcation.grade.replace('grade_', ''), 10)
+      if (tData.fur[frontendSurface] && typeof tData.fur[frontendSurface][furcation.site_index] !== 'undefined') {
+        tData.fur[frontendSurface][furcation.site_index] = grade
+      }
+    }
+  }
+
+  return {
+    name: payload.chart_name,
+    patientInfo: payload.patient_info,
+    teethData: chartData
   }
 }

@@ -92,7 +92,7 @@ const handleLogin = async () => {
     if (user && user.role === "admin") {
       router.push("/admin/dashboard");
     } else {
-      router.push({ name: "home" });
+      router.push({ name: "my-patients" });
     }
   } catch (error: any) {
     console.error("Login Error:", error);
