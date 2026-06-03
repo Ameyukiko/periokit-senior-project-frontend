@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { patientApi, type Patient } from '../services/api/patient.api'
 import Navbar from '../components/layout/Navbar.vue'
-import { Search, User, ChevronLeft, ChevronRight, Plus, ListFilter, Calendar } from 'lucide-vue-next'
+import { Search, User, ChevronLeft, ChevronRight, Plus, ListFilter, Calendar, Users, Type, X } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -15,21 +15,40 @@ const totalPages = ref(0)
 const isLoading = ref(false)
 
 const searchInput = ref('')
-const dateFrom = ref('')
-const dateTo = ref('')
 
+// Advanced Filter States
+const sorts = ref<{
+  date: 'date_desc' | 'date_asc' | null;
+  age: 'age_desc' | 'age_asc' | null;
+  name: 'name_desc' | 'name_asc' | null;
+}>({
+  date: null,
+  age: null,
+  name: null
+})
+const filterGender = ref('')
 
-const showFilter = ref(false)
+// Unified Popover State
+const activePopover = ref<'main' | 'date' | 'gender' | 'age' | 'name' | null>(null)
+
+// Temporary values for sub-menus
+const tempSorts = ref({ ...sorts.value })
+const tempGender = ref(filterGender.value)
 
 const fetchPatients = async () => {
   isLoading.value = true
   try {
-    const res = await patientApi.getMyPatients(
+    // Use getPatients which supports client-side sorting and filtering
+    const res = await patientApi.getPatients(
       page.value,
       pageSize.value,
       searchInput.value,
-      dateFrom.value,
-      dateTo.value
+      JSON.stringify(sorts.value),
+      '', // startDate
+      '', // endDate
+      filterGender.value,
+      null, // minAge
+      null  // maxAge
     )
     patients.value = res.items
     total.value = res.total
@@ -55,19 +74,66 @@ const handleSearch = () => {
   }, 400)
 }
 
-const applyFilter = () => {
+// UI Helpers for Tags
+const hasDateFilter = computed(() => sorts.value.date !== null)
+const hasGenderFilter = computed(() => !!filterGender.value)
+const hasAgeFilter = computed(() => sorts.value.age !== null)
+const hasNameFilter = computed(() => sorts.value.name !== null)
+
+const removeFilter = (type: string) => {
+  if (type === 'date') sorts.value.date = null
+  if (type === 'gender') filterGender.value = ''
+  if (type === 'age') sorts.value.age = null
+  if (type === 'name') sorts.value.name = null
+  activePopover.value = null
   page.value = 1
   fetchPatients()
-  showFilter.value = false
 }
 
-const clearFilter = () => {
-  dateFrom.value = ''
-  dateTo.value = ''
+const openMain = () => {
+  if (activePopover.value) {
+    activePopover.value = null
+  } else {
+    activePopover.value = 'main'
+    tempSorts.value = { ...sorts.value }
+    tempGender.value = filterGender.value
+  }
+}
+
+const openSub = (type: 'date' | 'gender' | 'age' | 'name') => {
+  activePopover.value = type
+  tempSorts.value = { ...sorts.value }
+  tempGender.value = filterGender.value
+}
+
+const applyFilter = () => {
+  filterGender.value = tempGender.value
+  sorts.value.date = tempSorts.value.date as any
+  sorts.value.age = tempSorts.value.age as any
+  sorts.value.name = tempSorts.value.name as any
+  
   page.value = 1
   fetchPatients()
-  showFilter.value = false
+  activePopover.value = null
 }
+
+const dateChipText = computed(() => {
+  if (sorts.value.date === 'date_asc') return 'Oldest First'
+  if (sorts.value.date === 'date_desc') return 'Newest Visit'
+  return 'Date'
+})
+
+const ageChipText = computed(() => {
+  if (sorts.value.age === 'age_asc') return 'Youngest First'
+  if (sorts.value.age === 'age_desc') return 'Oldest First'
+  return 'Age'
+})
+
+const nameChipText = computed(() => {
+  if (sorts.value.name === 'name_asc') return 'Name (A-Z)'
+  if (sorts.value.name === 'name_desc') return 'Name (Z-A)'
+  return 'Name'
+})
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
@@ -84,12 +150,12 @@ const handleNewPatient = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f1f5f9] font-sans" @click="showFilter = false">
+  <div class="min-h-screen bg-[#f1f5f9] font-sans" @click="activePopover = null">
     <Navbar />
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8" @click.stop>
       <!-- Header Area -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <h1 class="text-3xl font-bold text-slate-900">Patient</h1>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -107,42 +173,105 @@ const handleNewPatient = () => {
             />
           </div>
 
-          <!-- Filter Button -->
+          <!-- Filter Button & Unified Popover -->
           <div class="relative">
-            <button
-              @click.stop="showFilter = !showFilter"
+            <button 
+              @click.stop="openMain"
               class="px-4 py-2.5 border border-slate-200 rounded-full text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm"
-              :class="{ 'ring-2 ring-[#0052ff] border-transparent': showFilter || dateFrom || dateTo }"
+              :class="{ 'ring-2 ring-[#0052ff] border-transparent': activePopover || hasDateFilter || hasGenderFilter || hasAgeFilter || hasNameFilter }"
             >
               <ListFilter class="w-4 h-4" />
               <span>Filter</span>
-              <Plus class="w-4 h-4" v-if="!dateFrom && !dateTo" />
+              <Plus class="w-4 h-4" v-if="!hasDateFilter && !hasGenderFilter && !hasAgeFilter && !hasNameFilter" />
               <div v-else class="w-2 h-2 bg-[#0052ff] rounded-full"></div>
             </button>
+            
+            <!-- Unified Filter Menu -->
+            <div v-if="activePopover" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden flex flex-col">
+              
+              <!-- Main Menu -->
+              <div v-if="activePopover === 'main'" class="py-2 flex-1">
+                <div class="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Add Filter</div>
+                <button @click.stop="activePopover = 'date'" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center justify-between transition-colors" :class="tempSorts.date ? 'text-blue-600 font-medium' : 'text-slate-700'">
+                  <span class="flex items-center gap-2"><Calendar class="w-4 h-4"/> Date</span>
+                  <ChevronRight class="w-4 h-4 text-slate-400" />
+                </button>
+                <button @click.stop="activePopover = 'gender'" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center justify-between transition-colors" :class="tempGender ? 'text-rose-600 font-medium' : 'text-slate-700'">
+                  <span class="flex items-center gap-2"><Users class="w-4 h-4"/> Gender</span>
+                  <ChevronRight class="w-4 h-4 text-slate-400" />
+                </button>
+                <button @click.stop="activePopover = 'age'" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center justify-between transition-colors" :class="tempSorts.age ? 'text-emerald-600 font-medium' : 'text-slate-700'">
+                  <span class="flex items-center gap-2"><User class="w-4 h-4"/> Age</span>
+                  <ChevronRight class="w-4 h-4 text-slate-400" />
+                </button>
+                <button @click.stop="activePopover = 'name'" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center justify-between transition-colors" :class="tempSorts.name ? 'text-purple-600 font-medium' : 'text-slate-700'">
+                  <span class="flex items-center gap-2"><Type class="w-4 h-4"/> Name</span>
+                  <ChevronRight class="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
 
-            <!-- Filter Dropdown -->
-            <div
-              v-if="showFilter"
-              class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 z-20 p-4"
-              @click.stop
-            >
-              <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                <Calendar class="w-4 h-4 text-[#0052ff]" />
-                Date Range
-              </h3>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-medium text-slate-500 mb-1">From</label>
-                  <input type="date" v-model="dateFrom" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052ff] focus:outline-none">
+              <!-- Sub Menus -->
+              <div v-else class="flex flex-col flex-1">
+                <!-- Header -->
+                <div class="flex items-center px-2 py-2 border-b border-slate-100 bg-slate-50">
+                  <button @click.stop="activePopover = 'main'" class="p-1 rounded hover:bg-slate-200 text-slate-500 transition-colors">
+                    <ChevronLeft class="w-4 h-4"/>
+                  </button>
+                  <span class="flex-1 text-center text-sm font-semibold text-slate-700 pr-6 capitalize">{{ activePopover }}</span>
                 </div>
-                <div>
-                  <label class="block text-xs font-medium text-slate-500 mb-1">To</label>
-                  <input type="date" v-model="dateTo" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052ff] focus:outline-none">
+                
+                <!-- Content Options -->
+                <div class="p-2 space-y-1">
+                  <!-- Date Options -->
+                  <template v-if="activePopover === 'date'">
+                    <button @click.stop="tempSorts.date = tempSorts.date === 'date_desc' ? null : 'date_desc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.date === 'date_desc' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-slate-700'">
+                      Newest Visit <div v-if="tempSorts.date === 'date_desc'" class="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                    </button>
+                    <button @click.stop="tempSorts.date = tempSorts.date === 'date_asc' ? null : 'date_asc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.date === 'date_asc' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-slate-700'">
+                      Oldest Visit <div v-if="tempSorts.date === 'date_asc'" class="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                    </button>
+                  </template>
+
+                  <!-- Gender Options -->
+                  <template v-if="activePopover === 'gender'">
+                    <button @click.stop="tempGender = tempGender === 'Male' ? '' : 'Male'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempGender === 'Male' ? 'text-rose-600 bg-rose-50 font-medium' : 'text-slate-700'">
+                      Male <div v-if="tempGender === 'Male'" class="w-1.5 h-1.5 rounded-full bg-rose-600"></div>
+                    </button>
+                    <button @click.stop="tempGender = tempGender === 'Female' ? '' : 'Female'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempGender === 'Female' ? 'text-rose-600 bg-rose-50 font-medium' : 'text-slate-700'">
+                      Female <div v-if="tempGender === 'Female'" class="w-1.5 h-1.5 rounded-full bg-rose-600"></div>
+                    </button>
+                    <button @click.stop="tempGender = tempGender === 'Other' ? '' : 'Other'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempGender === 'Other' ? 'text-rose-600 bg-rose-50 font-medium' : 'text-slate-700'">
+                      Other <div v-if="tempGender === 'Other'" class="w-1.5 h-1.5 rounded-full bg-rose-600"></div>
+                    </button>
+                  </template>
+
+                  <!-- Age Options -->
+                  <template v-if="activePopover === 'age'">
+                    <button @click.stop="tempSorts.age = tempSorts.age === 'age_asc' ? null : 'age_asc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.age === 'age_asc' ? 'text-emerald-600 bg-emerald-50 font-medium' : 'text-slate-700'">
+                      Youngest First <div v-if="tempSorts.age === 'age_asc'" class="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                    </button>
+                    <button @click.stop="tempSorts.age = tempSorts.age === 'age_desc' ? null : 'age_desc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.age === 'age_desc' ? 'text-emerald-600 bg-emerald-50 font-medium' : 'text-slate-700'">
+                      Oldest First <div v-if="tempSorts.age === 'age_desc'" class="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                    </button>
+                  </template>
+
+                  <!-- Name Options -->
+                  <template v-if="activePopover === 'name'">
+                    <button @click.stop="tempSorts.name = tempSorts.name === 'name_asc' ? null : 'name_asc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.name === 'name_asc' ? 'text-purple-600 bg-purple-50 font-medium' : 'text-slate-700'">
+                      Name (A-Z) <div v-if="tempSorts.name === 'name_asc'" class="w-1.5 h-1.5 rounded-full bg-purple-600"></div>
+                    </button>
+                    <button @click.stop="tempSorts.name = tempSorts.name === 'name_desc' ? null : 'name_desc'" class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors" :class="tempSorts.name === 'name_desc' ? 'text-purple-600 bg-purple-50 font-medium' : 'text-slate-700'">
+                      Name (Z-A) <div v-if="tempSorts.name === 'name_desc'" class="w-1.5 h-1.5 rounded-full bg-purple-600"></div>
+                    </button>
+                  </template>
                 </div>
               </div>
-              <div class="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                <button @click="clearFilter" class="flex-1 px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">Clear</button>
-                <button @click="applyFilter" class="flex-1 px-3 py-2 text-sm font-medium text-white bg-[#0052ff] rounded-lg hover:bg-blue-700 transition-colors">Apply</button>
+
+              <!-- Global Apply Button -->
+              <div class="p-2 border-t border-slate-100 bg-white">
+                <button @click.stop="applyFilter" class="w-full py-1.5 text-sm font-medium text-white bg-[#0052ff] hover:bg-blue-700 rounded-md transition-colors shadow-sm">
+                  Apply Filters
+                </button>
               </div>
             </div>
           </div>
@@ -156,6 +285,39 @@ const handleNewPatient = () => {
             New Patient
           </button>
         </div>
+      </div>
+
+      <!-- Advanced Filter Chips Bar -->
+      <div v-if="hasDateFilter || hasGenderFilter || hasAgeFilter || hasNameFilter" class="flex flex-wrap items-center gap-2 mb-6">
+        <!-- Active Chips -->
+        <div v-if="hasDateFilter" class="relative">
+          <div class="flex items-center bg-blue-50 border border-blue-100 rounded-full pl-3 pr-1 py-1 shadow-sm">
+            <span class="text-xs font-medium text-blue-700 cursor-pointer" @click.stop="openSub('date')">Date: <span class="text-blue-900">{{ dateChipText }}</span></span>
+            <button @click.stop="removeFilter('date')" class="ml-1.5 p-1 rounded-full text-blue-400 hover:text-blue-600 hover:bg-blue-100 transition-colors"><X class="w-3 h-3"/></button>
+          </div>
+        </div>
+
+        <div v-if="hasGenderFilter" class="relative">
+          <div class="flex items-center bg-rose-50 border border-rose-100 rounded-full pl-3 pr-1 py-1 shadow-sm">
+            <span class="text-xs font-medium text-rose-700 cursor-pointer" @click.stop="openSub('gender')">Gender: <span class="text-rose-900">{{ filterGender }}</span></span>
+            <button @click.stop="removeFilter('gender')" class="ml-1.5 p-1 rounded-full text-rose-400 hover:text-rose-600 hover:bg-rose-100 transition-colors"><X class="w-3 h-3"/></button>
+          </div>
+        </div>
+
+        <div v-if="hasAgeFilter" class="relative">
+          <div class="flex items-center bg-emerald-50 border border-emerald-100 rounded-full pl-3 pr-1 py-1 shadow-sm">
+            <span class="text-xs font-medium text-emerald-700 cursor-pointer" @click.stop="openSub('age')">Age: <span class="text-emerald-900">{{ ageChipText }}</span></span>
+            <button @click.stop="removeFilter('age')" class="ml-1.5 p-1 rounded-full text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 transition-colors"><X class="w-3 h-3"/></button>
+          </div>
+        </div>
+
+        <div v-if="hasNameFilter" class="relative">
+          <div class="flex items-center bg-purple-50 border border-purple-100 rounded-full pl-3 pr-1 py-1 shadow-sm">
+            <span class="text-xs font-medium text-purple-700 cursor-pointer" @click.stop="openSub('name')">Sort: <span class="text-purple-900">{{ nameChipText }}</span></span>
+            <button @click.stop="removeFilter('name')" class="ml-1.5 p-1 rounded-full text-purple-400 hover:text-purple-600 hover:bg-purple-100 transition-colors"><X class="w-3 h-3"/></button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Table Card -->
@@ -181,7 +343,7 @@ const handleNewPatient = () => {
                   <div class="flex flex-col items-center justify-center">
                     <User class="w-12 h-12 text-slate-300 mb-3" />
                     <p class="text-base font-medium text-slate-600">No patients found</p>
-                    <p class="text-sm text-slate-400 mt-1">Try adjusting your search or filter</p>
+                    <p class="text-sm text-slate-400 mt-1">Try adjusting your search or filters</p>
                   </div>
                 </td>
               </tr>

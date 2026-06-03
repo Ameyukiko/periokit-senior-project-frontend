@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Activity } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, type WritableComputedRef } from 'vue'
 import type { PatientInfo, ChartSummary, PdBreakdown } from '@/domain/chart/chart.types'
 
 const props = defineProps<{
@@ -8,6 +8,16 @@ const props = defineProps<{
   summary: ChartSummary
   showValidation?: boolean
 }>()
+
+const emit = defineEmits<{
+  'update:patientInfo': [value: PatientInfo]
+}>()
+
+// Create writable computed refs for each field that emit updates
+const localPatientInfo = computed({
+  get: () => props.patientInfo,
+  set: (value: PatientInfo) => emit('update:patientInfo', value)
+}) as WritableComputedRef<PatientInfo>
 
 // Sort PD breakdown by depth (5, 6, 7, ...)
 const sortedPdBreakdown = computed(() => {
@@ -26,11 +36,11 @@ const sortedPdBreakdown = computed(() => {
         <div class="flex items-center gap-2">
           <span class="text-[16px] font-bold text-slate-800">HN-</span>
           <input
-            v-model="props.patientInfo.hn"
+            v-model="localPatientInfo.hn"
             type="text"
             :class="[
               'bg-slate-50 rounded-md px-2 py-1 text-[14px] w-40 outline-none transition-all',
-              props.showValidation && !props.patientInfo.hn
+              props.showValidation && !localPatientInfo.hn
                 ? 'border-2 border-red-400 bg-red-50 placeholder-red-300'
                 : 'border border-slate-300 focus:ring-2 focus:ring-blue-100'
             ]"
@@ -42,29 +52,29 @@ const sortedPdBreakdown = computed(() => {
 
       <div class="flex justify-center gap-8 mb-5">
         <label class="flex items-center gap-2 cursor-pointer group">
-          <input 
-            type="checkbox" 
-            :checked="props.patientInfo.visitPhase === 'before_hygienic'"
-            @change="props.patientInfo.visitPhase = 'before_hygienic'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          <input
+            type="checkbox"
+            :checked="localPatientInfo.visitPhase === 'before_hygienic'"
+            @change="localPatientInfo.visitPhase = 'before_hygienic'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Before hygienic phase</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer group">
-          <input 
-            type="checkbox" 
-            :checked="props.patientInfo.visitPhase === 'after_hygienic'"
-            @change="props.patientInfo.visitPhase = 'after_hygienic'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          <input
+            type="checkbox"
+            :checked="localPatientInfo.visitPhase === 'after_hygienic'"
+            @change="localPatientInfo.visitPhase = 'after_hygienic'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After hygienic phase</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer group">
-          <input 
-            type="checkbox" 
-            :checked="props.patientInfo.visitPhase === 'after_corrective'"
-            @change="props.patientInfo.visitPhase = 'after_corrective'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" 
+          <input
+            type="checkbox"
+            :checked="localPatientInfo.visitPhase === 'after_corrective'"
+            @change="localPatientInfo.visitPhase = 'after_corrective'"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After corrective phase</span>
         </label>
@@ -74,26 +84,26 @@ const sortedPdBreakdown = computed(() => {
         <!-- Row 3 -->
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Date:</span>
-          <input v-model="props.patientInfo.date" type="date" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.date" type="date" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-6 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor:</span>
-          <input v-model="props.patientInfo.doctor" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.doctor" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor ID:</span>
-          <input v-model="props.patientInfo.studentId" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.studentId" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
 
         <!-- Row 4 -->
         <div class="col-span-4 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Patient:</span>
           <input
-            v-model="props.patientInfo.patientName"
+            v-model="localPatientInfo.patientName"
             type="text"
             :class="[
               'rounded-md px-2 py-1 text-[14px] w-full outline-none transition-all',
-              props.showValidation && !props.patientInfo.patientName
+              props.showValidation && !localPatientInfo.patientName
                 ? 'bg-red-50 border-2 border-red-400 placeholder-red-300'
                 : 'bg-slate-50 border border-slate-300 focus:ring-2 focus:ring-blue-100'
             ]"
@@ -101,22 +111,22 @@ const sortedPdBreakdown = computed(() => {
         </div>
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Age:</span>
-          <input v-model="props.patientInfo.age" type="number" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.age" type="number" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
           <span class="text-[14px] text-slate-800 whitespace-nowrap shrink-0">years old</span>
         </div>
         <div class="col-span-2 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Nationality:</span>
-          <input v-model="props.patientInfo.nationality" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.nationality" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
         </div>
         <div class="col-span-3 flex items-center gap-2 justify-end">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Gender:</span>
           <div class="flex gap-3">
             <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="props.patientInfo.gender === 'Male'" @change="props.patientInfo.gender = 'Male'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Male'" @change="localPatientInfo.gender = 'Male'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Male</span>
             </label>
             <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="props.patientInfo.gender === 'Female'" @change="props.patientInfo.gender = 'Female'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Female'" @change="localPatientInfo.gender = 'Female'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Female</span>
             </label>
           </div>

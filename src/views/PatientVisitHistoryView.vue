@@ -5,7 +5,7 @@ import { patientApi, type Patient } from '../services/api/patient.api'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { useVisitStore } from '../stores/visit'
 import Navbar from '../components/layout/Navbar.vue'
-import { Search, Calendar, ChevronLeft, ChevronRight, Info, X } from 'lucide-vue-next'
+import { Search, Plus, ListFilter, Calendar, ChevronLeft, ChevronRight, X, AlertCircle } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,41 +14,34 @@ const visitStore = useVisitStore()
 const patientId = route.params.patientId as string
 const patient = ref<Patient | null>(null)
 const visits = ref<Visit[]>([])
-const loading = ref(true)
+const isLoading = ref(true)
+
+// UI States
 const searchInput = ref('')
-
 const compareAnchorVisitId = ref<string | null>(null)
+const page = ref(1)
+const pageSize = ref(10)
 
-onMounted(async () => {
+const fetchPatientAndVisits = async () => {
+  isLoading.value = true
   try {
-    const [patientData, visitData] = await Promise.all([
+    const [patientData, visitsData] = await Promise.all([
       patientApi.getById(patientId),
       visitApi.getByPatient(patientId)
     ])
     patient.value = patientData
     // Sort visits by date descending
-    visits.value = visitData.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())
+    visits.value = visitsData.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())
   } catch (error) {
-    console.error('Failed to fetch patient history:', error)
+    console.error('Failed to fetch patient data:', error)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
-})
-
-const filteredVisits = computed(() => {
-  if (!searchInput.value) return visits.value
-  const lowerSearch = searchInput.value.toLowerCase()
-  return visits.value.filter(v => v.doctorName.toLowerCase().includes(lowerSearch) || v.visitDate.includes(lowerSearch))
-})
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  }).format(date)
 }
+
+onMounted(() => {
+  fetchPatientAndVisits()
+})
 
 const openChart = (visitId: string) => {
   router.push({
@@ -58,11 +51,18 @@ const openChart = (visitId: string) => {
 }
 
 const handleCompare = (visitId: string) => {
+  const visit = visits.value.find(v => v.id === visitId)
+  if (!visit?.hasChart) return
+
   if (!compareAnchorVisitId.value) {
     // First time: set anchor visit
     compareAnchorVisitId.value = visitId
   } else {
-    // Second time: navigate to compare
+    // Second time: navigate to compare (if it's not the same visit)
+    if (compareAnchorVisitId.value === visitId) {
+      compareAnchorVisitId.value = null
+      return
+    }
     router.push({
       name: 'compare-charts',
       query: {
@@ -78,151 +78,217 @@ const cancelCompare = () => {
   compareAnchorVisitId.value = null
 }
 
-const getVisitNumber = (id: string | null) => {
-  if (!id) return ''
-  const index = visits.value.findIndex(v => v.id === id)
-  if (index === -1) return ''
-  return visits.value.length - index
-}
+const today = () => new Date().toISOString().split('T')[0]
 
 const createNewVisit = async () => {
-  const today = new Date().toISOString().split('T')[0]
-  const visit = await visitStore.createVisit(patientId, today, 'before_hygienic')
+  const visit = await visitStore.createVisit(patientId, today(), 'before_hygienic')
   router.push({ name: 'chart', query: { patientId, visitId: visit.id } })
 }
 
+const formatDateThai = (dateString: string) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  const thaiMonths = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ]
+  const day = date.getDate()
+  const month = thaiMonths[date.getMonth()]
+  const year = date.getFullYear() + 543
+  return `${day} ${month} ${year}`
+}
+
+const totalPages = computed(() => Math.ceil(visits.value.length / pageSize.value))
+const paginatedVisits = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return visits.value.slice(start, end)
+})
+
+const goBack = () => {
+  router.push({ name: 'my-patients' })
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f3f4f6] font-sans">
+  <div class="min-h-screen bg-[#f1f5f9] font-sans">
     <Navbar />
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Breadcrumb / Header Area -->
-      <div class="mb-6">
-        <div class="text-sm text-gray-500 mb-2 flex items-center gap-2">
-          <router-link to="/patients" class="hover:text-blue-600 transition-colors">My Patients</router-link>
-          <ChevronRight class="w-4 h-4" />
-          <span class="text-gray-700">Patient History</span>
+      <div class="flex flex-col md:flex-row md:items-start justify-between mb-8 gap-4">
+        <div>
+          <button @click="goBack" class="text-slate-500 hover:text-[#0052ff] font-medium text-sm transition-colors mb-1">
+            My Patients
+          </button>
+          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            Patient: {{ patient?.firstName }} {{ patient?.lastName }} 
+            <span class="text-slate-500 text-xl font-medium">({{ patient?.visitCount || visits.length }} visits)</span>
+          </h1>
         </div>
-        
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">Patient</h1>
-            <p class="text-gray-600 mt-1" v-if="patient">
-              Patient: {{ patient.firstName }} {{ patient.lastName }} ({{ visits.length }} visits)
-            </p>
-          </div>
-          
+
+        <div class="flex flex-wrap items-center gap-3">
           <!-- Search -->
-          <div class="relative w-full sm:w-80">
+          <div class="relative w-full md:w-80">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search class="h-5 w-5 text-gray-400" />
+              <Search class="h-5 w-5 text-slate-400" />
             </div>
             <input
               v-model="searchInput"
               type="text"
-              class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-full leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-shadow"
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-full bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:border-transparent text-sm shadow-sm transition-all"
               placeholder="Search . . ."
             />
           </div>
+
+          <!-- Filter Button -->
+          <button
+            class="px-4 py-2.5 border border-slate-200 rounded-full text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <ListFilter class="w-4 h-4" />
+            <span>Filter</span>
+            <Plus class="w-4 h-4" />
+          </button>
+
+          <!-- New Visit Button -->
+          <button
+            @click="createNewVisit"
+            class="px-4 py-2.5 bg-[#0052ff] text-white rounded-full text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0"
+          >
+            <Plus class="w-4 h-4" />
+            New Visit
+          </button>
         </div>
       </div>
 
       <!-- Compare Mode Banner -->
-      <div v-if="compareAnchorVisitId" class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300">
-        <div class="flex items-center gap-3 text-blue-800">
-          <Info class="w-5 h-5 text-blue-600" />
-          <span class="font-medium">Selecting Visit #{{ getVisitNumber(compareAnchorVisitId) }} for Comparison — Select a 2nd Visit</span>
+      <div v-if="compareAnchorVisitId" class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+        <div class="flex items-center gap-3">
+          <AlertCircle class="w-5 h-5 text-[#0052ff]" />
+          <p class="text-blue-900 font-medium text-sm">
+            กำลังเลือก Visit #1 เพื่อ Compare — เลือก Visit ที่ 2
+          </p>
         </div>
-        <button @click="cancelCompare" class="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition-colors">
+        <button @click="cancelCompare" class="text-slate-500 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-blue-100">
           <X class="w-5 h-5" />
         </button>
       </div>
 
-      <!-- Main Content Card -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative">
-        <div class="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
-          <h2 class="text-lg font-semibold text-gray-800">Visit Timeline</h2>
-          <button @click="createNewVisit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
-            + New Visit
-          </button>
-        </div>
-
-        <div v-if="loading" class="py-12 text-center text-gray-500">
-          Loading visit history...
+      <!-- Visit Timeline Card -->
+      <div class="bg-white shadow-sm rounded-2xl border border-slate-100 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100">
+          <h2 class="text-lg font-bold text-slate-800">Visit Timeline</h2>
         </div>
         
-        <div v-else-if="filteredVisits.length === 0" class="py-12 text-center text-gray-500">
-          No visits found.
-        </div>
-
-        <div v-else class="space-y-4">
+        <div class="p-6 space-y-4">
+          <div v-if="isLoading" class="text-center py-8 text-slate-500">
+            Loading visits...
+          </div>
+          <div v-else-if="visits.length === 0" class="text-center py-12 text-slate-500">
+            No visits recorded yet.
+          </div>
+          
           <div 
-            v-for="(visit, index) in filteredVisits" 
+            v-else
+            v-for="(visit, index) in paginatedVisits" 
             :key="visit.id"
-            class="p-5 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200"
+            class="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl border transition-all duration-200"
             :class="[
               compareAnchorVisitId === visit.id 
-                ? 'border-blue-500 bg-blue-50/50 shadow-md ring-2 ring-blue-500 ring-opacity-20' 
-                : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                ? 'border-[#0052ff] ring-1 ring-[#0052ff] bg-blue-50/30' 
+                : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
             ]"
           >
-            <!-- Left Info -->
-            <div class="flex items-start gap-4">
-              <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">
-                {{ visits.length - index }}
+            <!-- Visit Info -->
+            <div class="flex items-start gap-4 mb-4 sm:mb-0">
+              <div class="w-12 h-12 rounded-full bg-[#eef4ff] text-[#0052ff] flex items-center justify-center font-bold text-lg shrink-0">
+                {{ visits.length - ((page - 1) * pageSize) - index }}
               </div>
               <div>
-                <h3 class="font-bold text-gray-900 text-lg">Visit #{{ visits.length - index }}</h3>
-                <div class="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                  <Calendar class="w-4 h-4" />
-                  <span>{{ formatDate(visit.visitDate) }}</span>
-                  <span class="text-gray-300">•</span>
-                  <span>by {{ visit.doctorName || 'Dr. Somchai' }}</span>
+                <div class="flex items-center gap-3 mb-1.5">
+                  <h3 class="text-base font-bold text-slate-900">
+                    Visit #{{ visits.length - ((page - 1) * pageSize) - index }}
+                  </h3>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium border"
+                    :class="visit.phase.toLowerCase().includes('after') ? 'bg-blue-50 text-[#0052ff] border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'"
+                  >
+                    {{ visit.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-3 text-sm text-slate-500">
+                  <div class="flex items-center gap-1.5">
+                    <Calendar class="w-4 h-4" />
+                    {{ formatDateThai(visit.visitDate) }}
+                  </div>
+                  <span>•</span>
+                  <span>by {{ visit.doctorName || 'Unknown Doctor' }}</span>
                 </div>
               </div>
             </div>
             
             <!-- Actions -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 sm:ml-4">
               <button 
                 @click="openChart(visit.id)"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                class="px-5 py-2 bg-[#0052ff] text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors"
               >
                 Chart
               </button>
               
-              <div class="relative group">
+              <div class="relative group flex">
                 <button 
                   @click="handleCompare(visit.id)"
                   :disabled="!visit.hasChart"
-                  class="px-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-medium transition-colors"
-                  :class="[
-                    !visit.hasChart 
-                      ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400 border-gray-200' 
-                      : 'hover:bg-blue-50 bg-white'
-                  ]"
+                  class="px-5 py-2 bg-white text-[#0052ff] border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-not-allowed uppercase text-[11px] tracking-wider"
+                  :class="{ 'ring-2 ring-[#0052ff] ring-offset-1': compareAnchorVisitId === visit.id }"
                 >
-                  {{ compareAnchorVisitId === visit.id ? 'Selected' : 'Compare' }}
+                  {{ compareAnchorVisitId === visit.id ? 'Cancel' : 'Compare' }}
                 </button>
-                <div v-if="!visit.hasChart" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  No chart available
+                <div v-if="!visit.hasChart" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  ยังไม่มี chart
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
-        <!-- Pagination Mockup for aesthetics -->
-        <div v-if="filteredVisits.length > 0" class="mt-8 flex justify-center items-center gap-2">
-          <button class="px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
-            <ChevronLeft class="w-4 h-4"/> Prev
-          </button>
-          <button class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium">1</button>
-          <button class="px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
-            Next <ChevronRight class="w-4 h-4"/>
-          </button>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 0" class="bg-white px-6 py-4 flex items-center justify-between border-t border-slate-100">
+          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-end">
+            <nav class="relative z-0 inline-flex items-center gap-2" aria-label="Pagination">
+              <button
+                @click="page > 1 && page--"
+                :disabled="page === 1"
+                class="relative inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm gap-1"
+              >
+                <ChevronLeft class="h-4 w-4" /> Previous
+              </button>
+              
+              <div class="flex items-center gap-1 mx-2">
+                <button
+                  v-for="p in totalPages"
+                  :key="p"
+                  @click="page !== p && (page = p)"
+                  class="relative inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold transition-colors"
+                  :class="[
+                    p === page 
+                      ? 'bg-[#0052ff] text-white shadow-sm' 
+                      : 'bg-transparent text-slate-600 hover:bg-slate-100'
+                  ]"
+                >
+                  {{ p }}
+                </button>
+              </div>
+
+              <button
+                @click="page < totalPages && page++"
+                :disabled="page === totalPages"
+                class="relative inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm gap-1"
+              >
+                Next <ChevronRight class="h-4 w-4" />
+              </button>
+            </nav>
+          </div>
         </div>
       </div>
     </main>

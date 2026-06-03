@@ -8,11 +8,11 @@ export const useVisitStore = defineStore('visit', () => {
     activeVisitId.value = visitId
   }
 
-  async function createVisit(patientId: string, visitDate: string, type: string) {
+  async function createVisit(patientId: string, visitDate: string, phase: string) {
     // Mock implementation for creating a visit since backend may not be ready
     const newVisitId = `visit-${Date.now()}`
     activeVisitId.value = newVisitId
-    return { id: newVisitId, patientId, visitDate, type }
+    return { id: newVisitId, patientId, visitDate, phase }
   }
 
   const visits = ref<any[]>([])

@@ -2,6 +2,17 @@ import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
 
 // Types
+export interface Visit {
+  id: string
+  patientId: string
+  visitDate: string
+  phase: string
+  doctorName: string | null
+  studentId: number | null
+  status: string
+  hasChart: boolean
+}
+
 export interface Patient {
   id: string
   hn: string
@@ -9,7 +20,10 @@ export interface Patient {
   lastName: string
   age: number | null
   gender: string | null
+  nationality?: string | null
   lastVisitDate: string | null
+  visitCount?: number
+  visits?: Visit[]
 }
 
 export interface PatientListResponse {
@@ -30,6 +44,7 @@ const MY_PATIENTS = gql`
         lastName
         age
         gender
+        nationality
         lastVisitDate
       }
       total
@@ -49,7 +64,19 @@ const PATIENT_BY_ID = gql`
       lastName
       age
       gender
+      nationality
+      visitCount
       lastVisitDate
+      visits {
+        id
+        patientId
+        visitDate
+        phase
+        doctorName
+        studentId
+        status
+        hasChart
+      }
     }
   }
 `
@@ -124,7 +151,8 @@ export const patientApi = {
     const result = data?.myPatients
 
     // Client-side filtering for gender and age (backend doesn't support these yet)
-    let filteredItems = result?.items || []
+    // Clone to avoid read-only array from Apollo
+    let filteredItems = [...(result?.items || [])]
 
     if (gender) {
       filteredItems = filteredItems.filter((p: Patient) => p.gender === gender)
@@ -146,7 +174,8 @@ export const patientApi = {
       sorts = JSON.parse(sortsStr)
     } catch (e) {}
 
-    filteredItems.sort((a: Patient, b: Patient) => {
+    // Clone again before sort to avoid mutating read-only array
+    const sortedItems = [...filteredItems].sort((a: Patient, b: Patient) => {
       // Date Priority
       if (sorts.date) {
         const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
@@ -176,11 +205,11 @@ export const patientApi = {
     })
 
     return {
-      items: filteredItems,
-      total: filteredItems.length,
+      items: sortedItems,
+      total: sortedItems.length,
       page: result?.page ?? page,
       pageSize: result?.pageSize ?? pageSize,
-      totalPages: Math.ceil(filteredItems.length / pageSize),
+      totalPages: Math.ceil(sortedItems.length / pageSize),
     }
   },
 

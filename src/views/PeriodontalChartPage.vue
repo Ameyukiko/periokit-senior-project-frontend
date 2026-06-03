@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import PatientChartHeader from '@/components/chart/PatientChartHeader.vue'
 import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
+import PatientDrawer from '@/components/patients/PatientDrawer.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
@@ -23,6 +24,8 @@ chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
 const visitStore = useVisitStore()
 const notifStore = useNotificationStore()
+
+const drawerOpen = ref(false)
 
 // Read visitId from URL query params
 const urlVisitId = ref<string | null>(null)
@@ -184,7 +187,8 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
 
 <template>
   <div class="min-h-screen bg-[#f1f5f9] font-sans text-[#1e293b]">
-    <Navbar />
+    <Navbar @toggle-drawer="drawerOpen = !drawerOpen" />
+    <PatientDrawer v-model:open="drawerOpen" />
 
     <div class="bg-white border-b border-slate-200 py-1.5 sticky top-16 z-40">
       <div class="max-w-400 mx-auto px-4 flex items-center justify-center">
@@ -239,10 +243,10 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
           </button>
           <button
             @click="handleSaveClick"
-            :disabled="isSaving || !visitStore.activeVisitId"
+            :disabled="isSaving"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
             :class="[
-              isSaving || !visitStore.activeVisitId
+              isSaving
                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             ]"
@@ -300,7 +304,12 @@ const handleChartNameKeydown = (e: KeyboardEvent) => {
             </button>
           </div>
 
-          <PatientChartHeader :patient-info="patientInfo" :summary="summary" :show-validation="showValidation" />
+          <PatientChartHeader
+  :patient-info="patientInfo"
+  :summary="summary"
+  :show-validation="showValidation"
+  @update:patient-info="chartStore.updatePatientInfo"
+/>
 
           <PeriodontalChartGrid
             :chart-data="teethData"
