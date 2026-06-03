@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import { ShieldCheck, BarChart3, Users, Settings } from "lucide-vue-next";
 
 import Navbar from "../components/layout/Navbar.vue";
+import PatientDrawer from "../components/patients/VisitListPanel.vue";
+
+const drawerOpen = ref(false);
 </script>
 
 <template>
@@ -42,7 +46,8 @@ import Navbar from "../components/layout/Navbar.vue";
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <Navbar />
+      <Navbar @toggle-drawer="drawerOpen = !drawerOpen" />
+      <PatientDrawer v-model:open="drawerOpen" />
 
       <main class="p-8">
         <header class="mb-10">

@@ -155,7 +155,12 @@ export const patientApi = {
     let filteredItems = [...(result?.items || [])]
 
     if (gender) {
-      filteredItems = filteredItems.filter((p: Patient) => p.gender === gender)
+      // Backend stores gender as lowercase enum (male/female/other),
+      // but filter options use capitalized labels — compare case-insensitively.
+      const genderLower = gender.toLowerCase()
+      filteredItems = filteredItems.filter(
+        (p: Patient) => (p.gender ?? '').toLowerCase() === genderLower
+      )
     }
 
     if (minAge !== null || maxAge !== null) {
