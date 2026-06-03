@@ -19,6 +19,24 @@ const localPatientInfo = computed({
   set: (value: PatientInfo) => emit('update:patientInfo', value)
 }) as WritableComputedRef<PatientInfo>
 
+// Method to update visit phase (creates new object to avoid frozen object error)
+const updateVisitPhase = (phase: string, checked: boolean) => {
+	// For checkbox-style single selection: if checked, set the phase; if unchecked, clear it
+	emit('update:patientInfo', {
+		...props.patientInfo,
+		visitPhase: checked ? phase : ''
+	} as PatientInfo)
+}
+
+// Method to update gender (creates new object to avoid frozen object error)
+const updateGender = (gender: string, checked: boolean) => {
+	// For checkbox-style single selection: if checked, set the gender; if unchecked, clear it
+	emit('update:patientInfo', {
+		...props.patientInfo,
+		gender: checked ? gender : ''
+	} as PatientInfo)
+}
+
 // Sort PD breakdown by depth (5, 6, 7, ...)
 const sortedPdBreakdown = computed(() => {
   const breakdown: PdBreakdown = props.summary.pdBreakdown || {}
@@ -55,8 +73,8 @@ const sortedPdBreakdown = computed(() => {
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'before_hygienic'"
-            @change="localPatientInfo.visitPhase = 'before_hygienic'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
+            @change="updateVisitPhase('before_hygienic', ($event.target as HTMLInputElement).checked)"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Before hygienic phase</span>
         </label>
@@ -64,8 +82,8 @@ const sortedPdBreakdown = computed(() => {
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'after_hygienic'"
-            @change="localPatientInfo.visitPhase = 'after_hygienic'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
+            @change="updateVisitPhase('after_hygienic', ($event.target as HTMLInputElement).checked)"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After hygienic phase</span>
         </label>
@@ -73,8 +91,8 @@ const sortedPdBreakdown = computed(() => {
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'after_corrective'"
-            @change="localPatientInfo.visitPhase = 'after_corrective'"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100"
+            @change="updateVisitPhase('after_corrective', ($event.target as HTMLInputElement).checked)"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After corrective phase</span>
         </label>
@@ -122,11 +140,11 @@ const sortedPdBreakdown = computed(() => {
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Gender:</span>
           <div class="flex gap-3">
             <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="localPatientInfo.gender === 'Male'" @change="localPatientInfo.gender = 'Male'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Male'" @change="updateGender('Male', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Male</span>
             </label>
             <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="localPatientInfo.gender === 'Female'" @change="localPatientInfo.gender = 'Female'" class="w-4 h-4 text-[#0052ff] border-slate-600 rounded-sm focus:ring-blue-100" />
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Female'" @change="updateGender('Female', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Female</span>
             </label>
           </div>
@@ -195,7 +213,7 @@ const sortedPdBreakdown = computed(() => {
         <div v-if="props.summary.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
           <span class="text-[11px] font-black text-teal-600">
-            {{ props.summary.keratinizedLowCount }} 
+            {{ props.summary.keratinizedLowCount }}
           </span>
         </div>
 

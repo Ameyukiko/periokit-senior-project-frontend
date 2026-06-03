@@ -18,6 +18,7 @@ const SAVE_CHART = gql`
         date
         doctor
         studentId
+        visitPhase
       }
     }
   }
@@ -41,6 +42,7 @@ const CHART_BY_VISIT = gql`
         date
         doctor
         studentId
+        visitPhase
       }
     }
   }
