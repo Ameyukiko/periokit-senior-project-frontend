@@ -16,6 +16,7 @@ import { useNotificationStore } from '@/stores/notification'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import draggable from 'vuedraggable'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,22 @@ const notifStore = useNotificationStore()
 
 const drawerOpen = ref(false)
 const urlVisitId = ref<string | null>(null)
+
+// Put the page into "new visit" draft mode. The backend has no standalone
+// create-visit mutation: a visit is persisted only when its chart is saved
+// (saveChart with no visitId). So a new visit is a local draft — a blank chart
+// that keeps the current patient's identity — until the user hits Save.
+async function enterNewVisitState() {
+  const patientId = chartStore.currentPatientId || (route.query.patientId as string | undefined)
+  const today = new Date().toISOString().split('T')[0]
+  chartStore.resetChart()
+  if (patientId) {
+    await chartStore.loadPatientById(patientId)
+    chartStore.patientInfo.date = today
+    chartStore.patientInfo.visitPhase = 'before_hygienic'
+  }
+  visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
+}
 
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
@@ -41,7 +58,7 @@ onMounted(async () => {
       if (visitId !== 'new') {
         await chartStore.loadFromBackend(visitId)
       } else {
-        chartStore.resetChart()
+        await enterNewVisitState()
       }
     } catch (error) {
       console.error('Failed to load chart:', error)
@@ -67,7 +84,7 @@ onMounted(async () => {
         console.error('Failed to load chart:', error)
       }
     } else {
-      chartStore.resetChart()
+      await enterNewVisitState()
     }
   } else {
     visitStore.setActiveVisit(null)
@@ -87,7 +104,7 @@ watch(() => route.query.visitId, async (newVisitId) => {
         console.error('Failed to load chart:', error)
       }
     } else {
-      chartStore.resetChart()
+      await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
     visitStore.setActiveVisit(null)
@@ -137,13 +154,14 @@ const handleSwitchVisit = async (visitId: string) => {
 
   visitStore.setActiveVisit(visitId)
 
-  // Update URL without page refresh
   router.replace({
     name: 'chart',
     query: { ...route.query, visitId }
   })
 
-  // Load chart for this visit
+  // The route watcher handles 'new' (draft) tabs — skip loadFromBackend for them.
+  if (visitId === 'new') return
+
   try {
     await chartStore.loadFromBackend(visitId)
   } catch (error) {
@@ -176,7 +194,9 @@ const handleCloseVisit = async (visitId: string) => {
   }
 }
 
-// Create a new visit for current patient
+// Start a new visit for the current patient. The visit is only persisted on
+// the backend once its chart is saved (saveChart with no visitId creates it),
+// so here we just enter the local 'new' draft state.
 const handleNewVisit = async () => {
   const patientId = currentPatientId.value || route.query.patientId as string | undefined
 
@@ -185,24 +205,16 @@ const handleNewVisit = async () => {
     return
   }
 
-  try {
-    // Create new visit for this patient
-    const today = new Date().toISOString().split('T')[0]
-    const newVisit = await visitStore.createVisit(patientId, today, 'before_hygienic')
-
-    // Reset chart for new visit
-    chartStore.resetChart()
-    await chartStore.loadPatientById(patientId)
-
-    // Update URL to new visit
-    router.replace({
-      name: 'chart',
-      query: { patientId, visitId: newVisit.id }
-    })
-  } catch (error) {
-    console.error('Failed to create new visit:', error)
-    notifStore.error('Failed to create new visit')
+  // Already drafting a new visit — just give a fresh blank chart.
+  if (route.query.visitId === 'new') {
+    await enterNewVisitState()
+    return
   }
+
+  // Navigating to the 'new' sentinel triggers the route watcher, which puts the
+  // page into draft mode (blank chart, same patient).
+  visitStore.setActiveVisit('new')
+  router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
 }
 
 const isSaving = ref(false)
@@ -352,30 +364,41 @@ const isNewPatientMode = computed(() => {
               </template>
 
               <template v-else>
-                <div
-                  v-for="visit in visits"
-                  :key="visit.id"
-                  class="relative group"
-                  @click="handleSwitchVisit(visit.id)"
+                <draggable
+                  v-model="visits"
+                  group="visits"
+                  item-key="id"
+                  class="flex items-center gap-0"
+                  ghost-class="opacity-30"
+                  drag-class="cursor-grabbing"
+                  animation="200"
                 >
-                  <div
-                    class="px-4 py-1.5 rounded-t-xl border-t border-l border-r text-[10px] font-black flex items-center gap-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] -mb-px transition-all cursor-pointer"
-                    :class="visit.id === activeVisitId
-                      ? 'bg-white border-slate-200 text-[#0052ff]'
-                      : 'bg-slate-100 border-transparent text-slate-400 hover:text-slate-600'"
-                  >
-                    <span class="max-w-24 truncate">Visit #{{ visit.visitNumber || '-' }}</span>
-                    <span class="text-[9px] text-slate-400 font-normal">{{ formatDate(visit.visitDate) }}</span>
-                    <span v-if="!visit.hasChart" class="text-[8px] bg-amber-100 text-amber-600 px-1 rounded">Empty</span>
-                    <button
-                      class="ml-0.5 -mr-1 p-0.5 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                      title="Close tab"
-                      @click.stop="handleCloseVisit(visit.id)"
+                  <template #item="{ element: visit }">
+                    <div
+                      class="relative group"
+                      @click="handleSwitchVisit(visit.id)"
                     >
-                      <X class="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
+                      <div
+                        class="px-4 py-1.5 rounded-t-xl border-t border-l border-r text-[10px] font-black flex items-center gap-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] -mb-px transition-all cursor-grab active:cursor-grabbing"
+                        :class="visit.id === activeVisitId
+                          ? 'bg-white border-slate-200 text-[#0052ff]'
+                          : 'bg-slate-100 border-transparent text-slate-400 hover:text-slate-600'"
+                      >
+                        <span class="max-w-24 truncate">{{ visit.id === 'new' ? 'New Visit' : `Visit #${visit.visitNumber || '-'}` }}</span>
+                        <span class="text-[9px] text-slate-400 font-normal">{{ formatDate(visit.visitDate) }}</span>
+                        <span v-if="visit.id === 'new'" class="text-[8px] bg-blue-100 text-blue-600 px-1 rounded">Draft</span>
+                        <span v-else-if="!visit.hasChart" class="text-[8px] bg-amber-100 text-amber-600 px-1 rounded">Empty</span>
+                        <button
+                          class="ml-0.5 -mr-1 p-0.5 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                          title="Close tab"
+                          @click.stop="handleCloseVisit(visit.id)"
+                        >
+                          <X class="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                </draggable>
               </template>
 
               <button

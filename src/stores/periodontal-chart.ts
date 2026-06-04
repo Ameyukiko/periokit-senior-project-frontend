@@ -237,6 +237,12 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
 
         this.isDirty = false
         notifStore.success('Chart saved successfully')
+
+        // Refresh the visit tab strip so a newly-created visit (or the
+        // hasChart flag of an existing one) shows up immediately.
+        if (this.currentPatientId) {
+          await visitStore.loadVisits(this.currentPatientId)
+        }
       } catch (err) {
         console.error('Save chart error:', err)
         notifStore.error('Failed to save chart, please try again')

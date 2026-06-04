@@ -28,21 +28,6 @@ const VISITS_BY_PATIENT = gql`
   }
 `
 
-const CREATE_VISIT = gql`
-  mutation CreateVisit($input: CreateVisitInput!) {
-    createVisit(input: $input) {
-      id
-      patientId
-      visitDate
-      phase
-      doctorName
-      studentId
-      status
-      hasChart
-    }
-  }
-`
-
 export const visitApi = {
   async getByPatient(patientId: string): Promise<Visit[]> {
     const { data } = await apolloClient.query({
@@ -60,18 +45,4 @@ export const visitApi = {
     const numberById = new Map(sorted.map((v, i) => [v.id, i + 1]))
     return list.map(v => ({ ...v, visitNumber: numberById.get(v.id) }))
   },
-
-  async createVisit(patientId: string, visitDate: string, phase: string): Promise<Visit> {
-    const { data } = await apolloClient.mutate({
-      mutation: CREATE_VISIT,
-      variables: {
-        input: {
-          patientId,
-          visitDate,
-          phase,
-        },
-      },
-    })
-    return data?.createVisit
-  }
 }
