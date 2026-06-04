@@ -5,6 +5,7 @@ defineProps<{
   isOpen: boolean;
   toothId: string | number | null;
   toothData: any;
+  readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +30,7 @@ const emit = defineEmits<{
       <ToothSidebar
         :toothId="toothId"
         :toothData="toothData"
+        :readonly="readonly"
         @close="emit('close')"
         @update-note="($event) => emit('update-note', $event)"
       />

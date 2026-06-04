@@ -20,6 +20,7 @@ const noteInput = ref('')
 const props = defineProps<{
   toothId: number | string | null
   toothData: any
+  readonly?: boolean
 }>()
 
 const emit = defineEmits(['close', 'update-note'])
@@ -368,7 +369,7 @@ const analysisData = computed(() => {
       <section v-if="toothData.note && !isEditingNote" class="bg-yellow-50/50 border border-yellow-100 rounded-3xl p-6 shadow-sm group relative">
         <div class="flex justify-between items-start mb-3">
           <h3 class="text-[11px] font-black text-yellow-600 uppercase tracking-[0.15em]">Note</h3>
-          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+          <div v-if="!props.readonly" class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
             <button @click="startEditing" class="p-1 hover:bg-yellow-100 rounded text-yellow-600 transition-all" title="Edit note">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
             </button>
@@ -418,7 +419,7 @@ const analysisData = computed(() => {
     <!-- Footer Action -->
     <div class="p-6 bg-white border-t border-slate-50 mt-auto">
       <button
-        v-if="!isEditingNote"
+        v-if="!isEditingNote && !props.readonly"
         @click="startEditing"
         class="w-full py-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl text-[11px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
       >

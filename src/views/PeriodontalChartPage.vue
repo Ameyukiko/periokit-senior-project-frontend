@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, X } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, X, Pencil } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -140,6 +140,9 @@ const {
 
 const { visits, activeVisitId } = storeToRefs(visitStore)
 
+// Edit mode for saved visits (read-only by default — see computeds below).
+const editMode = ref(false)
+
 const showOverviewModal = ref(false)
 const showSaveConfirmModal = ref(false)
 const showValidation = ref(false)
@@ -241,6 +244,9 @@ const confirmSaveChart = async () => {
   try {
     await chartStore.saveToBackend()
 
+    // Saved successfully — leave edit mode (back to read-only view).
+    editMode.value = false
+
     const activeVisit = activeVisitId.value
     if (activeVisit && route.query.visitId !== activeVisit) {
       router.replace({ query: { ...route.query, visitId: activeVisit } })
@@ -271,6 +277,41 @@ const hasPatient = computed(() => {
 const isNewPatientMode = computed(() => {
   return !route.query.patientId && !route.query.visitId && !currentPatientId.value
 })
+
+// --- Read-only / edit mode for saved visits ---
+// A saved visit is viewed read-only by default. The "Edit" button unlocks the
+// chart measurements and visit-level fields. Patient-identity fields stay
+// locked on existing visits (editing them would rewrite the patient globally
+// via the backend's upsert-by-HN). A new/draft visit is fully editable.
+const isExistingVisit = computed(
+  () => activeVisitId.value !== 'new' && activeVisitId.value !== null
+)
+// Chart grid + visit-level fields (date / phase / doctor / doctor id)
+const chartEditable = computed(() => !isExistingVisit.value || editMode.value)
+// Patient-identity fields (HN / name / age / gender / nationality)
+const patientFieldsEditable = computed(() => !isExistingVisit.value)
+
+// Keep the store's read-only guard in sync with the editable state.
+watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
+// Reset edit mode whenever the active visit changes.
+watch(activeVisitId, () => { editMode.value = false })
+
+const handleEditVisit = () => {
+  editMode.value = true
+}
+
+const handleCancelEdit = async () => {
+  editMode.value = false
+  // Discard unsaved edits by reloading the visit from the backend.
+  const visitId = activeVisitId.value
+  if (visitId && visitId !== 'new') {
+    try {
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to reload chart on cancel:', error)
+    }
+  }
+}
 
 </script>
 
@@ -334,7 +375,28 @@ const isNewPatientMode = computed(() => {
             <button v-if="!isNewPatientMode" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
+
+            <!-- View mode: saved visit, not yet editing -->
             <button
+              v-if="isExistingVisit && !editMode"
+              @click="handleEditVisit"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <Pencil class="w-3.5 h-3.5" /> Edit
+            </button>
+
+            <!-- Cancel edit (discard unsaved changes) -->
+            <button
+              v-if="isExistingVisit && editMode"
+              @click="handleCancelEdit"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <X class="w-3.5 h-3.5" /> Cancel
+            </button>
+
+            <!-- Save: editable (new/draft visit, or existing visit in edit mode) -->
+            <button
+              v-if="chartEditable"
               @click="handleSaveClick"
               :disabled="isSaving"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
@@ -414,31 +476,38 @@ const isNewPatientMode = computed(() => {
               :patient-info="patientInfo"
               :summary="summary"
               :show-validation="showValidation"
+              :patient-fields-disabled="!patientFieldsEditable"
+              :visit-fields-disabled="!chartEditable"
               @update:patient-info="chartStore.updatePatientInfo"
             />
 
-            <PeriodontalChartGrid
-              :chart-data="teethData"
-              :selected-tooth-id="selectedToothId"
-              @select-tooth="chartStore.selectTooth"
-              @toggle-bop="chartStore.toggleBop"
-              @toggle-pi="chartStore.togglePi"
-              @toggle-fur="chartStore.toggleFur"
-              @update-pd="chartStore.updatePd"
-              @update-rec="chartStore.updateRec"
-              @update-mobility="chartStore.updateMobility"
-              @update-ktw="chartStore.updateKtw"
-              :get-field-validation="validationStore.getFieldValidation"
-              @validate-field="validationStore.setFieldValidation"
-              @toggle-extracted="chartStore.toggleExtracted"
-              @toggle-implant="chartStore.toggleImplant"
-            />
+            <!-- fieldset disables native inputs/checkboxes when read-only; the
+                 store guard covers the div-based toggles (BoP/PI/fur/Ext). -->
+            <fieldset :disabled="!chartEditable" class="border-0 p-0 m-0 min-w-0">
+              <PeriodontalChartGrid
+                :chart-data="teethData"
+                :selected-tooth-id="selectedToothId"
+                @select-tooth="chartStore.selectTooth"
+                @toggle-bop="chartStore.toggleBop"
+                @toggle-pi="chartStore.togglePi"
+                @toggle-fur="chartStore.toggleFur"
+                @update-pd="chartStore.updatePd"
+                @update-rec="chartStore.updateRec"
+                @update-mobility="chartStore.updateMobility"
+                @update-ktw="chartStore.updateKtw"
+                :get-field-validation="validationStore.getFieldValidation"
+                @validate-field="validationStore.setFieldValidation"
+                @toggle-extracted="chartStore.toggleExtracted"
+                @toggle-implant="chartStore.toggleImplant"
+              />
+            </fieldset>
           </div>
 
           <ToothSidebarOverlay
             :is-open="selectedToothId !== null"
             :tooth-id="selectedToothId"
             :tooth-data="selectedToothData"
+            :readonly="!chartEditable"
             @close="selectedToothId = null"
             @update-note="handleUpdateNote"
           />
