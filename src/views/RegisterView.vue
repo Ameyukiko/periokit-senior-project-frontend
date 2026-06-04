@@ -136,7 +136,6 @@ const register = async () => {
     if (loginResult.success) {
       notificationStore.success("Signing you in...");
       setTimeout(() => {
-        const user = loginResult.user || authStore.user;
         router.push({ name: "my-patients" });
       }, 1500);
     } else {

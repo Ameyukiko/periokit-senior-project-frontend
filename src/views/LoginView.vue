@@ -85,9 +85,7 @@ const handleLogin = async () => {
       localStorage.removeItem("periokit_remember_email");
     }
 
-    // Redirect based on role
-    // Ensure we check authStore.user as well for reliability
-    const user = result.user || authStore.user;
+    // Redirect to my-patients page
 
     router.push({ name: "my-patients" });
   } catch (error: any) {
