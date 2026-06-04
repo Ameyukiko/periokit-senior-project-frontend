@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2 } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, X } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -247,8 +247,18 @@ const formatDate = (dateStr: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Computed: show empty state if no patient selected
-const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.patientId))
+// Computed: show empty state only if we have no patient and no query params (i.e., user just clicked a drawer item but patient isn't loaded yet)
+// If there are no query params at all, we're in "new patient" mode - show the blank chart
+const hasPatient = computed(() => {
+  // If there are no query params at all, we're in blank chart mode (new patient flow)
+  const hasNoQueryParams = !route.query.patientId && !route.query.visitId
+  return hasNoQueryParams || Boolean(currentPatientId.value || route.query.patientId)
+})
+
+// Computed: true if we're in blank chart mode (creating new patient from scratch)
+const isNewPatientMode = computed(() => {
+  return !route.query.patientId && !route.query.visitId && !currentPatientId.value
+})
 
 </script>
 
@@ -309,7 +319,7 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
             <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors">
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
             </button>
-            <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
+            <button v-if="!isNewPatientMode" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
             <button
@@ -333,8 +343,8 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
           <ChartLegend :is-sidebar-open="selectedToothId !== null" />
 
           <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
-            <!-- Visit Tabs -->
-            <div class="flex items-center gap-0 relative z-10">
+            <!-- Visit Tabs (hidden in new patient mode) -->
+            <div v-if="!isNewPatientMode" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
                 <div class="px-4 py-2 text-xs text-slate-400 italic">
                   No visits yet. Click "New Visit" to create one.
