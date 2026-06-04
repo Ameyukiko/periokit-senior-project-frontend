@@ -49,6 +49,11 @@ onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
 
+  // Capture persisted state before any mutations so we can detect a page reload
+  // where the user had an unsaved draft for this patient.
+  const hadDirtyWork = chartStore.isDirty
+  const persistedPatientId = chartStore.currentPatientId
+
   if (patientId && visitId) {
     urlVisitId.value = visitId
     try {
@@ -57,6 +62,16 @@ onMounted(async () => {
       visitStore.setActiveVisit(visitId)
       if (visitId !== 'new') {
         await chartStore.loadFromBackend(visitId)
+      } else if (hadDirtyWork && persistedPatientId === patientId) {
+        // Page reload with an unsaved draft for this patient — keep teethData
+        // intact (restored from sessionStorage) but re-add the draft tab to the
+        // visit strip, since the visit store isn't persisted and loadVisits above
+        // only returns backend visits.
+        visitStore.addDraftVisit(
+          patientId,
+          chartStore.patientInfo.date || new Date().toISOString().split('T')[0],
+          chartStore.patientInfo.visitPhase || 'before_hygienic',
+        )
       } else {
         await enterNewVisitState()
       }

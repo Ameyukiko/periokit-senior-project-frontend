@@ -335,5 +335,10 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         }
       }
     }
-  }
+  },
+
+  persist: {
+    storage: sessionStorage,
+    pick: ['chartName', 'patientInfo', 'teethData', 'currentPatientId', 'isDirty'],
+  },
 })
