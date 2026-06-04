@@ -89,11 +89,7 @@ const handleLogin = async () => {
     // Ensure we check authStore.user as well for reliability
     const user = result.user || authStore.user;
 
-    if (user && user.role === "admin") {
-      router.push("/admin/dashboard");
-    } else {
-      router.push({ name: "my-patients" });
-    }
+    router.push({ name: "my-patients" });
   } catch (error: any) {
     console.error("Login Error:", error);
     notificationStore.error(error.message || "An unexpected error occurred");

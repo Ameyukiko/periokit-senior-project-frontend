@@ -137,11 +137,7 @@ const register = async () => {
       notificationStore.success("Signing you in...");
       setTimeout(() => {
         const user = loginResult.user || authStore.user;
-        if (user && user.role === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push({ name: "home" });
-        }
+        router.push({ name: "my-patients" });
       }, 1500);
     } else {
       // If auto-login fails for some reason, redirect to login page as fallback
