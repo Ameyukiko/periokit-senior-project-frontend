@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { X } from 'lucide-vue-next'
-import type { ChartData, Surface } from '@/domain/chart/chart.types'
+import type { ChartData } from '@/domain/chart/chart.types'
+import type { SiteRegion } from '@/domain/chart/chart.mapper'
 import { calculateBopPercentage, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import { UPPER_TEETH, LOWER_TEETH } from '@/domain/chart/chart.constants'
 import {
   getTeethByMobility,
-  getTeethByFurcation
+  getPdByValueWithSites,
+  getKtwByValueWithSites,
+  getFurcationWithSites,
+  type ToothSiteEntry,
 } from '@/domain/chart/chart.summary'
 
 const props = defineProps<{
@@ -29,83 +33,40 @@ const piPercentage = computed(() => calculatePiPercentage(props.chartData))
 const mobility1Teeth = computed(() => getTeethByMobility(props.chartData, 1))
 const mobility2Teeth = computed(() => getTeethByMobility(props.chartData, 2))
 const mobility3Teeth = computed(() => getTeethByMobility(props.chartData, 3))
-const furcation1Teeth = computed(() => getTeethByFurcation(props.chartData, 1))
-const furcation2Teeth = computed(() => getTeethByFurcation(props.chartData, 2))
-const furcation3Teeth = computed(() => getTeethByFurcation(props.chartData, 3))
+const furcation1Teeth = computed(() => getFurcationWithSites(props.chartData, 1))
+const furcation2Teeth = computed(() => getFurcationWithSites(props.chartData, 2))
+const furcation3Teeth = computed(() => getFurcationWithSites(props.chartData, 3))
 
-// Group teeth by actual PD values (only abnormal values > 4mm)
-const pdByValue = computed<Record<number, number[]>>(() => {
-  const result: Record<number, number[]> = {}
-  const surfaces: Surface[] = ['buccal', 'lingual']
-
-  Object.entries(props.chartData).forEach(([toothId, tooth]) => {
-    if (tooth.extracted) return
-
-    surfaces.forEach((surface) => {
-      tooth[surface].pd.forEach((value) => {
-        const pd = parseInt(value, 10)
-        if (pd > 4) { // Only show abnormal PD (> 4mm)
-          if (!result[pd]) result[pd] = []
-          if (!result[pd].includes(Number.parseInt(toothId, 10))) {
-            result[pd].push(Number.parseInt(toothId, 10))
-          }
-        }
-      })
-    })
-  })
-
-  // Sort teeth within each PD value
-  Object.keys(result).forEach(pd => {
-    result[Number(pd)].sort((a, b) => a - b)
-  })
-
-  return result
-})
+// Group teeth by actual PD values (only abnormal values > 4mm), keeping sites
+const pdByValue = computed(() => getPdByValueWithSites(props.chartData))
 
 // Sorted computed properties for PD
 const sortedPdValues = computed(() =>
   Object.entries(pdByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
-// Group teeth by actual KTW values (values > 0 and < 2mm)
-const ktwByValue = computed<Record<string, number[]>>(() => {
-  const result: Record<string, number[]> = {}
-  const surfaces: Surface[] = ['buccal', 'lingual']
-
-  Object.entries(props.chartData).forEach(([toothId, tooth]) => {
-    if (tooth.extracted) return
-
-    surfaces.forEach((surface) => {
-      const valStr = tooth[surface].ktw
-      const val = parseFloat(valStr)
-      if (val > 0 && val < 2) {
-        const key = String(val)
-        if (!result[key]) result[key] = []
-        if (!result[key].includes(Number.parseInt(toothId, 10))) {
-          result[key].push(Number.parseInt(toothId, 10))
-        }
-      }
-    })
-  })
-
-  // Sort teeth within each KTW value
-  Object.keys(result).forEach(key => {
-    result[key].sort((a, b) => a - b)
-  })
-
-  return result
-})
+// Group teeth by actual KTW values (values > 0 and < 2mm), keeping surface
+const ktwByValue = computed(() => getKtwByValueWithSites(props.chartData))
 
 // Sorted computed properties for KTW
 const sortedKtwValues = computed(() =>
   Object.entries(ktwByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
-// Helper to format tooth numbers for display
-const formatToothNumbers = (teeth: number[]): string => {
-  if (teeth.length === 0) return '-'
-  return teeth.map(t => `#${t}`).join(', ')
+// Map a whole-tooth finding (e.g. mobility) to site-less entries
+const toToothEntries = (teeth: number[]): ToothSiteEntry[] =>
+  teeth.map(toothId => ({ toothId, sites: [] }))
+
+// Pill color per surface region + arch superscript (u = upper buccal, l = lower buccal)
+const SITE_PILL_CLASS: Record<SiteRegion, string> = {
+  'buccal-upper': 'bg-sky-50 text-sky-700 ring-sky-100',
+  'palatal': 'bg-violet-50 text-violet-700 ring-violet-100',
+  'lingual': 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  'buccal-lower': 'bg-amber-50 text-amber-700 ring-amber-100',
 }
+
+const siteArch = (region: SiteRegion): string =>
+  region === 'buccal-upper' ? 'u' : region === 'buccal-lower' ? 'l' : ''
 
 // Styling helper functions for tables
 const getRowTextColorClass = (sectionTitle: string, label: string) => {
@@ -146,7 +107,7 @@ const getRowBorderClass = (sectionTitle: string, label: string) => {
 interface SeverityItem {
   label: string
   count: number
-  teeth: string
+  teeth: ToothSiteEntry[]
   badgeClass: string
   countClass: string
 }
@@ -162,7 +123,7 @@ const pdSection = computed<ClinicalSection>(() => {
     return {
       label: `${pd}`,
       count: teeth.length,
-      teeth: formatToothNumbers(teeth),
+      teeth,
       badgeClass: '',
       countClass: ''
     }
@@ -177,7 +138,7 @@ const mobilitySection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade I',
       count: mobility1Teeth.value.length,
-      teeth: formatToothNumbers(mobility1Teeth.value),
+      teeth: toToothEntries(mobility1Teeth.value),
       badgeClass: '',
       countClass: ''
     })
@@ -186,7 +147,7 @@ const mobilitySection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade II',
       count: mobility2Teeth.value.length,
-      teeth: formatToothNumbers(mobility2Teeth.value),
+      teeth: toToothEntries(mobility2Teeth.value),
       badgeClass: '',
       countClass: ''
     })
@@ -195,7 +156,7 @@ const mobilitySection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade III',
       count: mobility3Teeth.value.length,
-      teeth: formatToothNumbers(mobility3Teeth.value),
+      teeth: toToothEntries(mobility3Teeth.value),
       badgeClass: '',
       countClass: ''
     })
@@ -210,7 +171,7 @@ const furcationSection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade I',
       count: furcation1Teeth.value.length,
-      teeth: formatToothNumbers(furcation1Teeth.value),
+      teeth: furcation1Teeth.value,
       badgeClass: '',
       countClass: ''
     })
@@ -219,7 +180,7 @@ const furcationSection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade II',
       count: furcation2Teeth.value.length,
-      teeth: formatToothNumbers(furcation2Teeth.value),
+      teeth: furcation2Teeth.value,
       badgeClass: '',
       countClass: ''
     })
@@ -228,7 +189,7 @@ const furcationSection = computed<ClinicalSection>(() => {
     items.push({
       label: 'Grade III',
       count: furcation3Teeth.value.length,
-      teeth: formatToothNumbers(furcation3Teeth.value),
+      teeth: furcation3Teeth.value,
       badgeClass: '',
       countClass: ''
     })
@@ -242,7 +203,7 @@ const ktwSection = computed<ClinicalSection>(() => {
     return {
       label: `${ktw} mm`,
       count: teeth.length,
-      teeth: formatToothNumbers(teeth),
+      teeth,
       badgeClass: '',
       countClass: ''
     }
@@ -371,6 +332,26 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
             <div v-if="clinicalSections.length > 0" class="space-y-6">
               <h3 class="text-sm font-semibold text-slate-900">Clinical Data Summary</h3>
 
+              <!-- Site legend / key -->
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 -mt-3">
+                <span class="inline-flex items-center gap-1">
+                  <span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-100 ring-1 ring-inset ring-sky-200"></span>
+                  Buccal<sup>u</sup>
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="inline-block w-2.5 h-2.5 rounded-sm bg-violet-100 ring-1 ring-inset ring-violet-200"></span>
+                  Palatal
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100 ring-1 ring-inset ring-emerald-200"></span>
+                  Lingual
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-100 ring-1 ring-inset ring-amber-200"></span>
+                  Buccal<sup>l</sup>
+                </span>
+              </div>
+
               <!-- Clinical Data Tables -->
               <div class="space-y-6">
                 <div
@@ -413,9 +394,23 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             {{ item.count }}
                           </span>
                         </td>
-                        <!-- Column 3: Teeth List -->
-                        <td class="py-2.5 px-3 text-sm text-slate-600 font-medium">
-                          {{ item.teeth }}
+                        <!-- Column 3: Teeth List (with site labels) -->
+                        <td class="py-2.5 px-3 text-sm text-slate-600">
+                          <span
+                            v-for="entry in item.teeth"
+                            :key="entry.toothId"
+                            class="inline-flex items-center gap-1 mr-3 align-middle whitespace-nowrap"
+                          >
+                            <span class="font-semibold text-slate-700">#{{ entry.toothId }}</span>
+                            <span
+                              v-for="site in entry.sites"
+                              :key="site.label + site.region"
+                              class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset"
+                              :class="SITE_PILL_CLASS[site.region]"
+                            >
+                              {{ site.label }}<sup v-if="siteArch(site.region)" class="text-[8px] leading-none">{{ siteArch(site.region) }}</sup>
+                            </span>
+                          </span>
                         </td>
                       </tr>
                     </tbody>

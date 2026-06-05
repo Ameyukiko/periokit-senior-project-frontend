@@ -85,15 +85,9 @@ const handleLogin = async () => {
       localStorage.removeItem("periokit_remember_email");
     }
 
-    // Redirect based on role
-    // Ensure we check authStore.user as well for reliability
-    const user = result.user || authStore.user;
+    // Redirect to my-patients page
 
-    if (user && user.role === "admin") {
-      router.push("/admin/dashboard");
-    } else {
-      router.push({ name: "my-patients" });
-    }
+    router.push({ name: "my-patients" });
   } catch (error: any) {
     console.error("Login Error:", error);
     notificationStore.error(error.message || "An unexpected error occurred");

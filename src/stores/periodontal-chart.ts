@@ -35,6 +35,9 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     activeSubNav: 'chart' as 'chart' | 'xray' | 'export',
     currentPatientId: null as string | null,
     isDirty: false as boolean,
+    // When true the chart is being viewed (a saved visit, not in edit mode):
+    // all mutating actions become no-ops so the record can't change.
+    readonly: false as boolean,
   }),
 
   getters: {
@@ -69,6 +72,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updatePatientInfo(value: PatientInfo) {
+      if (this.readonly) return
       this.patientInfo = { ...value }
       this.isDirty = true
     },
@@ -80,6 +84,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     toggleBop(id: ToothId, surface: Surface, site: SiteIndex) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth[surface].bop[site] = !tooth[surface].bop[site]
@@ -87,6 +92,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     togglePi(id: ToothId, surface: Surface, site: SiteIndex) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth[surface].pi[site] = !tooth[surface].pi[site]
@@ -94,6 +100,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updatePd(id: ToothId, surface: Surface, site: SiteIndex, value: string) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth[surface].pd[site] = value
@@ -102,6 +109,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updateRec(id: ToothId, surface: Surface, site: SiteIndex, value: string) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth[surface].rec[site] = value
@@ -110,6 +118,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updateMobility(id: ToothId, value: string) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted || tooth.implant) return
       tooth.mo = value
@@ -117,6 +126,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updateKtw(id: ToothId, surface: Surface, value: string) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth[surface].ktw = value
@@ -130,6 +140,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     toggleFur(id: ToothId, surface: Surface, index: number) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted || tooth.implant) return
       tooth.fur[surface][index] = (tooth.fur[surface][index] + 1) % 4
@@ -137,6 +148,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     toggleImplant(id: ToothId) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth || tooth.extracted) return
       tooth.implant = !tooth.implant
@@ -149,6 +161,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     toggleExtracted(id: ToothId) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth) return
       tooth.extracted = !tooth.extracted
@@ -182,6 +195,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     },
 
     updateNote(id: ToothId, note: string) {
+      if (this.readonly) return
       const tooth = this.teethData[id]
       if (!tooth) return
       tooth.note = note
@@ -237,6 +251,12 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
 
         this.isDirty = false
         notifStore.success('Chart saved successfully')
+
+        // Refresh the visit tab strip so a newly-created visit (or the
+        // hasChart flag of an existing one) shows up immediately.
+        if (this.currentPatientId) {
+          await visitStore.loadVisits(this.currentPatientId)
+        }
       } catch (err) {
         console.error('Save chart error:', err)
         notifStore.error('Failed to save chart, please try again')
@@ -315,5 +335,10 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         }
       }
     }
-  }
+  },
+
+  persist: {
+    storage: sessionStorage,
+    pick: ['chartName', 'patientInfo', 'teethData', 'currentPatientId', 'isDirty'],
+  },
 })

@@ -7,6 +7,10 @@ const props = defineProps<{
   patientInfo: PatientInfo
   summary: ChartSummary
   showValidation?: boolean
+  // Patient-identity fields (HN/name/age/gender/nationality) — locked on saved visits.
+  patientFieldsDisabled?: boolean
+  // Visit-level fields (date/phase/doctor/doctor id) — locked unless editing.
+  visitFieldsDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -56,8 +60,9 @@ const sortedPdBreakdown = computed(() => {
           <input
             v-model="localPatientInfo.hn"
             type="text"
+            :disabled="props.patientFieldsDisabled"
             :class="[
-              'bg-slate-50 rounded-md px-2 py-1 text-[14px] w-40 outline-none transition-all',
+              'bg-slate-50 rounded-md px-2 py-1 text-[14px] w-40 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100',
               props.showValidation && !localPatientInfo.hn
                 ? 'border-2 border-red-400 bg-red-50 placeholder-red-300'
                 : 'border border-slate-300 focus:ring-2 focus:ring-blue-100'
@@ -69,30 +74,33 @@ const sortedPdBreakdown = computed(() => {
       </div>
 
       <div class="flex justify-center gap-8 mb-5">
-        <label class="flex items-center gap-2 cursor-pointer group">
+        <label class="flex items-center gap-2 group" :class="props.visitFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'before_hygienic'"
+            :disabled="props.visitFieldsDisabled"
             @change="updateVisitPhase('before_hygienic', ($event.target as HTMLInputElement).checked)"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded disabled:cursor-not-allowed"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Before hygienic phase</span>
         </label>
-        <label class="flex items-center gap-2 cursor-pointer group">
+        <label class="flex items-center gap-2 group" :class="props.visitFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'after_hygienic'"
+            :disabled="props.visitFieldsDisabled"
             @change="updateVisitPhase('after_hygienic', ($event.target as HTMLInputElement).checked)"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded disabled:cursor-not-allowed"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After hygienic phase</span>
         </label>
-        <label class="flex items-center gap-2 cursor-pointer group">
+        <label class="flex items-center gap-2 group" :class="props.visitFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
           <input
             type="checkbox"
             :checked="localPatientInfo.visitPhase === 'after_corrective'"
+            :disabled="props.visitFieldsDisabled"
             @change="updateVisitPhase('after_corrective', ($event.target as HTMLInputElement).checked)"
-            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded"
+            class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded disabled:cursor-not-allowed"
           />
           <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">After corrective phase</span>
         </label>
@@ -102,15 +110,15 @@ const sortedPdBreakdown = computed(() => {
         <!-- Row 3 -->
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Date:</span>
-          <input v-model="localPatientInfo.date" type="date" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.date" type="date" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
         <div class="col-span-6 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor:</span>
-          <input v-model="localPatientInfo.doctor" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.doctor" type="text" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor ID:</span>
-          <input v-model="localPatientInfo.studentId" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.studentId" type="text" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
 
         <!-- Row 4 -->
@@ -119,8 +127,9 @@ const sortedPdBreakdown = computed(() => {
           <input
             v-model="localPatientInfo.patientName"
             type="text"
+            :disabled="props.patientFieldsDisabled"
             :class="[
-              'rounded-md px-2 py-1 text-[14px] w-full outline-none transition-all',
+              'rounded-md px-2 py-1 text-[14px] w-full outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100',
               props.showValidation && !localPatientInfo.patientName
                 ? 'bg-red-50 border-2 border-red-400 placeholder-red-300'
                 : 'bg-slate-50 border border-slate-300 focus:ring-2 focus:ring-blue-100'
@@ -129,22 +138,22 @@ const sortedPdBreakdown = computed(() => {
         </div>
         <div class="col-span-3 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Age:</span>
-          <input v-model="localPatientInfo.age" type="number" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.age" type="number" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
           <span class="text-[14px] text-slate-800 whitespace-nowrap shrink-0">years old</span>
         </div>
         <div class="col-span-2 flex items-center gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Nationality:</span>
-          <input v-model="localPatientInfo.nationality" type="text" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all" />
+          <input v-model="localPatientInfo.nationality" type="text" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
         <div class="col-span-3 flex items-center gap-2 justify-end">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Gender:</span>
           <div class="flex gap-3">
-            <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="localPatientInfo.gender === 'Male'" @change="updateGender('Male', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded" />
+            <label class="flex items-center gap-1.5 group" :class="props.patientFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Male'" :disabled="props.patientFieldsDisabled" @change="updateGender('Male', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded disabled:cursor-not-allowed" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Male</span>
             </label>
-            <label class="flex items-center gap-1.5 cursor-pointer group">
-              <input type="checkbox" :checked="localPatientInfo.gender === 'Female'" @change="updateGender('Female', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded" />
+            <label class="flex items-center gap-1.5 group" :class="props.patientFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
+              <input type="checkbox" :checked="localPatientInfo.gender === 'Female'" :disabled="props.patientFieldsDisabled" @change="updateGender('Female', ($event.target as HTMLInputElement).checked)" class="w-4 h-4 text-[#0052ff] border-slate-600 focus:ring-blue-100 rounded disabled:cursor-not-allowed" />
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Female</span>
             </label>
           </div>

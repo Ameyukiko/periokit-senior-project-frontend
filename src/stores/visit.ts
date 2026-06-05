@@ -38,15 +38,23 @@ export const useVisitStore = defineStore('visit', () => {
     visits.value = await visitApi.getByPatient(patientId)
   }
 
-  async function createVisit(patientId: string, visitDate: string, phase: string) {
-    const { visitApi } = await import('@/services/api/visit.api')
-    const newVisit = await visitApi.createVisit(patientId, visitDate, phase)
-
-    // Add to visits array and set as active
-    visits.value.push(newVisit)
-    activeVisitId.value = newVisit.id
-
-    return newVisit
+  // Add a local draft tab immediately so the user sees the new visit in the
+  // strip before saving. The draft (id='new') is replaced by the real visit
+  // when loadVisits refreshes after a successful save.
+  function addDraftVisit(patientId: string, visitDate: string, phase: string) {
+    const existingIdx = visits.value.findIndex(v => v.id === 'new')
+    if (existingIdx !== -1) visits.value.splice(existingIdx, 1)
+    visits.value.push({
+      id: 'new',
+      patientId,
+      visitDate,
+      phase,
+      doctorName: null,
+      studentId: null,
+      status: 'draft',
+      hasChart: false,
+    })
+    activeVisitId.value = 'new'
   }
 
   return {
@@ -56,6 +64,6 @@ export const useVisitStore = defineStore('visit', () => {
     clearVisits,
     removeVisit,
     loadVisits,
-    createVisit,
+    addDraftVisit,
   }
 })

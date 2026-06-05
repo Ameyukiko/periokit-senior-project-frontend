@@ -36,12 +36,7 @@ const router = createRouter({
       component: () => import("../views/PeriodontalChartPage.vue"),
       meta: { requiresAuth: true },
     },
-    {
-      path: "/admin/dashboard",
-      name: "admin-dashboard",
-      component: () => import("../views/AdminDashboardView.vue"),
-      meta: { requiresAuth: true },
-    },
+
     {
       path: "/",
       redirect: "/patients",

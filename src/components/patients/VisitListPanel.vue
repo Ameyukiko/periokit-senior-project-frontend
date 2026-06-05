@@ -57,6 +57,7 @@ const fetchRecentPatients = async () => {
 }
 
 const onSearchInput = () => {
+  isSearchOpen.value = true
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(async () => {
     if (!searchQuery.value.trim()) {
@@ -72,14 +73,40 @@ const onSearchInput = () => {
   }, 400)
 }
 
-// Clear search when drawer closes
+const isSearchOpen = ref(false)
+const searchContainerRef = ref<HTMLElement | null>(null)
+
+const isInlineSearch = computed(() => {
+  return route.name === 'my-patients'
+})
+
+const showSearchDropdown = computed(() => {
+  return !isInlineSearch.value && isSearchOpen.value && searchQuery.value.trim() !== ''
+})
+
+const onSearchFocus = () => {
+  isSearchOpen.value = true
+  if (searchQuery.value.trim() !== '' && searchResults.value.length === 0) {
+    onSearchInput()
+  }
+}
+
+const handleClickOutside = (e: MouseEvent) => {
+  if (searchContainerRef.value && !searchContainerRef.value.contains(e.target as Node)) {
+    isSearchOpen.value = false
+  }
+}
+
 watch(() => props.open, (newVal) => {
   if (newVal) {
     searchQuery.value = ''
     fetchRecentPatients()
+    document.addEventListener('mousedown', handleClickOutside)
   } else {
     searchQuery.value = ''
     searchResults.value = []
+    isSearchOpen.value = false
+    document.removeEventListener('mousedown', handleClickOutside)
   }
 })
 
@@ -155,29 +182,66 @@ const formatDate = (dateString: string | null) => {
       </div>
 
       <!-- Search -->
-      <div class="p-4 border-b border-slate-200 shrink-0">
-        <div class="relative">
+      <div class="p-4 border-b border-slate-200 shrink-0 relative" ref="searchContainerRef">
+        <div class="relative z-20">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search class="w-4 h-4 text-slate-400" />
           </div>
           <input 
             v-model="searchQuery" 
             @input="onSearchInput"
+            @focus="onSearchFocus"
             type="text" 
             class="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#0052ff] focus:border-transparent transition-all outline-none placeholder:text-slate-400" 
             placeholder="Search patients..."
           />
         </div>
+
+        <!-- Search Results Dropdown -->
+        <div 
+          v-if="showSearchDropdown" 
+          class="absolute left-4 right-4 top-[calc(100%-8px)] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto"
+        >
+          <div v-if="searchQuery.trim() !== '' && searchResults.length === 0" class="p-4 text-center text-sm text-slate-500">
+            No patients found
+          </div>
+          <div v-else class="p-2 space-y-1">
+            <div 
+              v-for="patient in searchResults" 
+              :key="patient.id"
+              class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group"
+              @click="switchPatient(patient)"
+            >
+               <div class="flex items-center gap-3 min-w-0">
+                 <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                   <User class="w-4 h-4 text-[#0052ff]" />
+                 </div>
+                 <div class="flex-1 min-w-0">
+                   <div class="font-bold text-slate-800 text-[13px] truncate">{{ patient.firstName }} {{ patient.lastName }}</div>
+                   <div class="text-[11px] text-slate-500 mt-0.5 truncate">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
+                 </div>
+               </div>
+               
+               <button 
+                 @click.stop="switchPatient(patient)"
+                 class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] font-bold hover:border-[#0052ff] hover:text-[#0052ff] transition-colors shrink-0 shadow-sm opacity-0 group-hover:opacity-100"
+               >
+                 History
+               </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto bg-slate-50 p-4">
-        <!-- Show Patient Cards if searching or if there are no visits -->
-        <div v-if="searchQuery.trim() !== '' || sortedVisits.length === 0" class="space-y-3">
+        <!-- Inline Search / Recent Patients (Only for MyPatients view) -->
+        <div v-if="isInlineSearch || sortedVisits.length === 0" class="space-y-3">
           <div v-if="searchResults.length === 0" class="text-center py-8">
             <p class="text-slate-500 text-sm">No patients found</p>
           </div>
           <div 
+            v-else
             v-for="patient in searchResults" 
             :key="patient.id"
             class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-3"
@@ -199,7 +263,7 @@ const formatDate = (dateString: string | null) => {
           </div>
         </div>
 
-        <!-- Visits List -->
+        <!-- Visits List (For Chart and History views) -->
         <div v-else>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">

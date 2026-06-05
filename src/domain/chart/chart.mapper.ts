@@ -24,6 +24,24 @@ const SITE_POSITION_MAP: Record<DbSurface, readonly [string, string, string]> = 
   lingual: ['ML', 'L',  'DL'],
 }
 
+// ── Site region helpers (for UI display) ───────────────────────────────────────
+// Buccal exists on both arches, so it splits into buccal-upper / buccal-lower.
+// Palatal (upper) and lingual (lower) already imply their arch.
+
+export type SiteRegion = 'buccal-upper' | 'palatal' | 'lingual' | 'buccal-lower'
+
+export function getSiteRegion(fdi: number, surface: 'buccal' | 'lingual'): SiteRegion {
+  const db = toDbSurface(fdi, surface)
+  if (db === 'palatal') return 'palatal'
+  if (db === 'lingual') return 'lingual'
+  return isUpperTooth(fdi) ? 'buccal-upper' : 'buccal-lower'
+}
+
+// Base position label (without arch superscript), e.g. 'MB' | 'B' | 'DB' | 'MP' …
+export function getSiteLabel(fdi: number, surface: 'buccal' | 'lingual', siteIndex: number): string {
+  return SITE_POSITION_MAP[toDbSurface(fdi, surface)][siteIndex]
+}
+
 // ── Tooth status ──────────────────────────────────────────────────────────────
 // Frontend uses two separate booleans; DB uses a single status enum.
 

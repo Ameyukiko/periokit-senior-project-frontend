@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2 } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, X, Pencil } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -16,6 +16,7 @@ import { useNotificationStore } from '@/stores/notification'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import draggable from 'vuedraggable'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,9 +29,30 @@ const notifStore = useNotificationStore()
 const drawerOpen = ref(false)
 const urlVisitId = ref<string | null>(null)
 
+// Put the page into "new visit" draft mode. The backend has no standalone
+// create-visit mutation: a visit is persisted only when its chart is saved
+// (saveChart with no visitId). So a new visit is a local draft — a blank chart
+// that keeps the current patient's identity — until the user hits Save.
+async function enterNewVisitState() {
+  const patientId = chartStore.currentPatientId || (route.query.patientId as string | undefined)
+  const today = new Date().toISOString().split('T')[0]
+  chartStore.resetChart()
+  if (patientId) {
+    await chartStore.loadPatientById(patientId)
+    chartStore.patientInfo.date = today
+    chartStore.patientInfo.visitPhase = 'before_hygienic'
+  }
+  visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
+}
+
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
+
+  // Capture persisted state before any mutations so we can detect a page reload
+  // where the user had an unsaved draft for this patient.
+  const hadDirtyWork = chartStore.isDirty
+  const persistedPatientId = chartStore.currentPatientId
 
   if (patientId && visitId) {
     urlVisitId.value = visitId
@@ -40,8 +62,18 @@ onMounted(async () => {
       visitStore.setActiveVisit(visitId)
       if (visitId !== 'new') {
         await chartStore.loadFromBackend(visitId)
+      } else if (hadDirtyWork && persistedPatientId === patientId) {
+        // Page reload with an unsaved draft for this patient — keep teethData
+        // intact (restored from sessionStorage) but re-add the draft tab to the
+        // visit strip, since the visit store isn't persisted and loadVisits above
+        // only returns backend visits.
+        visitStore.addDraftVisit(
+          patientId,
+          chartStore.patientInfo.date || new Date().toISOString().split('T')[0],
+          chartStore.patientInfo.visitPhase || 'before_hygienic',
+        )
       } else {
-        chartStore.resetChart()
+        await enterNewVisitState()
       }
     } catch (error) {
       console.error('Failed to load chart:', error)
@@ -67,7 +99,7 @@ onMounted(async () => {
         console.error('Failed to load chart:', error)
       }
     } else {
-      chartStore.resetChart()
+      await enterNewVisitState()
     }
   } else {
     visitStore.setActiveVisit(null)
@@ -87,7 +119,7 @@ watch(() => route.query.visitId, async (newVisitId) => {
         console.error('Failed to load chart:', error)
       }
     } else {
-      chartStore.resetChart()
+      await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
     visitStore.setActiveVisit(null)
@@ -123,6 +155,9 @@ const {
 
 const { visits, activeVisitId } = storeToRefs(visitStore)
 
+// Edit mode for saved visits (read-only by default — see computeds below).
+const editMode = ref(false)
+
 const showOverviewModal = ref(false)
 const showSaveConfirmModal = ref(false)
 const showValidation = ref(false)
@@ -137,13 +172,14 @@ const handleSwitchVisit = async (visitId: string) => {
 
   visitStore.setActiveVisit(visitId)
 
-  // Update URL without page refresh
   router.replace({
     name: 'chart',
     query: { ...route.query, visitId }
   })
 
-  // Load chart for this visit
+  // The route watcher handles 'new' (draft) tabs — skip loadFromBackend for them.
+  if (visitId === 'new') return
+
   try {
     await chartStore.loadFromBackend(visitId)
   } catch (error) {
@@ -176,7 +212,9 @@ const handleCloseVisit = async (visitId: string) => {
   }
 }
 
-// Create a new visit for current patient
+// Start a new visit for the current patient. The visit is only persisted on
+// the backend once its chart is saved (saveChart with no visitId creates it),
+// so here we just enter the local 'new' draft state.
 const handleNewVisit = async () => {
   const patientId = currentPatientId.value || route.query.patientId as string | undefined
 
@@ -185,24 +223,16 @@ const handleNewVisit = async () => {
     return
   }
 
-  try {
-    // Create new visit for this patient
-    const today = new Date().toISOString().split('T')[0]
-    const newVisit = await visitStore.createVisit(patientId, today, 'before_hygienic')
-
-    // Reset chart for new visit
-    chartStore.resetChart()
-    await chartStore.loadPatientById(patientId)
-
-    // Update URL to new visit
-    router.replace({
-      name: 'chart',
-      query: { patientId, visitId: newVisit.id }
-    })
-  } catch (error) {
-    console.error('Failed to create new visit:', error)
-    notifStore.error('Failed to create new visit')
+  // Already drafting a new visit — just give a fresh blank chart.
+  if (route.query.visitId === 'new') {
+    await enterNewVisitState()
+    return
   }
+
+  // Navigating to the 'new' sentinel triggers the route watcher, which puts the
+  // page into draft mode (blank chart, same patient).
+  visitStore.setActiveVisit('new')
+  router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
 }
 
 const isSaving = ref(false)
@@ -229,6 +259,9 @@ const confirmSaveChart = async () => {
   try {
     await chartStore.saveToBackend()
 
+    // Saved successfully — leave edit mode (back to read-only view).
+    editMode.value = false
+
     const activeVisit = activeVisitId.value
     if (activeVisit && route.query.visitId !== activeVisit) {
       router.replace({ query: { ...route.query, visitId: activeVisit } })
@@ -247,8 +280,53 @@ const formatDate = (dateStr: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Computed: show empty state if no patient selected
-const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.patientId))
+// Computed: show empty state only if we have no patient and no query params (i.e., user just clicked a drawer item but patient isn't loaded yet)
+// If there are no query params at all, we're in "new patient" mode - show the blank chart
+const hasPatient = computed(() => {
+  // If there are no query params at all, we're in blank chart mode (new patient flow)
+  const hasNoQueryParams = !route.query.patientId && !route.query.visitId
+  return hasNoQueryParams || Boolean(currentPatientId.value || route.query.patientId)
+})
+
+// Computed: true if we're in blank chart mode (creating new patient from scratch)
+const isNewPatientMode = computed(() => {
+  return !route.query.patientId && !route.query.visitId && !currentPatientId.value
+})
+
+// --- Read-only / edit mode for saved visits ---
+// A saved visit is viewed read-only by default. The "Edit" button unlocks the
+// chart measurements and visit-level fields. Patient-identity fields stay
+// locked on existing visits (editing them would rewrite the patient globally
+// via the backend's upsert-by-HN). A new/draft visit is fully editable.
+const isExistingVisit = computed(
+  () => activeVisitId.value !== 'new' && activeVisitId.value !== null
+)
+// Chart grid + visit-level fields (date / phase / doctor / doctor id)
+const chartEditable = computed(() => !isExistingVisit.value || editMode.value)
+// Patient-identity fields (HN / name / age / gender / nationality)
+const patientFieldsEditable = computed(() => !isExistingVisit.value)
+
+// Keep the store's read-only guard in sync with the editable state.
+watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
+// Reset edit mode whenever the active visit changes.
+watch(activeVisitId, () => { editMode.value = false })
+
+const handleEditVisit = () => {
+  editMode.value = true
+}
+
+const handleCancelEdit = async () => {
+  editMode.value = false
+  // Discard unsaved edits by reloading the visit from the backend.
+  const visitId = activeVisitId.value
+  if (visitId && visitId !== 'new') {
+    try {
+      await chartStore.loadFromBackend(visitId)
+    } catch (error) {
+      console.error('Failed to reload chart on cancel:', error)
+    }
+  }
+}
 
 </script>
 
@@ -309,10 +387,31 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
             <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors">
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
             </button>
-            <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
+            <button v-if="!isNewPatientMode" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
+
+            <!-- View mode: saved visit, not yet editing -->
             <button
+              v-if="isExistingVisit && !editMode"
+              @click="handleEditVisit"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <Pencil class="w-3.5 h-3.5" /> Edit
+            </button>
+
+            <!-- Cancel edit (discard unsaved changes) -->
+            <button
+              v-if="isExistingVisit && editMode"
+              @click="handleCancelEdit"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <X class="w-3.5 h-3.5" /> Cancel
+            </button>
+
+            <!-- Save: editable (new/draft visit, or existing visit in edit mode) -->
+            <button
+              v-if="chartEditable"
               @click="handleSaveClick"
               :disabled="isSaving"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
@@ -333,8 +432,8 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
           <ChartLegend :is-sidebar-open="selectedToothId !== null" />
 
           <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
-            <!-- Visit Tabs -->
-            <div class="flex items-center gap-0 relative z-10">
+            <!-- Visit Tabs (hidden in new patient mode) -->
+            <div v-if="!isNewPatientMode" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
                 <div class="px-4 py-2 text-xs text-slate-400 italic">
                   No visits yet. Click "New Visit" to create one.
@@ -342,30 +441,41 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
               </template>
 
               <template v-else>
-                <div
-                  v-for="visit in visits"
-                  :key="visit.id"
-                  class="relative group"
-                  @click="handleSwitchVisit(visit.id)"
+                <draggable
+                  v-model="visits"
+                  group="visits"
+                  item-key="id"
+                  class="flex items-center gap-0"
+                  ghost-class="opacity-30"
+                  drag-class="cursor-grabbing"
+                  animation="200"
                 >
-                  <div
-                    class="px-4 py-1.5 rounded-t-xl border-t border-l border-r text-[10px] font-black flex items-center gap-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] -mb-px transition-all cursor-pointer"
-                    :class="visit.id === activeVisitId
-                      ? 'bg-white border-slate-200 text-[#0052ff]'
-                      : 'bg-slate-100 border-transparent text-slate-400 hover:text-slate-600'"
-                  >
-                    <span class="max-w-24 truncate">Visit #{{ visit.visitNumber || '-' }}</span>
-                    <span class="text-[9px] text-slate-400 font-normal">{{ formatDate(visit.visitDate) }}</span>
-                    <span v-if="!visit.hasChart" class="text-[8px] bg-amber-100 text-amber-600 px-1 rounded">Empty</span>
-                    <button
-                      class="ml-0.5 -mr-1 p-0.5 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                      title="Close tab"
-                      @click.stop="handleCloseVisit(visit.id)"
+                  <template #item="{ element: visit }">
+                    <div
+                      class="relative group"
+                      @click="handleSwitchVisit(visit.id)"
                     >
-                      <X class="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
+                      <div
+                        class="px-4 py-1.5 rounded-t-xl border-t border-l border-r text-[10px] font-black flex items-center gap-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] -mb-px transition-all cursor-grab active:cursor-grabbing"
+                        :class="visit.id === activeVisitId
+                          ? 'bg-white border-slate-200 text-[#0052ff]'
+                          : 'bg-slate-100 border-transparent text-slate-400 hover:text-slate-600'"
+                      >
+                        <span class="max-w-24 truncate">{{ visit.id === 'new' ? 'New Visit' : `Visit #${visit.visitNumber || '-'}` }}</span>
+                        <span class="text-[9px] text-slate-400 font-normal">{{ formatDate(visit.visitDate) }}</span>
+                        <span v-if="visit.id === 'new'" class="text-[8px] bg-blue-100 text-blue-600 px-1 rounded">Draft</span>
+                        <span v-else-if="!visit.hasChart" class="text-[8px] bg-amber-100 text-amber-600 px-1 rounded">Empty</span>
+                        <button
+                          class="ml-0.5 -mr-1 p-0.5 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                          title="Close tab"
+                          @click.stop="handleCloseVisit(visit.id)"
+                        >
+                          <X class="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                </draggable>
               </template>
 
               <button
@@ -381,31 +491,38 @@ const hasPatient = computed(() => Boolean(currentPatientId.value || route.query.
               :patient-info="patientInfo"
               :summary="summary"
               :show-validation="showValidation"
+              :patient-fields-disabled="!patientFieldsEditable"
+              :visit-fields-disabled="!chartEditable"
               @update:patient-info="chartStore.updatePatientInfo"
             />
 
-            <PeriodontalChartGrid
-              :chart-data="teethData"
-              :selected-tooth-id="selectedToothId"
-              @select-tooth="chartStore.selectTooth"
-              @toggle-bop="chartStore.toggleBop"
-              @toggle-pi="chartStore.togglePi"
-              @toggle-fur="chartStore.toggleFur"
-              @update-pd="chartStore.updatePd"
-              @update-rec="chartStore.updateRec"
-              @update-mobility="chartStore.updateMobility"
-              @update-ktw="chartStore.updateKtw"
-              :get-field-validation="validationStore.getFieldValidation"
-              @validate-field="validationStore.setFieldValidation"
-              @toggle-extracted="chartStore.toggleExtracted"
-              @toggle-implant="chartStore.toggleImplant"
-            />
+            <!-- fieldset disables native inputs/checkboxes when read-only; the
+                 store guard covers the div-based toggles (BoP/PI/fur/Ext). -->
+            <fieldset :disabled="!chartEditable" class="border-0 p-0 m-0 min-w-0">
+              <PeriodontalChartGrid
+                :chart-data="teethData"
+                :selected-tooth-id="selectedToothId"
+                @select-tooth="chartStore.selectTooth"
+                @toggle-bop="chartStore.toggleBop"
+                @toggle-pi="chartStore.togglePi"
+                @toggle-fur="chartStore.toggleFur"
+                @update-pd="chartStore.updatePd"
+                @update-rec="chartStore.updateRec"
+                @update-mobility="chartStore.updateMobility"
+                @update-ktw="chartStore.updateKtw"
+                :get-field-validation="validationStore.getFieldValidation"
+                @validate-field="validationStore.setFieldValidation"
+                @toggle-extracted="chartStore.toggleExtracted"
+                @toggle-implant="chartStore.toggleImplant"
+              />
+            </fieldset>
           </div>
 
           <ToothSidebarOverlay
             :is-open="selectedToothId !== null"
             :tooth-id="selectedToothId"
             :tooth-data="selectedToothData"
+            :readonly="!chartEditable"
             @close="selectedToothId = null"
             @update-note="handleUpdateNote"
           />
