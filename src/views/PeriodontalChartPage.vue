@@ -102,7 +102,7 @@ onMounted(async () => {
       await enterNewVisitState()
     }
   } else {
-    visitStore.setActiveVisit(null)
+    visitStore.clearVisits()
     chartStore.resetChart()
   }
 })
@@ -122,7 +122,16 @@ watch(() => route.query.visitId, async (newVisitId) => {
       await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
-    visitStore.setActiveVisit(null)
+    visitStore.clearVisits()
+    chartStore.resetChart()
+  }
+})
+
+// When patientId is removed from the URL without a visitId change (e.g. navigating
+// to /chart from a patient-specific chart), enter new-patient mode.
+watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
+  if (newPatientId === undefined && oldPatientId !== undefined && route.query.visitId === undefined) {
+    visitStore.clearVisits()
     chartStore.resetChart()
   }
 })
@@ -262,9 +271,19 @@ const confirmSaveChart = async () => {
     // Saved successfully — leave edit mode (back to read-only view).
     editMode.value = false
 
+    // Sync the URL with the saved visit/patient. After a "new patient" save the
+    // route has no params yet — writing both ids keeps the chart open (read-only)
+    // and makes the page reload-safe.
     const activeVisit = activeVisitId.value
-    if (activeVisit && route.query.visitId !== activeVisit) {
-      router.replace({ query: { ...route.query, visitId: activeVisit } })
+    const patientId = currentPatientId.value
+    if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
+      router.replace({
+        query: {
+          ...route.query,
+          visitId: activeVisit,
+          ...(patientId ? { patientId } : {}),
+        },
+      })
     }
   } catch (error) {
     console.error('Failed to save chart:', error)
