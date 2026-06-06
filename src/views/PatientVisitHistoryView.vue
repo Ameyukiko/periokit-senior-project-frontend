@@ -44,18 +44,18 @@ const filterConfigs: FilterConfig[] = [
   },
   {
     type: 'date',
-    label: 'Date Range & Sort',
+    label: 'Date',
     icon: Calendar,
     color: 'emerald',
-    isDateRange: true,
-    isSort: true
+    isSort: true,
+    sortLabels: { desc: 'Latest', asc: 'Oldest' }
   }
 ]
 
 // Filter values
 const filterValues = ref<Record<string, any>>({
   phase: '',
-  date: { sort: null, from: '', to: '' }
+  date: null
 })
 
 const fetchPatientAndVisits = async () => {
@@ -165,15 +165,6 @@ const filteredVisits = computed(() => {
     result = result.filter(v => v.phase === filterValues.value.phase)
   }
 
-  // Filter by date range
-  const dateFilter = filterValues.value.date
-  if (dateFilter?.from) {
-    result = result.filter(v => new Date(v.visitDate) >= new Date(dateFilter.from))
-  }
-  if (dateFilter?.to) {
-    result = result.filter(v => new Date(v.visitDate) <= new Date(dateFilter.to))
-  }
-
   // Filter by search input (visit number or date)
   if (searchInput.value) {
     const search = searchInput.value.toLowerCase()
@@ -185,7 +176,7 @@ const filteredVisits = computed(() => {
   }
 
   // Sort by date
-  const sortOrder = filterValues.value.date?.sort
+  const sortOrder = filterValues.value.date
   if (sortOrder === 'date_asc') {
     result.sort((a, b) => new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime())
   } else {
