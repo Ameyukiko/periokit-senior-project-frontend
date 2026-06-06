@@ -39,9 +39,9 @@ async function enterNewVisitState() {
   chartStore.resetChart()
   if (patientId) {
     await chartStore.loadPatientById(patientId)
-    chartStore.patientInfo.date = today
-    chartStore.patientInfo.visitPhase = 'before_hygienic'
   }
+  chartStore.patientInfo.date = today
+  chartStore.patientInfo.visitPhase = 'before_hygienic'
   visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
 }
 
@@ -86,6 +86,11 @@ onMounted(async () => {
         chartStore.loadPatientById(patientId),
         visitStore.loadVisits(patientId),
       ])
+      // Patient has no visits yet — auto-open a blank draft so the tab row shows immediately
+      if (visitStore.visits.length === 0) {
+        await enterNewVisitState()
+        router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
+      }
     } catch (error) {
       console.error('Failed to load patient:', error)
     }
@@ -102,8 +107,7 @@ onMounted(async () => {
       await enterNewVisitState()
     }
   } else {
-    visitStore.clearVisits()
-    chartStore.resetChart()
+    await enterNewVisitState()
   }
 })
 
@@ -265,17 +269,20 @@ const confirmSaveChart = async () => {
   showSaveConfirmModal.value = false
   if (isSaving.value) return
   isSaving.value = true
+  const wasNewPatient = isNewPatientMode.value
   try {
     await chartStore.saveToBackend()
 
-    // Saved successfully — leave edit mode (back to read-only view).
     editMode.value = false
 
-    // Sync the URL with the saved visit/patient. After a "new patient" save the
-    // route has no params yet — writing both ids keeps the chart open (read-only)
-    // and makes the page reload-safe.
     const activeVisit = activeVisitId.value
     const patientId = currentPatientId.value
+
+    if (wasNewPatient && patientId) {
+      router.push({ name: 'patient-visits', params: { patientId } })
+      return
+    }
+
     if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
       router.replace({
         query: {
@@ -451,8 +458,8 @@ const handleCancelEdit = async () => {
           <ChartLegend :is-sidebar-open="selectedToothId !== null" />
 
           <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
-            <!-- Visit Tabs (hidden in new patient mode) -->
-            <div v-if="!isNewPatientMode" class="flex items-center gap-0 relative z-10">
+            <!-- Visit Tabs: always visible when there are visits/drafts -->
+            <div v-if="!isNewPatientMode || visits.length > 0" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
                 <div class="px-4 py-2 text-xs text-slate-400 italic">
                   No visits yet. Click "New Visit" to create one.
