@@ -7,7 +7,7 @@ import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
-import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User } from 'lucide-vue-next'
+import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User, ArrowLeft } from 'lucide-vue-next'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 
@@ -234,12 +234,12 @@ onUnmounted(() => {
       <!-- Breadcrumb / Header Area -->
       <div class="flex flex-col md:flex-row md:items-start justify-between mb-4 gap-4">
         <div class="min-w-0 md:flex-1">
-          <button @click="goBack" class="text-slate-500 hover:text-[#0052ff] font-medium text-sm transition-colors mb-1">
+          <button @click="goBack" class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all mb-3 w-fit">
+            <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             My Patients
           </button>
-          <h1 class="text-xl font-bold text-slate-900 flex items-baseline gap-2 flex-wrap">
-            <span>Patient: {{ patient?.firstName }} {{ patient?.lastName }}</span>
-            <span class="text-slate-500 text-sm font-medium whitespace-nowrap">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
+          <h1 class="text-2xl font-bold text-slate-900 truncate">
+            Patient: {{ patient?.firstName }} {{ patient?.lastName }}
           </h1>
         </div>
 
@@ -289,8 +289,9 @@ onUnmounted(() => {
 
       <!-- Visit Timeline Card -->
       <div class="bg-white shadow-sm rounded-2xl border border-slate-100 overflow-hidden">
-        <div class="px-6 py-5 border-b border-slate-100">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-baseline gap-2">
           <h2 class="text-lg font-bold text-slate-800">Visit Timeline</h2>
+          <span class="text-slate-500 text-sm font-medium">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
         </div>
 
         <div class="p-6 space-y-4">
