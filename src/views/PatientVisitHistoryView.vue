@@ -233,17 +233,17 @@ onUnmounted(() => {
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Breadcrumb / Header Area -->
       <div class="flex flex-col md:flex-row md:items-start justify-between mb-4 gap-4">
-        <div>
+        <div class="min-w-0 md:flex-1">
           <button @click="goBack" class="text-slate-500 hover:text-[#0052ff] font-medium text-sm transition-colors mb-1">
             My Patients
           </button>
-          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Patient: {{ patient?.firstName }} {{ patient?.lastName }}
-            <span class="text-slate-500 text-xl font-medium">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
+          <h1 class="text-xl font-bold text-slate-900 flex items-baseline gap-2 flex-wrap">
+            <span>Patient: {{ patient?.firstName }} {{ patient?.lastName }}</span>
+            <span class="text-slate-500 text-sm font-medium whitespace-nowrap">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
           </h1>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap md:flex-nowrap items-center gap-3 md:shrink-0">
           <!-- Search -->
           <div class="relative w-full md:w-80">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
