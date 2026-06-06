@@ -264,6 +264,10 @@ const handleSaveClick = () => {
     notifStore.error('Please enter patient name before saving')
     return
   }
+  if (!chartStore.hasChartData) {
+    notifStore.error('Please enter clinical chart data before saving')
+    return
+  }
   showSaveConfirmModal.value = true
 }
 

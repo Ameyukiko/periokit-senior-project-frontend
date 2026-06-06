@@ -52,7 +52,19 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
 
     pdCategories: state => calculatePdCategories(state.teethData),
 
-    summary: state => calculateChartSummary(state.teethData)
+    summary: state => calculateChartSummary(state.teethData),
+
+    hasChartData: state => Object.values(state.teethData).some(tooth => {
+      if (tooth.extracted || tooth.implant) return true
+      for (const surface of ['buccal', 'lingual'] as const) {
+        const s = tooth[surface]
+        if (s.pd.some(v => v !== '')) return true
+        if (s.rec.some(v => v !== '')) return true
+        if (s.bop.some(v => v)) return true
+        if (s.pi.some(v => v)) return true
+      }
+      return false
+    })
   },
 
   actions: {
