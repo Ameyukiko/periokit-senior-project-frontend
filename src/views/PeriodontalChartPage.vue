@@ -34,7 +34,9 @@ const urlVisitId = ref<string | null>(null)
 // (saveChart with no visitId). So a new visit is a local draft — a blank chart
 // that keeps the current patient's identity — until the user hits Save.
 async function enterNewVisitState() {
-  const patientId = chartStore.currentPatientId || (route.query.patientId as string | undefined)
+  // Use only the URL param — never chartStore.currentPatientId, which may still
+  // hold a previous patient's id before resetChart() has cleared it.
+  const patientId = route.query.patientId as string | undefined
   const today = new Date().toISOString().split('T')[0]
   chartStore.resetChart()
   if (patientId) {
