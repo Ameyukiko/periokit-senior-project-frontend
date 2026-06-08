@@ -50,7 +50,7 @@ const handleLogout = () => {
 const confirmLogout = async () => {
   showLogoutConfirm.value = false;
   await authStore.logout();
-  router.replace({ path: "/login", query: { logout: "true" } });
+  window.location.href = "/login?logout=true";
 };
 
 const { user } = storeToRefs(authStore);

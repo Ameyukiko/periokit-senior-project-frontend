@@ -56,7 +56,7 @@ export async function handleUnauthorizedSession(): Promise<void> {
     const notificationStore = useNotificationStore();
     notificationStore.error("Please login again (Session expired)");
 
-    await router.push({ name: "login" });
+    window.location.href = "/login";
   } finally {
     isHandlingUnauthorized = false;
   }
