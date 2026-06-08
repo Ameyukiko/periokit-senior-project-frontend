@@ -6,6 +6,7 @@ const SAVE_CHART = gql`
     saveChart(input: $input) {
       id
       visitId
+      patientId
       chartName
       status
       updatedAt
@@ -28,6 +29,7 @@ const CHART_BY_VISIT = gql`
     chartByVisit(visitId: $visitId) {
       id
       visitId
+      patientId
       chartName
       status
       teethData

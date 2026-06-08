@@ -52,7 +52,19 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
 
     pdCategories: state => calculatePdCategories(state.teethData),
 
-    summary: state => calculateChartSummary(state.teethData)
+    summary: state => calculateChartSummary(state.teethData),
+
+    hasChartData: state => Object.values(state.teethData).some(tooth => {
+      if (tooth.extracted || tooth.implant) return true
+      for (const surface of ['buccal', 'lingual'] as const) {
+        const s = tooth[surface]
+        if (s.pd.some(v => v !== '')) return true
+        if (s.rec.some(v => v !== '')) return true
+        if (s.bop.some(v => v)) return true
+        if (s.pi.some(v => v)) return true
+      }
+      return false
+    })
   },
 
   actions: {
@@ -68,6 +80,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.teethData = createInitialChartData()
       this.selectedToothId = null
       this.activeSubNav = 'chart'
+      this.currentPatientId = null
       this.isDirty = false
     },
 
@@ -248,6 +261,13 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         if (savedChart?.visitId) {
           visitStore.setActiveVisit(savedChart.visitId)
         }
+        // A brand-new patient/visit (saved with no visitId) has no
+        // currentPatientId yet — adopt the one the backend resolved so the
+        // chart page recognises the patient and stays open (instead of falling
+        // back to the "select a patient" empty state).
+        if (savedChart?.patientId) {
+          this.currentPatientId = savedChart.patientId
+        }
 
         this.isDirty = false
         notifStore.success('Chart saved successfully')
@@ -268,6 +288,13 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       try {
         const { data } = await chartApi.getByVisit(visitId)
         const chartData = data?.chartByVisit
+
+        // Keep the current patient in sync — covers the post-save reload where
+        // the chart page navigates by visitId alone and would otherwise lose
+        // track of which patient this visit belongs to.
+        if (chartData?.patientId) {
+          this.currentPatientId = chartData.patientId
+        }
 
         if (!chartData || !chartData.teethData) {
           // New/empty visit: blank the chart but keep the current patient's

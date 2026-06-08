@@ -34,14 +34,16 @@ const urlVisitId = ref<string | null>(null)
 // (saveChart with no visitId). So a new visit is a local draft — a blank chart
 // that keeps the current patient's identity — until the user hits Save.
 async function enterNewVisitState() {
-  const patientId = chartStore.currentPatientId || (route.query.patientId as string | undefined)
+  // Use only the URL param — never chartStore.currentPatientId, which may still
+  // hold a previous patient's id before resetChart() has cleared it.
+  const patientId = route.query.patientId as string | undefined
   const today = new Date().toISOString().split('T')[0]
   chartStore.resetChart()
   if (patientId) {
     await chartStore.loadPatientById(patientId)
-    chartStore.patientInfo.date = today
-    chartStore.patientInfo.visitPhase = 'before_hygienic'
   }
+  chartStore.patientInfo.date = today
+  chartStore.patientInfo.visitPhase = 'before_hygienic'
   visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
 }
 
@@ -86,6 +88,11 @@ onMounted(async () => {
         chartStore.loadPatientById(patientId),
         visitStore.loadVisits(patientId),
       ])
+      // Patient has no visits yet — auto-open a blank draft so the tab row shows immediately
+      if (visitStore.visits.length === 0) {
+        await enterNewVisitState()
+        router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
+      }
     } catch (error) {
       console.error('Failed to load patient:', error)
     }
@@ -102,8 +109,7 @@ onMounted(async () => {
       await enterNewVisitState()
     }
   } else {
-    visitStore.setActiveVisit(null)
-    chartStore.resetChart()
+    await enterNewVisitState()
   }
 })
 
@@ -122,7 +128,16 @@ watch(() => route.query.visitId, async (newVisitId) => {
       await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
-    visitStore.setActiveVisit(null)
+    visitStore.clearVisits()
+    chartStore.resetChart()
+  }
+})
+
+// When patientId is removed from the URL without a visitId change (e.g. navigating
+// to /chart from a patient-specific chart), enter new-patient mode.
+watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
+  if (newPatientId === undefined && oldPatientId !== undefined && route.query.visitId === undefined) {
+    visitStore.clearVisits()
     chartStore.resetChart()
   }
 })
@@ -249,6 +264,10 @@ const handleSaveClick = () => {
     notifStore.error('Please enter patient name before saving')
     return
   }
+  if (!chartStore.hasChartData) {
+    notifStore.error('Please enter clinical chart data before saving')
+    return
+  }
   showSaveConfirmModal.value = true
 }
 
@@ -256,15 +275,28 @@ const confirmSaveChart = async () => {
   showSaveConfirmModal.value = false
   if (isSaving.value) return
   isSaving.value = true
+  const wasNewPatient = isNewPatientMode.value
   try {
     await chartStore.saveToBackend()
 
-    // Saved successfully — leave edit mode (back to read-only view).
     editMode.value = false
 
     const activeVisit = activeVisitId.value
-    if (activeVisit && route.query.visitId !== activeVisit) {
-      router.replace({ query: { ...route.query, visitId: activeVisit } })
+    const patientId = currentPatientId.value
+
+    if (wasNewPatient && patientId) {
+      router.push({ name: 'patient-visits', params: { patientId } })
+      return
+    }
+
+    if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
+      router.replace({
+        query: {
+          ...route.query,
+          visitId: activeVisit,
+          ...(patientId ? { patientId } : {}),
+        },
+      })
     }
   } catch (error) {
     console.error('Failed to save chart:', error)
@@ -432,8 +464,8 @@ const handleCancelEdit = async () => {
           <ChartLegend :is-sidebar-open="selectedToothId !== null" />
 
           <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
-            <!-- Visit Tabs (hidden in new patient mode) -->
-            <div v-if="!isNewPatientMode" class="flex items-center gap-0 relative z-10">
+            <!-- Visit Tabs: always visible when there are visits/drafts -->
+            <div v-if="!isNewPatientMode || visits.length > 0" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
                 <div class="px-4 py-2 text-xs text-slate-400 italic">
                   No visits yet. Click "New Visit" to create one.

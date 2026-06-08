@@ -6,7 +6,7 @@ import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
-import { Search, User, ChevronLeft, ChevronRight, Plus, Calendar, Users, Type } from 'lucide-vue-next'
+import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type } from 'lucide-vue-next'
 
 const router = useRouter()
 const drawerOpen = ref(false)
@@ -27,65 +27,39 @@ const filterConfigs: FilterConfig[] = [
     label: 'Date',
     icon: Calendar,
     color: 'blue',
-    isDateRange: true,
-    isSort: true
-  },
-  {
-    type: 'gender',
-    label: 'Gender',
-    icon: Users,
-    color: 'rose',
-    options: [
-      { value: 'Male', label: 'Male' },
-      { value: 'Female', label: 'Female' },
-      { value: 'Other', label: 'Other' }
-    ]
-  },
-  {
-    type: 'age',
-    label: 'Age',
-    icon: User,
-    color: 'emerald',
-    isSort: true
+    isSort: true,
+    sortLabels: { desc: 'Latest', asc: 'Oldest' }
   },
   {
     type: 'name',
     label: 'Name',
     icon: Type,
     color: 'purple',
-    isSort: true
+    isSort: true,
+    sortLabels: { desc: 'Descending (Z-A)', asc: 'Ascending (A-Z)' }
   }
 ]
 
-// Filter values - store both sort and date range in 'date' filter
+// Filter values
 const filterValues = ref<Record<string, any>>({
-  date: { sort: null, from: '', to: '' },  // Combined: sort + date range
-  gender: '',
-  age: null,
+  date: null,
   name: null
 })
 
 const fetchPatients = async () => {
   isLoading.value = true
   try {
-    // Extract values from filterValues
-    const dateFilter = filterValues.value.date || {}
-    const dateSort = dateFilter.sort || null
-    const dateFrom = dateFilter.from || ''
-    const dateTo = dateFilter.to || ''
-
     const res = await patientApi.getPatients(
       page.value,
       pageSize.value,
       searchInput.value,
       JSON.stringify({
-        date: dateSort,
-        age: filterValues.value.age,
+        date: filterValues.value.date,
         name: filterValues.value.name
       }),
-      dateFrom,
-      dateTo,
-      filterValues.value.gender,
+      '',   // dateFrom
+      '',   // dateTo
+      null, // gender
       null, // minAge
       null  // maxAge
     )

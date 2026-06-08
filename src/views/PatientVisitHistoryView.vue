@@ -7,7 +7,7 @@ import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
-import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User } from 'lucide-vue-next'
+import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User, ArrowLeft } from 'lucide-vue-next'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 
@@ -44,18 +44,18 @@ const filterConfigs: FilterConfig[] = [
   },
   {
     type: 'date',
-    label: 'Date Range & Sort',
+    label: 'Date',
     icon: Calendar,
     color: 'emerald',
-    isDateRange: true,
-    isSort: true
+    isSort: true,
+    sortLabels: { desc: 'Latest', asc: 'Oldest' }
   }
 ]
 
 // Filter values
 const filterValues = ref<Record<string, any>>({
   phase: '',
-  date: { sort: null, from: '', to: '' }
+  date: null
 })
 
 const fetchPatientAndVisits = async () => {
@@ -165,15 +165,6 @@ const filteredVisits = computed(() => {
     result = result.filter(v => v.phase === filterValues.value.phase)
   }
 
-  // Filter by date range
-  const dateFilter = filterValues.value.date
-  if (dateFilter?.from) {
-    result = result.filter(v => new Date(v.visitDate) >= new Date(dateFilter.from))
-  }
-  if (dateFilter?.to) {
-    result = result.filter(v => new Date(v.visitDate) <= new Date(dateFilter.to))
-  }
-
   // Filter by search input (visit number or date)
   if (searchInput.value) {
     const search = searchInput.value.toLowerCase()
@@ -185,7 +176,7 @@ const filteredVisits = computed(() => {
   }
 
   // Sort by date
-  const sortOrder = filterValues.value.date?.sort
+  const sortOrder = filterValues.value.date
   if (sortOrder === 'date_asc') {
     result.sort((a, b) => new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime())
   } else {
@@ -233,17 +224,17 @@ onUnmounted(() => {
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Breadcrumb / Header Area -->
       <div class="flex flex-col md:flex-row md:items-start justify-between mb-4 gap-4">
-        <div>
-          <button @click="goBack" class="text-slate-500 hover:text-[#0052ff] font-medium text-sm transition-colors mb-1">
+        <div class="min-w-0 md:flex-1">
+          <button @click="goBack" class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all mb-3 w-fit">
+            <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             My Patients
           </button>
-          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-slate-900 truncate">
             Patient: {{ patient?.firstName }} {{ patient?.lastName }}
-            <span class="text-slate-500 text-xl font-medium">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
           </h1>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap md:flex-nowrap items-center gap-3 md:shrink-0">
           <!-- Search -->
           <div class="relative w-full md:w-80">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -289,8 +280,9 @@ onUnmounted(() => {
 
       <!-- Visit Timeline Card -->
       <div class="bg-white shadow-sm rounded-2xl border border-slate-100 overflow-hidden">
-        <div class="px-6 py-5 border-b border-slate-100">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-baseline gap-2">
           <h2 class="text-lg font-bold text-slate-800">Visit Timeline</h2>
+          <span class="text-slate-500 text-sm font-medium">({{ filteredVisits.length }} of {{ patient?.visitCount || visits.length }} visits)</span>
         </div>
 
         <div class="p-6 space-y-4">

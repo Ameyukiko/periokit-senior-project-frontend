@@ -18,6 +18,7 @@ export interface FilterConfig {
   isSearch?: boolean
   isDateRange?: boolean
   isSort?: boolean
+  sortLabels?: { asc: string; desc: string }
 }
 
 const props = defineProps<{
@@ -115,7 +116,7 @@ const getFilterDisplay = (type: FilterType) => {
     const parts = []
     if (value.sort) {
       if (value.sort === 'date_asc') parts.push('Oldest')
-      if (value.sort === 'date_desc') parts.push('Newest')
+      if (value.sort === 'date_desc') parts.push('Latest')
     }
     if (value.from || value.to) {
       const from = value.from || '...'
@@ -137,10 +138,14 @@ const getFilterDisplay = (type: FilterType) => {
 
   // Handle sort only
   if (config?.isSort && !config?.isDateRange) {
+    if (config.sortLabels) {
+      if (value === 'asc' || value?.includes('asc')) return config.sortLabels.asc
+      if (value === 'desc' || value?.includes('desc')) return config.sortLabels.desc
+    }
     if (value === 'asc') return `${config.label} (A-Z)`
     if (value === 'desc') return `${config.label} (Z-A)`
-    if (value?.includes('asc')) return value.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
-    if (value?.includes('desc')) return value.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+    if (value?.includes('asc')) return 'A-Z'
+    if (value?.includes('desc')) return 'Z-A'
     return config.label
   }
 
@@ -312,60 +317,34 @@ const getColorClasses = (color: string) => {
               </div>
             </template>
 
-            <!-- Combined Sort + Date Range -->
+            <!-- Combined Sort + Date Range (sort only — date range inputs removed) -->
             <template v-if="getConfig(activePopover as FilterType)?.isSort && getConfig(activePopover as FilterType)?.isDateRange">
-              <div class="space-y-2">
-                <!-- Sort Options -->
-                <div class="space-y-1">
-                  <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">Sort by Date</p>
-                  <button
-                    @click="setSortValue(activePopover + '_desc')"
-                    class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors"
-                    :class="[
-                      tempValues[activePopover]?.sort === (activePopover + '_desc')
-                        ? getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').text + ' ' + getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').bg + ' font-medium'
-                        : 'text-slate-700'
-                    ]"
-                  >
-                    Newest to Oldest <div v-if="tempValues[activePopover]?.sort === (activePopover + '_desc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
-                  </button>
-                  <button
-                    @click="setSortValue(activePopover + '_asc')"
-                    class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors"
-                    :class="[
-                      tempValues[activePopover]?.sort === (activePopover + '_asc')
-                        ? getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').text + ' ' + getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').bg + ' font-medium'
-                        : 'text-slate-700'
-                    ]"
-                  >
-                    Oldest to Newest <div v-if="tempValues[activePopover]?.sort === (activePopover + '_asc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
-                  </button>
-                </div>
-
-                <!-- Date Range -->
-                <div class="pt-2 mt-1 border-t border-slate-100 space-y-1.5">
-                  <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">Date Range</p>
-                  <div class="flex flex-col gap-1">
-                    <label class="text-xs text-slate-500 px-1">From</label>
-                    <input
-                      type="date"
-                      :value="tempValues[activePopover]?.from || ''"
-                      @input="(e: any) => setDateValue('from', e.target.value)"
-                      @click.stop
-                      class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-400 text-slate-700"
-                    />
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    <label class="text-xs text-slate-500 px-1">To</label>
-                    <input
-                      type="date"
-                      :value="tempValues[activePopover]?.to || ''"
-                      @input="(e: any) => setDateValue('to', e.target.value)"
-                      @click.stop
-                      class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-400 text-slate-700"
-                    />
-                  </div>
-                </div>
+              <div class="space-y-1">
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">Sort by Date</p>
+                <button
+                  @click="setSortValue(activePopover + '_desc')"
+                  class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors"
+                  :class="[
+                    tempValues[activePopover]?.sort === (activePopover + '_desc')
+                      ? getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').text + ' ' + getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').bg + ' font-medium'
+                      : 'text-slate-700'
+                  ]"
+                >
+                  {{ getConfig(activePopover as FilterType)?.sortLabels?.desc ?? 'Latest' }}
+                  <div v-if="tempValues[activePopover]?.sort === (activePopover + '_desc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
+                </button>
+                <button
+                  @click="setSortValue(activePopover + '_asc')"
+                  class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors"
+                  :class="[
+                    tempValues[activePopover]?.sort === (activePopover + '_asc')
+                      ? getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').text + ' ' + getColorClasses(getConfig(activePopover as FilterType)?.color || 'blue').bg + ' font-medium'
+                      : 'text-slate-700'
+                  ]"
+                >
+                  {{ getConfig(activePopover as FilterType)?.sortLabels?.asc ?? 'Oldest' }}
+                  <div v-if="tempValues[activePopover]?.sort === (activePopover + '_asc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
+                </button>
               </div>
             </template>
 
@@ -407,7 +386,8 @@ const getColorClasses = (color: string) => {
                     : 'text-slate-700'
                 ]"
               >
-                Newest First / Descending <div v-if="tempValues[activePopover] === (activePopover + '_desc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
+                {{ getConfig(activePopover as FilterType)?.sortLabels?.desc ?? 'Descending' }}
+                <div v-if="tempValues[activePopover] === (activePopover + '_desc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
               </button>
               <button
                 @click="toggleSort(activePopover as FilterType, (activePopover + '_asc') as string)"
@@ -418,7 +398,8 @@ const getColorClasses = (color: string) => {
                     : 'text-slate-700'
                 ]"
               >
-                Oldest First / Ascending <div v-if="tempValues[activePopover] === (activePopover + '_asc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
+                {{ getConfig(activePopover as FilterType)?.sortLabels?.asc ?? 'Ascending' }}
+                <div v-if="tempValues[activePopover] === (activePopover + '_asc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
               </button>
             </template>
           </div>

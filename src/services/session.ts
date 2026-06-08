@@ -38,6 +38,7 @@ function notifySessionCleared(): void {
 
 export async function clearClientSession(): Promise<void> {
   clearSessionStorage();
+  sessionStorage.clear();
   notifySessionCleared();
   await resetApolloCache();
 }

@@ -240,11 +240,12 @@ const formatDate = (dateString: string | null) => {
           <div v-if="searchResults.length === 0" class="text-center py-8">
             <p class="text-slate-500 text-sm">No patients found</p>
           </div>
-          <div 
+          <div
             v-else
-            v-for="patient in searchResults" 
+            v-for="patient in searchResults"
             :key="patient.id"
-            class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-3"
+            @click="switchPatient(patient)"
+            class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-3 cursor-pointer"
           >
             <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
               <User class="w-5 h-5 text-[#0052ff]" />
