@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Surface, ToothId } from '@/domain/chart/chart.types'
+import { registerSessionClearListener } from '@/services/session'
 
 type ValidationState = 'valid' | 'invalid' | 'none'
 
@@ -43,3 +44,8 @@ export const useClinicalValidationStore = defineStore('clinicalValidation', {
     }
   }
 })
+
+registerSessionClearListener(() => {
+  const store = useClinicalValidationStore()
+  store.clearValidation()
+})

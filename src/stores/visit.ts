@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Visit } from '@/services/api/visit.api'
+import { registerSessionClearListener } from '@/services/session'
 
 export const useVisitStore = defineStore('visit', () => {
   const activeVisitId = ref<string | null>(null)
@@ -67,3 +68,9 @@ export const useVisitStore = defineStore('visit', () => {
     addDraftVisit,
   }
 })
+
+registerSessionClearListener(() => {
+  const store = useVisitStore()
+  store.clearVisits()
+})
+

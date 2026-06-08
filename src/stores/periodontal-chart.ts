@@ -7,6 +7,7 @@ import { useVisitStore } from './visit'
 import { useNotificationStore } from './notification'
 import { mapChartToPayload, mapPayloadToChart } from '@/domain/chart/chart.mapper'
 import { chartApi } from '@/services/api/chart.api'
+import { registerSessionClearListener } from '@/services/session'
 
 const createDefaultPatientInfo = (): PatientInfo => {
   const authStore = useAuthStore()
@@ -82,6 +83,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.activeSubNav = 'chart'
       this.currentPatientId = null
       this.isDirty = false
+      this.readonly = false
     },
 
     updatePatientInfo(value: PatientInfo) {
@@ -369,3 +371,9 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     pick: ['chartName', 'patientInfo', 'teethData', 'currentPatientId', 'isDirty'],
   },
 })
+
+registerSessionClearListener(() => {
+  const store = usePeriodontalChartStore()
+  store.resetChart()
+})
+
