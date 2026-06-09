@@ -4,10 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import Navbar from '../components/layout/Navbar.vue'
 import PeriodontalChartGrid from '../components/chart/PeriodontalChartGrid.vue'
 import CompareSidebarCard from '../components/chart/CompareSidebarCard.vue'
+import CompareSummaryCard from '../components/chart/CompareSummaryCard.vue'
+import ChartOverviewModal from '../components/chart/ChartOverviewModal.vue'
 import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
 import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
+import { calculateChartSummary } from '@/domain/chart/chart.calculations'
+import { Activity } from 'lucide-vue-next'
 import type { ChartData, ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -25,9 +29,17 @@ const isLoading = ref(false)
 
 const selectedToothId = ref<ToothId | null>(null)
 const archFilter = ref<'upper' | 'lower'>('upper')
+const summaryMode = ref(true)
+const showOverviewA = ref(false)
+const showOverviewB = ref(false)
+const showSummaryA = ref(false)
+const showSummaryB = ref(false)
 
 const visitA = computed(() => visits.value.find(v => v.id === selectedVisitIdA.value))
 const visitB = computed(() => visits.value.find(v => v.id === selectedVisitIdB.value))
+
+const summaryA = computed(() => chartDataA.value ? calculateChartSummary(chartDataA.value) : null)
+const summaryB = computed(() => chartDataB.value ? calculateChartSummary(chartDataB.value) : null)
 
 const fetchPatientVisits = async () => {
   if (!patientId) return
@@ -197,8 +209,27 @@ const goBack = () => {
                     Lower
                   </button>
                 </div>
-                <div class="text-xs font-black text-slate-700">summary</div>
-                <button class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                <div class="relative">
+                  <button
+                    @click="showSummaryA = !showSummaryA"
+                    :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors border', showSummaryA ? 'bg-[#0052ff] text-white border-[#0052ff]' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100']"
+                  >
+                    <Activity class="w-3.5 h-3.5" /> Summary
+                  </button>
+                  <Transition
+                    enter-active-class="transition ease-out duration-150"
+                    enter-from-class="opacity-0 -translate-y-1"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition ease-in duration-100"
+                    leave-from-class="opacity-100"
+                    leave-to-class="opacity-0"
+                  >
+                    <div v-if="showSummaryA && summaryA" class="absolute left-1/2 -translate-x-1/2 mt-2 z-50">
+                      <CompareSummaryCard :summary="summaryA" :label="`Visit ${visitA?.visitNumber}`" />
+                    </div>
+                  </Transition>
+                </div>
+                <button @click="showOverviewA = true" class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   Overview
                 </button>
@@ -215,7 +246,7 @@ const goBack = () => {
                   :selected-tooth-id="selectedToothId"
                   :readonly="true"
                   :arch-filter="archFilter"
-                  :summary-mode="true"
+                  :summary-mode="summaryMode"
                   :get-field-validation="() => 'none'"
                   @tooth-click="handleToothClick"
                 />
@@ -224,8 +255,27 @@ const goBack = () => {
               <!-- Header Row 2 -->
               <div class="flex items-center justify-between pt-2">
                 <div class="w-[140px]"></div>
-                <div class="text-xs font-black text-slate-700">summary</div>
-                <button class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                <div class="relative">
+                  <button
+                    @click="showSummaryB = !showSummaryB"
+                    :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors border', showSummaryB ? 'bg-[#0052ff] text-white border-[#0052ff]' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100']"
+                  >
+                    <Activity class="w-3.5 h-3.5" /> Summary
+                  </button>
+                  <Transition
+                    enter-active-class="transition ease-out duration-150"
+                    enter-from-class="opacity-0 -translate-y-1"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition ease-in duration-100"
+                    leave-from-class="opacity-100"
+                    leave-to-class="opacity-0"
+                  >
+                    <div v-if="showSummaryB && summaryB" class="absolute left-1/2 -translate-x-1/2 mt-2 z-50">
+                      <CompareSummaryCard :summary="summaryB" :label="`Visit ${visitB?.visitNumber}`" />
+                    </div>
+                  </Transition>
+                </div>
+                <button @click="showOverviewB = true" class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   Overview
                 </button>
@@ -242,7 +292,7 @@ const goBack = () => {
                   :selected-tooth-id="selectedToothId"
                   :readonly="true"
                   :arch-filter="archFilter"
-                  :summary-mode="true"
+                  :summary-mode="summaryMode"
                   :get-field-validation="() => 'none'"
                   @tooth-click="handleToothClick"
                 />
@@ -266,6 +316,27 @@ const goBack = () => {
           @close="selectedToothId = null"
         />
       </div>
+
+      <!-- Click-outside backdrop for summary popups -->
+      <div
+        v-if="showSummaryA || showSummaryB"
+        class="fixed inset-0 z-40"
+        @click="showSummaryA = false; showSummaryB = false"
+      ></div>
+
+      <!-- Overview Modals -->
+      <ChartOverviewModal
+        v-if="chartDataA"
+        :show="showOverviewA"
+        :chart-data="chartDataA"
+        @close="showOverviewA = false"
+      />
+      <ChartOverviewModal
+        v-if="chartDataB"
+        :show="showOverviewB"
+        :chart-data="chartDataB"
+        @close="showOverviewB = false"
+      />
     </main>
   </div>
 </template>
