@@ -300,9 +300,6 @@ const formatDate = (dateString: string | null) => {
                       >
                         {{ visit.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
                       </span>
-                      <span v-if="visit.status === 'draft' && visit.hasChart" class="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200">
-                        Draft
-                      </span>
                     </div>
                   </div>
                   <div class="text-xs text-slate-500 mt-1">created date : {{ formatDate(visit.visitDate) }}</div>
