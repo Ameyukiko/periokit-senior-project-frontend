@@ -372,6 +372,19 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
+        <!-- Upper Arch - Tooth Numbers (summary/compare only) -->
+        <div v-if="summaryMode" class="flex mb-2">
+          <div class="w-20"></div>
+          <div class="flex">
+            <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
+              <div class="flex">
+                <div v-for="id in group" :key="id" class="flex shrink-0 items-center justify-center text-[11px] font-bold text-slate-500" :style="getToothColumnStyle(id)">{{ id }}</div>
+              </div>
+              <div v-if="gIdx !== UPPER_ARCH.length - 1" class="w-4"></div>
+            </template>
+          </div>
+        </div>
+
         <!-- Upper Arch - Images -->
         <div class="flex flex-col gap-6 mb-4">
           <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
@@ -417,6 +430,19 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </template>
 
         <template v-if="archFilter !== 'upper'">
+        <!-- Lower Arch - Tooth Numbers (summary/compare only) -->
+        <div v-if="summaryMode" class="flex mb-2">
+          <div class="w-20"></div>
+          <div class="flex">
+            <template v-for="(group, gIdx) in LOWER_ARCH" :key="gIdx">
+              <div class="flex">
+                <div v-for="id in group" :key="id" class="flex shrink-0 items-center justify-center text-[11px] font-bold text-slate-500" :style="getToothColumnStyle(id)">{{ id }}</div>
+              </div>
+              <div v-if="gIdx !== LOWER_ARCH.length - 1" class="w-6"></div>
+            </template>
+          </div>
+        </div>
+
         <!-- Lower Arch Lingual -->
         <div v-if="!summaryMode" class="flex mb-1 mt-8" data-section="lower-lingual">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">

@@ -336,7 +336,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 -mt-3">
                 <span class="inline-flex items-center gap-1">
                   <span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-100 ring-1 ring-inset ring-sky-200"></span>
-                  Buccal<sup>u</sup>
+                  Buccal<sup>upper</sup>
                 </span>
                 <span class="inline-flex items-center gap-1">
                   <span class="inline-block w-2.5 h-2.5 rounded-sm bg-violet-100 ring-1 ring-inset ring-violet-200"></span>
@@ -348,7 +348,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 </span>
                 <span class="inline-flex items-center gap-1">
                   <span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-100 ring-1 ring-inset ring-amber-200"></span>
-                  Buccal<sup>l</sup>
+                  Buccal<sup>lower</sup>
                 </span>
               </div>
 
