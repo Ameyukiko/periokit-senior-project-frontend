@@ -7,6 +7,8 @@ import CompareSidebarCard from '../components/chart/CompareSidebarCard.vue'
 import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
+import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
+import { UPPER_TEETH, LOWER_TEETH } from '@/domain/chart/chart.constants'
 import type { ChartData, ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -22,11 +24,20 @@ const chartDataB = ref<ChartData | null>(null)
 
 const isLoading = ref(true)
 
-const archFilter = ref<'upper' | 'lower'>('upper')
 const selectedToothId = ref<ToothId | null>(null)
+const archFilter = ref<'upper' | 'lower'>('upper')
 
 const visitA = computed(() => visits.value.find(v => v.id === selectedVisitIdA.value))
 const visitB = computed(() => visits.value.find(v => v.id === selectedVisitIdB.value))
+
+// Place the sidebar on the side opposite the clicked tooth so it never covers it.
+// Teeth in the right half of the arch row → sidebar on the left, and vice versa.
+const sidebarOnLeft = computed(() => {
+  const id = selectedToothId.value
+  if (id == null) return false
+  const row = UPPER_TEETH.includes(Number(id)) ? UPPER_TEETH : LOWER_TEETH
+  return row.indexOf(Number(id)) >= row.length / 2
+})
 
 const fetchPatientVisits = async () => {
   if (!patientId) return
@@ -41,11 +52,19 @@ const fetchPatientVisits = async () => {
   }
 }
 
-const loadChartData = async (visitId: string) => {
+const loadChartData = async (visitId: string): Promise<ChartData | null> => {
   if (!visitId) return null
   try {
     const res = await chartApi.getByVisit(visitId)
-    return res.data.chartByVisit?.teethData as ChartData || null
+    const raw = res.data?.chartByVisit
+    if (!raw?.teethData) return null
+    const rehydrated = mapPayloadToChart({
+      chart_name: raw.chartName || '',
+      patient_info: raw.patientInfo || {} as any,
+      teeth: raw.teethData,
+      summary: raw.summary as any
+    })
+    return rehydrated.teethData
   } catch (e) {
     console.error('Failed to load chart data for visit', visitId, e)
     return null
@@ -151,59 +170,104 @@ const goBack = () => {
 
         <!-- Chart Comparison -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 min-h-[500px]">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-sm font-bold text-slate-800">Chart Comparison</h2>
-            
-            <!-- Arch Toggle -->
-            <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200">
-              <button 
-                @click="archFilter = 'upper'" 
-                :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all', archFilter === 'upper' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
-              >
-                Upper
-              </button>
-              <button 
-                @click="archFilter = 'lower'" 
-                :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all', archFilter === 'lower' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
-              >
-                Lower
-              </button>
-            </div>
-          </div>
+          <h2 class="text-sm font-bold text-slate-800 mb-6">Chart Comparison</h2>
 
           <div v-if="isLoading" class="flex justify-center items-center py-20 text-slate-400">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0052ff]"></div>
           </div>
           
-          <div v-else-if="chartDataA && chartDataB" class="space-y-8 relative">
+          <div v-else-if="chartDataA && chartDataB" class="space-y-6 relative">
+            
+            <!-- Header Row 1 -->
+            <div class="flex items-center justify-between">
+              <!-- Arch Toggle -->
+              <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200 w-[140px] justify-center">
+                <button
+                  @click="archFilter = 'upper'"
+                  :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all w-1/2', archFilter === 'upper' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
+                >
+                  Upper
+                </button>
+                <button
+                  @click="archFilter = 'lower'"
+                  :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all w-1/2', archFilter === 'lower' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
+                >
+                  Lower
+                </button>
+              </div>
+              <div class="text-xs font-black text-slate-700">summary</div>
+              <button class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Overview
+              </button>
+            </div>
+
             <!-- Visit 1 -->
-            <div class="compare-chart-block relative bg-white border border-slate-200 shadow-sm rounded-3xl overflow-hidden p-4">
-              <div class="flex justify-center mb-2">
-                 <h3 class="text-lg font-black text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
+            <div class="compare-chart-block relative bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-6 px-8">
+              <div class="flex justify-center mb-6">
+                 <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
               </div>
               <PeriodontalChartGrid
+                :key="selectedVisitIdA"
                 :chart-data="chartDataA"
                 :selected-tooth-id="selectedToothId"
                 :readonly="true"
                 :arch-filter="archFilter"
+                :summary-mode="true"
                 :get-field-validation="() => 'none'"
                 @tooth-click="handleToothClick"
               />
+              
+              <!-- Floating Sidebar Visit 1 -->
+              <div v-if="selectedToothId" :class="['absolute top-6 bottom-6 w-[320px] shadow-2xl rounded-3xl animate-in fade-in duration-200 z-50', sidebarOnLeft ? 'left-6 slide-in-from-left-8' : 'right-6 slide-in-from-right-8']">
+                <CompareSidebarCard
+                  :tooth-id="selectedToothId"
+                  :tooth-data="chartDataA?.[selectedToothId]"
+                  :visit-label="`Visit ${visitA?.visitNumber}`"
+                  :readonly="true"
+                  @close="selectedToothId = null"
+                />
+              </div>
+            </div>
+
+            <!-- Header Row 2 -->
+            <div class="flex items-center justify-between pt-2">
+              <div class="w-[140px]"></div>
+              
+              <div class="text-xs font-black text-slate-700">summary</div>
+              
+              <button class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Overview
+              </button>
             </div>
 
             <!-- Visit 2 -->
-            <div class="compare-chart-block relative bg-white border border-slate-200 shadow-sm rounded-3xl overflow-hidden p-4">
-              <div class="flex justify-center mb-2">
-                 <h3 class="text-lg font-black text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
+            <div class="compare-chart-block relative bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-6 px-8">
+              <div class="flex justify-center mb-6">
+                 <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
               </div>
               <PeriodontalChartGrid
+                :key="selectedVisitIdB"
                 :chart-data="chartDataB"
                 :selected-tooth-id="selectedToothId"
                 :readonly="true"
                 :arch-filter="archFilter"
+                :summary-mode="true"
                 :get-field-validation="() => 'none'"
                 @tooth-click="handleToothClick"
               />
+
+              <!-- Floating Sidebar Visit 2 -->
+              <div v-if="selectedToothId" :class="['absolute top-6 bottom-6 w-[320px] shadow-2xl rounded-3xl animate-in fade-in duration-200 delay-75 z-50', sidebarOnLeft ? 'left-6 slide-in-from-left-8' : 'right-6 slide-in-from-right-8']">
+                <CompareSidebarCard
+                  :tooth-id="selectedToothId"
+                  :tooth-data="chartDataB?.[selectedToothId]"
+                  :visit-label="`Visit ${visitB?.visitNumber}`"
+                  :readonly="true"
+                  @close="selectedToothId = null"
+                />
+              </div>
             </div>
           </div>
           <div v-else class="text-center py-20 text-slate-500 font-medium">
@@ -212,27 +276,8 @@ const goBack = () => {
         </div>
       </div>
       
-      <!-- Dual Sidebar Panel -->
-      <div v-if="selectedToothId" class="fixed right-0 top-0 bottom-0 w-[420px] z-50 pointer-events-none p-6 pt-[100px] flex flex-col gap-4">
-        <div class="flex-1 pointer-events-auto shadow-2xl animate-in slide-in-from-right duration-300">
-          <CompareSidebarCard
-            :tooth-id="selectedToothId"
-            :tooth-data="chartDataA?.[selectedToothId]"
-            :readonly="true"
-            @close="selectedToothId = null"
-          />
-        </div>
-        <div class="flex-1 pointer-events-auto shadow-2xl animate-in slide-in-from-right duration-300 delay-75">
-          <CompareSidebarCard
-            :tooth-id="selectedToothId"
-            :tooth-data="chartDataB?.[selectedToothId]"
-            :readonly="true"
-            @close="selectedToothId = null"
-          />
-        </div>
-      </div>
-      <!-- Dual Sidebar Backdrop -->
-      <div v-if="selectedToothId" class="fixed inset-0 bg-slate-900/10 backdrop-blur-[1px] z-40 transition-opacity" @click="selectedToothId = null"></div>
+      <!-- Invisible backdrop to catch outside clicks -->
+      <div v-if="selectedToothId" class="fixed inset-0 z-40 transition-opacity" @click="selectedToothId = null"></div>
 
     </main>
   </div>

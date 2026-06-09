@@ -20,6 +20,7 @@ const noteInput = ref('')
 const props = defineProps<{
   toothId: number | string | null
   toothData: any
+  visitLabel?: string
   readonly?: boolean
 }>()
 
@@ -122,7 +123,7 @@ const analysisData = computed(() => {
           <span v-if="toothData.extracted" class="px-2 py-1 bg-red-50 text-red-500 rounded border border-red-100 text-[9px] font-black uppercase tracking-wider">Extracted</span>
           <span v-if="toothData.implant" class="px-2 py-1 bg-slate-100 text-slate-500 rounded border border-slate-200 text-[9px] font-black uppercase tracking-wider">Implant</span>
         </div>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tooth Details</p>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tooth Details<span v-if="visitLabel" class="ml-2 text-[#0052ff]">· {{ visitLabel }}</span></p>
       </div>
       <button @click="emit('close')" class="p-2 hover:bg-slate-50 rounded-full transition-all text-slate-400 hover:text-slate-600 border border-transparent hover:border-slate-100">
         <X class="w-5 h-5" />
@@ -419,9 +420,15 @@ const analysisData = computed(() => {
     <!-- Footer Action -->
     <div class="p-6 bg-white border-t border-slate-50 mt-auto">
       <button
-        v-if="!isEditingNote && !props.readonly"
-        @click="startEditing"
-        class="w-full py-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl text-[11px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+        v-if="!isEditingNote"
+        @click="!props.readonly && startEditing()"
+        :disabled="props.readonly"
+        :class="[
+          'w-full py-4 border rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2',
+          props.readonly 
+            ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed' 
+            : 'bg-slate-50 hover:bg-blue-50 border-slate-100 hover:border-blue-200 text-slate-400 hover:text-blue-600 active:scale-95'
+        ]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         {{ toothData.note ? 'Edit Clinical Note' : 'Add Clinical Note' }}
