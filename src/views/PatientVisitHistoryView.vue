@@ -113,6 +113,7 @@ const handleCompare = (visitId: string) => {
     router.push({
       name: 'compare-charts',
       query: {
+        patientId,
         visitA: compareAnchorVisitId.value,
         visitB: visitId,
       }
@@ -135,16 +136,16 @@ const createNewVisit = () => {
   router.push({ name: 'chart', query: { patientId, visitId: 'new' } })
 }
 
-const formatDateThai = (dateString: string) => {
+const formatDate = (dateString: string) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
-  const thaiMonths = [
-    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ]
   const day = date.getDate()
-  const month = thaiMonths[date.getMonth()]
-  const year = date.getFullYear() + 543
+  const month = months[date.getMonth()]
+  const year = date.getFullYear()
   return `${day} ${month} ${year}`
 }
 
@@ -280,7 +281,7 @@ onUnmounted(() => {
         <div class="flex items-center gap-3">
           <AlertCircle class="w-5 h-5 text-[#0052ff]" />
           <p class="text-blue-900 font-medium text-sm">
-            กำลังเลือก Visit #{{ compareAnchorVisitNumber }} เพื่อ Compare — เลือก Visit ที่ 2
+            Selecting Visit #{{ compareAnchorVisitNumber }} to Compare — select the 2nd visit
           </p>
         </div>
         <button @click="cancelCompare" class="text-slate-500 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-blue-100">
@@ -333,7 +334,7 @@ onUnmounted(() => {
                 <div class="flex items-center gap-3 text-sm text-slate-500">
                   <div class="flex items-center gap-1.5">
                     <Calendar class="w-4 h-4" />
-                    {{ formatDateThai(visit.visitDate) }}
+                    {{ formatDate(visit.visitDate) }}
                   </div>
                   <span>•</span>
                   <span>by {{ visit.doctorName || 'Unknown Doctor' }}</span>
@@ -360,7 +361,7 @@ onUnmounted(() => {
                   {{ compareAnchorVisitId === visit.id ? 'Cancel' : 'Compare' }}
                 </button>
                 <div v-if="!visit.hasChart" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  ยังไม่มี chart
+                  No chart yet
                 </div>
               </div>
             </div>
