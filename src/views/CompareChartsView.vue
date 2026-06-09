@@ -127,6 +127,7 @@ const goBack = () => {
 
     <main
       class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8 relative transition-[padding] duration-300 ease-out"
+      style="zoom: 0.9;"
     >
       <div class="max-w-7xl mx-auto mb-4 flex items-center gap-4">
         <button @click="goBack" class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all w-fit">

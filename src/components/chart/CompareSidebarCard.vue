@@ -87,7 +87,8 @@ const prognosisKCColor = (val: string) => {
   >
     <aside
       v-if="open && toothId"
-      class="w-[420px] sticky top-6 h-[calc(100vh-160px)] shrink-0 self-start"
+      class="w-[420px] sticky top-6 shrink-0 self-start"
+      style="height: calc(100vh / 0.9 - 160px);"
     >
       <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-full">
 

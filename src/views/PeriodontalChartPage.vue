@@ -222,6 +222,7 @@ const showSaveConfirmModal = ref(false)
 const showCloseTabWarningModal = ref(false)
 const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
+const showCancelEditConfirmModal = ref(false)
 
 // ID of the visit tab the user is trying to close (pending confirmation)
 let pendingCloseVisitId: string | null = null
@@ -413,7 +414,12 @@ watch(activeVisitId, () => { editMode.value = false })
 
 const handleEditVisit = () => { editMode.value = true }
 
-const handleCancelEdit = async () => {
+const handleCancelEditClick = () => {
+  showCancelEditConfirmModal.value = true
+}
+
+const confirmCancelEdit = async () => {
+  showCancelEditConfirmModal.value = false
   editMode.value = false
   // Discard unsaved edits by reloading from backend
   const visitId = activeVisitId.value
@@ -524,7 +530,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- Cancel edit: discard unsaved edits -->
             <button
               v-if="isExistingVisit && editMode"
-              @click="handleCancelEdit"
+              @click="handleCancelEditClick"
               class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
             >
               <X class="w-3.5 h-3.5" /> Cancel
@@ -683,6 +689,18 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             cancel-text="Discard Data"
             @confirm="showDraftRecoveryModal = false"
             @cancel="discardDraft"
+          />
+
+          <!-- Cancel Edit Confirmation Modal -->
+          <ConfirmModal
+            :show="showCancelEditConfirmModal"
+            title="Cancel Editing"
+            message="Are you sure you want to cancel?<br/>Any unsaved changes will be lost."
+            confirm-text="Discard Changes"
+            cancel-text="Continue Editing"
+            type="danger"
+            @confirm="confirmCancelEdit"
+            @cancel="showCancelEditConfirmModal = false"
           />
         </div>
       </template>
