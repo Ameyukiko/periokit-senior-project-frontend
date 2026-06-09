@@ -190,7 +190,7 @@ const filteredVisits = computed(() => {
     result.sort(
       (a, b) =>
         new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
-        new Date(b.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
         b.id.localeCompare(a.id)
     )
   }

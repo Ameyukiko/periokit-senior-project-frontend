@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { patientApi, type Patient } from '../services/api/patient.api'
 import Navbar from '../components/layout/Navbar.vue'
@@ -11,11 +11,9 @@ import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type, User } from 'l
 const router = useRouter()
 const drawerOpen = ref(false)
 
-const patients = ref<Patient[]>([])
-const total = ref(0)
+const allPatients = ref<Patient[]>([])
 const page = ref(1)
 const pageSize = ref(10)
-const totalPages = ref(0)
 const isLoading = ref(false)
 
 const searchInput = ref('')
@@ -49,30 +47,53 @@ const filterValues = ref<Record<string, any>>({
 const fetchPatients = async () => {
   isLoading.value = true
   try {
-    const res = await patientApi.getPatients(
-      page.value,
-      pageSize.value,
-      searchInput.value,
-      JSON.stringify({
-        date: filterValues.value.date,
-        name: filterValues.value.name
-      }),
-      '',   // dateFrom
-      '',   // dateTo
-      undefined, // gender
-      undefined, // minAge
-      undefined  // maxAge
+    const res = await patientApi.getMyPatients(
+      1,
+      10000,
+      searchInput.value
     )
-    patients.value = res.items
-    total.value = res.total
-    page.value = res.page
-    totalPages.value = res.totalPages
+    allPatients.value = res.items
   } catch (error) {
     console.error('Failed to fetch patients', error)
   } finally {
     isLoading.value = false
   }
 }
+
+// Computed: sorted patients (applies across all patients, not just current page)
+const sortedPatients = computed(() => {
+  const result = [...allPatients.value]
+  const dateSort = filterValues.value.date
+  const nameSort = filterValues.value.name
+
+  result.sort((a: Patient, b: Patient) => {
+    if (dateSort) {
+      const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
+      const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
+      const cmp = dateSort === 'date_asc' ? dateA - dateB : dateB - dateA
+      if (cmp !== 0) return cmp
+    }
+    if (nameSort) {
+      const cmp = nameSort === 'name_asc'
+        ? a.firstName.localeCompare(b.firstName)
+        : b.firstName.localeCompare(a.firstName)
+      if (cmp !== 0) return cmp
+    }
+    // Default: latest visit first
+    const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
+    const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
+    return dateB - dateA
+  })
+
+  return result
+})
+
+const total = computed(() => sortedPatients.value.length)
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+const patients = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return sortedPatients.value.slice(start, start + pageSize.value)
+})
 
 onMounted(() => {
   fetchPatients()
@@ -90,7 +111,6 @@ const handleSearch = () => {
 // Reset page when filters change
 watch(() => filterValues.value, () => {
   page.value = 1
-  fetchPatients()
 }, { deep: true })
 
 const formatDate = (dateString: string | null) => {
@@ -232,7 +252,7 @@ const handleNewPatient = () => {
             <div v-if="totalPages > 0">
               <nav class="relative z-0 inline-flex items-center gap-2" aria-label="Pagination">
                 <button
-                  @click="page > 1 && (page--, fetchPatients())"
+                  @click="page > 1 && page--"
                   :disabled="page === 1"
                   class="relative inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm gap-1"
                 >
@@ -243,7 +263,7 @@ const handleNewPatient = () => {
                   <button
                     v-for="p in totalPages"
                     :key="p"
-                    @click="page !== p && (page = p, fetchPatients())"
+                    @click="page !== p && (page = p)"
                     class="relative inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold transition-colors"
                     :class="[
                       p === page
@@ -256,7 +276,7 @@ const handleNewPatient = () => {
                 </div>
 
                 <button
-                  @click="page < totalPages && (page++, fetchPatients())"
+                  @click="page < totalPages && page++"
                   :disabled="page === totalPages"
                   class="relative inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm gap-1"
                 >
