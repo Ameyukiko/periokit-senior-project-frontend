@@ -283,7 +283,7 @@ const formatDate = (dateString: string | null) => {
 
           <div class="space-y-3">
             <div
-              v-for="(visit, index) in sortedVisits"
+              v-for="visit in sortedVisits"
               :key="visit.id"
               class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group"
             >
@@ -293,7 +293,7 @@ const formatDate = (dateString: string | null) => {
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between gap-2">
-                    <div class="font-bold text-slate-800 text-sm shrink-0">Visit #{{ visit.visitNumber ?? index + 1 }}</div>
+                    <div class="font-bold text-slate-800 text-sm shrink-0">Visit #{{ visit.visitNumber }}</div>
                     <span v-if="visit.phase" class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
                       :class="visit.phase.toLowerCase().includes('after') ? 'bg-blue-50 text-[#0052ff] border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'"
                     >

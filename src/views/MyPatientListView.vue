@@ -59,9 +59,9 @@ const fetchPatients = async () => {
       }),
       '',   // dateFrom
       '',   // dateTo
-      null, // gender
-      null, // minAge
-      null  // maxAge
+      undefined, // gender
+      undefined, // minAge
+      undefined  // maxAge
     )
     patients.value = res.items
     total.value = res.total

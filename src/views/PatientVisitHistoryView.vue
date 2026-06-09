@@ -66,8 +66,13 @@ const fetchPatientAndVisits = async () => {
       visitApi.getByPatient(patientId)
     ])
     patient.value = patientData
-    // Sort visits by date descending
-    visits.value = [...visitsData].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())
+    // Sort visits by date descending, then createdAt descending, then ID
+    visits.value = [...visitsData].sort(
+      (a, b) =>
+        new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+        b.id.localeCompare(a.id)
+    )
 
     // Update chartStore patientInfo so VisitListPanel shows correct patient name
     await chartStore.loadPatientById(patientId)
@@ -122,14 +127,9 @@ const cancelCompare = () => {
 
 const compareAnchorVisitNumber = computed(() => {
   if (!compareAnchorVisitId.value) return null
-  return getVisitNumber(compareAnchorVisitId.value)
+  const visit = visits.value.find(v => v.id === compareAnchorVisitId.value)
+  return visit ? visit.visitNumber : null
 })
-
-const getVisitNumber = (visitId: string) => {
-  const index = visits.value.findIndex(v => v.id === visitId)
-  if (index === -1) return 0
-  return visits.value.length - index
-}
 
 const createNewVisit = () => {
   router.push({ name: 'chart', query: { patientId, visitId: 'new' } })
@@ -178,10 +178,20 @@ const filteredVisits = computed(() => {
   // Sort by date
   const sortOrder = filterValues.value.date
   if (sortOrder === 'date_asc') {
-    result.sort((a, b) => new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime())
+    result.sort(
+      (a, b) =>
+        new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime() ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        a.id.localeCompare(b.id)
+    )
   } else {
     // Default is desc
-    result.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())
+    result.sort(
+      (a, b) =>
+        new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
+        new Date(b.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        b.id.localeCompare(a.id)
+    )
   }
 
   return result
@@ -307,12 +317,12 @@ onUnmounted(() => {
             <!-- Visit Info -->
             <div class="flex items-start gap-4 mb-4 sm:mb-0">
               <div class="w-12 h-12 rounded-full bg-[#eef4ff] text-[#0052ff] flex items-center justify-center font-bold text-lg shrink-0">
-                {{ getVisitNumber(visit.id) }}
+                {{ visit.visitNumber }}
               </div>
               <div>
                 <div class="flex items-center gap-3 mb-1.5">
                   <h3 class="text-base font-bold text-slate-900">
-                    Visit #{{ getVisitNumber(visit.id) }}
+                    Visit #{{ visit.visitNumber }}
                   </h3>
                   <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium border"
                     :class="visit.phase.toLowerCase().includes('after') ? 'bg-blue-50 text-[#0052ff] border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'"

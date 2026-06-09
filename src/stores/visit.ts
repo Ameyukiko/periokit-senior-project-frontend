@@ -58,6 +58,7 @@ export const useVisitStore = defineStore('visit', () => {
       studentId: null,
       status: 'draft',
       hasChart: false,
+      createdAt: new Date().toISOString(),
     })
     activeVisitId.value = 'new'
   }

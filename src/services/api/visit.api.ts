@@ -11,6 +11,7 @@ export interface Visit {
   status: string
   hasChart: boolean
   visitNumber?: number
+  createdAt: string
 }
 
 const VISITS_BY_PATIENT = gql`
@@ -24,6 +25,7 @@ const VISITS_BY_PATIENT = gql`
       studentId
       status
       hasChart
+      createdAt
     }
   }
 `
@@ -40,6 +42,7 @@ export const visitApi = {
     const sorted = [...list].sort(
       (a, b) =>
         new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime() ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
         a.id.localeCompare(b.id)
     )
     const numberById = new Map(sorted.map((v, i) => [v.id, i + 1]))
