@@ -294,11 +294,16 @@ const formatDate = (dateString: string | null) => {
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between gap-2">
                     <div class="font-bold text-slate-800 text-sm shrink-0">Visit #{{ visit.visitNumber }}</div>
-                    <span v-if="visit.phase" class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                      :class="visit.phase.toLowerCase().includes('after') ? 'bg-blue-50 text-[#0052ff] border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'"
-                    >
-                      {{ visit.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
-                    </span>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <span v-if="visit.phase" class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                        :class="visit.phase.toLowerCase().includes('after') ? 'bg-blue-50 text-[#0052ff] border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'"
+                      >
+                        {{ visit.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+                      </span>
+                      <span v-if="visit.status === 'draft' && visit.hasChart" class="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200">
+                        Draft
+                      </span>
+                    </div>
                   </div>
                   <div class="text-xs text-slate-500 mt-1">created date : {{ formatDate(visit.visitDate) }}</div>
                 </div>

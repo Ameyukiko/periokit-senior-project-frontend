@@ -84,6 +84,8 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.currentPatientId = null
       this.isDirty = false
       this.readonly = false
+      // Explicitly clear localStorage so logout wipes any unsaved draft
+      try { localStorage.removeItem('periodontalChart') } catch (_) {}
     },
 
     updatePatientInfo(value: PatientInfo) {
@@ -217,7 +219,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.isDirty = true
     },
 
-    async saveToBackend() {
+    async saveToBackend(completeVisit = true) {
       const visitStore = useVisitStore()
       const notifStore = useNotificationStore()
       const visitId = visitStore.activeVisitId === 'new' ? undefined : visitStore.activeVisitId
@@ -257,6 +259,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
           patientNationality,
           visitDate: patientInfo.date,
           visitPhase: patientInfo.visitPhase || 'before_hygienic',
+          completeVisit,
         })
 
         const savedChart = data?.saveChart
@@ -383,7 +386,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
   },
 
   persist: {
-    storage: sessionStorage,
+    storage: localStorage,
     pick: ['chartName', 'patientInfo', 'teethData', 'currentPatientId', 'isDirty'],
   },
 })

@@ -14,7 +14,7 @@ import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
 import type { ToothId } from '@/domain/chart/chart.types'
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 
@@ -219,11 +219,12 @@ const editMode = ref(false)
 
 const showOverviewModal = ref(false)
 const showSaveConfirmModal = ref(false)
+const showCloseTabWarningModal = ref(false)
+const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
 
-const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
-  chartStore.updateNote(Number(id) as ToothId, note)
-}
+// ID of the visit tab the user is trying to close (pending confirmation)
+let pendingCloseVisitId: string | null = null
 
 // Switch to a different visit (tab click)
 const handleSwitchVisit = async (visitId: string) => {
@@ -246,8 +247,27 @@ const handleSwitchVisit = async (visitId: string) => {
   }
 }
 
-// Close a visit tab (UI only — does not delete the visit on the backend).
+// Close a visit tab. If the visit has unsaved changes, show a warning first.
 const handleCloseVisit = async (visitId: string) => {
+  // Only warn for the draft (id='new') or a visit with dirty unsaved edits
+  const isDirtyTab = visitId === 'new' && chartStore.isDirty
+  if (isDirtyTab && visitId === activeVisitId.value) {
+    pendingCloseVisitId = visitId
+    showCloseTabWarningModal.value = true
+    return
+  }
+  await doCloseVisit(visitId)
+}
+
+const confirmCloseTab = async () => {
+  showCloseTabWarningModal.value = false
+  if (pendingCloseVisitId) {
+    await doCloseVisit(pendingCloseVisitId)
+    pendingCloseVisitId = null
+  }
+}
+
+const doCloseVisit = async (visitId: string) => {
   const wasActive = visitId === activeVisitId.value
   const nextActiveId = visitStore.removeVisit(visitId)
 
@@ -296,22 +316,26 @@ const handleNewVisit = async () => {
 
 const isSaving = ref(false)
 
-const handleSaveClick = () => {
-  if (isSaving.value) return
+const validateBeforeSave = () => {
   showValidation.value = true
-
   if (!patientInfo.value.hn) {
     notifStore.error('Please enter HN before saving')
-    return
+    return false
   }
   if (!patientInfo.value.patientName) {
     notifStore.error('Please enter patient name before saving')
-    return
+    return false
   }
   if (!chartStore.hasChartData) {
     notifStore.error('Please enter clinical chart data before saving')
-    return
+    return false
   }
+  return true
+}
+
+const handleSaveClick = () => {
+  if (isSaving.value) return
+  if (!validateBeforeSave()) return
   showSaveConfirmModal.value = true
 }
 
@@ -321,7 +345,7 @@ const confirmSaveChart = async () => {
   isSaving.value = true
   const wasNewPatient = isNewPatientMode.value
   try {
-    await chartStore.saveToBackend()
+    await chartStore.saveToBackend(true)
 
     editMode.value = false
 
@@ -370,16 +394,16 @@ const isNewPatientMode = computed(() => {
 })
 
 // --- Read-only / edit mode for saved visits ---
-// A saved visit is viewed read-only by default. The "Edit" button unlocks the
-// chart measurements and visit-level fields. Patient-identity fields stay
-// locked on existing visits (editing them would rewrite the patient globally
-// via the backend's upsert-by-HN). A new/draft visit is fully editable.
+// - id='new' (unsaved draft): always editable, no Edit button needed
+// - existing draft/completed: read-only by default, Edit button unlocks
 const isExistingVisit = computed(
   () => activeVisitId.value !== 'new' && activeVisitId.value !== null
 )
-// Chart grid + visit-level fields (date / phase / doctor / doctor id)
-const chartEditable = computed(() => !isExistingVisit.value || editMode.value)
-// Patient-identity fields (HN / name / age / gender / nationality)
+// Editable when: new unsaved visit OR (existing visit AND editMode is on)
+const chartEditable = computed(
+  () => !isExistingVisit.value || editMode.value
+)
+// Patient-identity fields stay locked on existing visits
 const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
 // Keep the store's read-only guard in sync with the editable state.
@@ -387,23 +411,43 @@ watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: tru
 // Reset edit mode whenever the active visit changes.
 watch(activeVisitId, () => { editMode.value = false })
 
-const handleEditVisit = () => {
-  editMode.value = true
-}
+const handleEditVisit = () => { editMode.value = true }
 
 const handleCancelEdit = async () => {
   editMode.value = false
-  // Discard unsaved edits by reloading the visit from the backend.
+  // Discard unsaved edits by reloading from backend
   const visitId = activeVisitId.value
   if (visitId && visitId !== 'new') {
-    try {
-      await chartStore.loadFromBackend(visitId)
-    } catch (error) {
-      console.error('Failed to reload chart on cancel:', error)
-    }
+    try { await chartStore.loadFromBackend(visitId) } catch (e) { console.error(e) }
   }
 }
 
+// --- beforeunload guard (crash/accidental tab close protection) ---
+const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+  if (chartStore.isDirty) {
+    e.preventDefault()
+  }
+}
+onMounted(() => { window.addEventListener('beforeunload', beforeUnloadHandler) })
+onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnloadHandler) })
+
+// --- Draft Recovery ---
+// On mount, if localStorage has isDirty=true (restored by Pinia persist) and the
+// current session has no active visit, offer to restore the draft.
+onMounted(() => {
+  if (chartStore.isDirty && !route.query.visitId) {
+    showDraftRecoveryModal.value = true
+  }
+})
+
+const discardDraft = () => {
+  showDraftRecoveryModal.value = false
+  chartStore.resetChart()
+}
+
+const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) => {
+  chartStore.updateNote(Number(id) as ToothId, note)
+}
 </script>
 
 <template>
@@ -467,7 +511,8 @@ const handleCancelEdit = async () => {
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- View mode: saved visit, not yet editing -->
+            <!-- Edit button: existing draft, not yet in edit mode -->
+            <!-- Edit button: existing visit, not yet in edit mode -->
             <button
               v-if="isExistingVisit && !editMode"
               @click="handleEditVisit"
@@ -476,7 +521,7 @@ const handleCancelEdit = async () => {
               <Pencil class="w-3.5 h-3.5" /> Edit
             </button>
 
-            <!-- Cancel edit (discard unsaved changes) -->
+            <!-- Cancel edit: discard unsaved edits -->
             <button
               v-if="isExistingVisit && editMode"
               @click="handleCancelEdit"
@@ -485,17 +530,13 @@ const handleCancelEdit = async () => {
               <X class="w-3.5 h-3.5" /> Cancel
             </button>
 
-            <!-- Save: editable (new/draft visit, or existing visit in edit mode) -->
+            <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
             <button
               v-if="chartEditable"
               @click="handleSaveClick"
               :disabled="isSaving"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="[
-                isSaving
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              ]"
+              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-green-600 text-white hover:bg-green-700'"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />
@@ -614,11 +655,34 @@ const handleCancelEdit = async () => {
           <ConfirmModal
             :show="showSaveConfirmModal"
             title="Save Chart"
-            message="Are you sure you want to save this chart?"
+            message="ต้องการบันทึกข้อมูล Chart นี้หรือไม่?<br/>เมื่อบันทึกแล้ว คุณยังสามารถกด Edit เพื่อแก้ไขในภายหลังได้"
             confirm-text="Save"
             cancel-text="Cancel"
             @confirm="confirmSaveChart"
             @cancel="showSaveConfirmModal = false"
+          />
+
+          <!-- Close Tab Warning Modal -->
+          <ConfirmModal
+            :show="showCloseTabWarningModal"
+            title="ยังไม่ได้บันทึก"
+            message="Chart นี้<strong>ยังไม่ได้บันทึก</strong><br/>คุณต้องการปิด Tab นี้จริงหรือไม่? ข้อมูลจะหายไป"
+            confirm-text="ปิด Tab"
+            cancel-text="ยกเลิก"
+            type="danger"
+            @confirm="confirmCloseTab"
+            @cancel="showCloseTabWarningModal = false"
+          />
+
+          <!-- Draft Recovery Modal -->
+          <ConfirmModal
+            :show="showDraftRecoveryModal"
+            title="พบข้อมูล Draft ค้างอยู่"
+            :message="`พบข้อมูล Chart ของ <strong>${patientInfo.patientName || 'คนไข้'}</strong> ที่ยังไม่ได้บันทึก<br/>ต้องการดึงข้อมูลนี้กลับมาทำต่อหรือไม่?`"
+            confirm-text="ดึงข้อมูลกลับมา"
+            cancel-text="ทิ้งข้อมูล"
+            @confirm="showDraftRecoveryModal = false"
+            @cancel="discardDraft"
           />
         </div>
       </template>

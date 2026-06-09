@@ -65,6 +65,7 @@ export const chartApi = {
     // Visit info
     visitDate: string
     visitPhase?: string
+    completeVisit?: boolean
   }) =>
     apolloClient.mutate({ mutation: SAVE_CHART, variables: { input } }),
   getByVisit: (visitId: string) =>
