@@ -115,7 +115,6 @@ const goBack = () => {
 
     <main
       class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8 relative transition-[padding] duration-300 ease-out"
-      :class="{ 'lg:pr-[460px]': selectedToothId }"
     >
       <div class="max-w-7xl mx-auto mb-4 flex items-center gap-4">
         <button @click="goBack" class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all w-fit">
@@ -127,7 +126,9 @@ const goBack = () => {
         </h1>
       </div>
 
-      <div class="max-w-7xl mx-auto space-y-6">
+      <div class="flex gap-6 max-w-[1600px] mx-auto items-start justify-center transition-all duration-500">
+        <!-- Main container -->
+        <div class="flex-1 max-w-7xl w-full space-y-6 transition-all duration-500 min-w-0">
         <!-- Select Visits to Compare -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
           <h2 class="text-sm font-bold text-slate-800 mb-4">Select Visits to Compare</h2>
@@ -177,7 +178,7 @@ const goBack = () => {
           <div v-else-if="chartDataA && chartDataB" class="flex gap-6 items-start">
 
             <!-- Charts column -->
-            <div class="flex-1 min-w-0 space-y-6 transition-all duration-300" :class="{ 'pr-[440px]': selectedToothId }">
+            <div class="flex-1 min-w-0 space-y-6 transition-all duration-300">
 
               <!-- Header Row 1 -->
               <div class="flex items-center justify-between">
@@ -247,22 +248,23 @@ const goBack = () => {
                 />
               </div>
             </div>
-
-            <!-- Combined dual-visit sidebar -->
-            <CompareSidebarCard
-              :open="!!selectedToothId"
-              :tooth-id="selectedToothId"
-              :tooth-data-a="selectedToothId ? (chartDataA?.[selectedToothId] ?? null) : null"
-              :tooth-data-b="selectedToothId ? (chartDataB?.[selectedToothId] ?? null) : null"
-              :visit-label-a="`Visit ${visitA?.visitNumber}`"
-              :visit-label-b="`Visit ${visitB?.visitNumber}`"
-              @close="selectedToothId = null"
-            />
           </div>
           <div v-else class="text-center py-20 text-slate-500 font-medium">
             Could not load chart data. Please ensure both visits have saved charts.
           </div>
         </div>
+        </div>
+
+        <!-- Combined dual-visit sidebar -->
+        <CompareSidebarCard
+          :open="!!selectedToothId"
+          :tooth-id="selectedToothId"
+          :tooth-data-a="selectedToothId ? (chartDataA?.[selectedToothId] ?? null) : null"
+          :tooth-data-b="selectedToothId ? (chartDataB?.[selectedToothId] ?? null) : null"
+          :visit-label-a="`Visit ${visitA?.visitNumber}`"
+          :visit-label-b="`Visit ${visitB?.visitNumber}`"
+          @close="selectedToothId = null"
+        />
       </div>
     </main>
   </div>
