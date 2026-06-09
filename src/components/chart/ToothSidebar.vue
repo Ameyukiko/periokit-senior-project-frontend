@@ -200,45 +200,45 @@ const analysisData = computed(() => {
 
 
           <div class="relative w-20 h-20 mb-2">
-            <svg viewBox="0 0 100 100" class="w-full h-full transform rotate-90">
-              <!-- Outer Hexagon Frame -->
-              <polygon points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25" fill="white" stroke="#e2e8f0" stroke-width="2" />
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+              <defs>
+                <clipPath :id="`squircle-clip-bop-${toothId}`">
+                  <rect x="4" y="4" width="92" height="92" rx="26" />
+                </clipPath>
+              </defs>
+              <g :clip-path="`url(#squircle-clip-bop-${toothId})`">
+                <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                
+                <!-- Top Half -->
+                <template v-if="isUpperTooth(toothId)">
+                  <path v-if="toothData.buccal.bop[0]" d="M50 50 L0 50 L0 0 Z" fill="#ef4444" />
+                  <path v-if="toothData.buccal.bop[1]" d="M50 50 L0 0 L100 0 Z" fill="#ef4444" />
+                  <path v-if="toothData.buccal.bop[2]" d="M50 50 L100 0 L100 50 Z" fill="#ef4444" />
+                </template>
+                <template v-else>
+                  <path v-if="toothData.lingual.bop[0]" d="M50 50 L0 50 L0 0 Z" fill="#ef4444" />
+                  <path v-if="toothData.lingual.bop[1]" d="M50 50 L0 0 L100 0 Z" fill="#ef4444" />
+                  <path v-if="toothData.lingual.bop[2]" d="M50 50 L100 0 L100 50 Z" fill="#ef4444" />
+                </template>
 
-              <!-- Left Side: Buccal for Upper, Lingual for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Buccal on Left -->
-                <path v-if="toothData.buccal.bop[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#ef4444" />
-                <path v-if="toothData.buccal.bop[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#ef4444" />
-                <path v-if="toothData.buccal.bop[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#ef4444" />
-              </template>
-              <template v-else>
-                <!-- Lower: Lingual on Left -->
-                <path v-if="toothData.lingual.bop[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#ef4444" />
-                <path v-if="toothData.lingual.bop[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#ef4444" />
-                <path v-if="toothData.lingual.bop[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#ef4444" />
-              </template>
+                <!-- Bottom Half -->
+                <template v-if="isUpperTooth(toothId)">
+                  <path v-if="toothData.lingual.bop[0]" d="M50 50 L0 50 L0 100 Z" fill="#ef4444" />
+                  <path v-if="toothData.lingual.bop[1]" d="M50 50 L0 100 L100 100 Z" fill="#ef4444" />
+                  <path v-if="toothData.lingual.bop[2]" d="M50 50 L100 100 L100 50 Z" fill="#ef4444" />
+                </template>
+                <template v-else>
+                  <path v-if="toothData.buccal.bop[0]" d="M50 50 L0 50 L0 100 Z" fill="#ef4444" />
+                  <path v-if="toothData.buccal.bop[1]" d="M50 50 L0 100 L100 100 Z" fill="#ef4444" />
+                  <path v-if="toothData.buccal.bop[2]" d="M50 50 L100 100 L100 50 Z" fill="#ef4444" />
+                </template>
 
-              <!-- Right Side: Lingual/Palatal for Upper, Buccal for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Palatal on Right -->
-                <path v-if="toothData.lingual.bop[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#ef4444" />
-                <path v-if="toothData.lingual.bop[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#ef4444" />
-                <path v-if="toothData.lingual.bop[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#ef4444" />
-              </template>
-              <template v-else>
-                <!-- Lower: Buccal on Right -->
-                <path v-if="toothData.buccal.bop[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#ef4444" />
-                <path v-if="toothData.buccal.bop[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#ef4444" />
-                <path v-if="toothData.buccal.bop[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#ef4444" />
-              </template>
-
-              <!-- Divider Lines -->
-              <line x1="50" y1="50" x2="50" y2="0" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="25" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="50" y2="100" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="25" stroke="#e2e8f0" stroke-width="1" />
+                <!-- Divider Lines -->
+                <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
+                <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#e2e8f0" stroke-width="1.5" />
+              </g>
+              <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#e2e8f0" stroke-width="2" />
             </svg>
           </div>
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">BOP (6 Sites)</p>
@@ -256,45 +256,45 @@ const analysisData = computed(() => {
 
 
           <div class="relative w-20 h-20 mb-2">
-            <svg viewBox="0 0 100 100" class="w-full h-full transform rotate-90">
-              <!-- Outer Hexagon Frame -->
-              <polygon points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25" fill="white" stroke="#e2e8f0" stroke-width="2" />
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+              <defs>
+                <clipPath :id="`squircle-clip-pi-${toothId}`">
+                  <rect x="4" y="4" width="92" height="92" rx="26" />
+                </clipPath>
+              </defs>
+              <g :clip-path="`url(#squircle-clip-pi-${toothId})`">
+                <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                
+                <!-- Top Half -->
+                <template v-if="isUpperTooth(toothId)">
+                  <path v-if="toothData.buccal.pi[0]" d="M50 50 L0 50 L0 0 Z" fill="#3b82f6" />
+                  <path v-if="toothData.buccal.pi[1]" d="M50 50 L0 0 L100 0 Z" fill="#3b82f6" />
+                  <path v-if="toothData.buccal.pi[2]" d="M50 50 L100 0 L100 50 Z" fill="#3b82f6" />
+                </template>
+                <template v-else>
+                  <path v-if="toothData.lingual.pi[0]" d="M50 50 L0 50 L0 0 Z" fill="#3b82f6" />
+                  <path v-if="toothData.lingual.pi[1]" d="M50 50 L0 0 L100 0 Z" fill="#3b82f6" />
+                  <path v-if="toothData.lingual.pi[2]" d="M50 50 L100 0 L100 50 Z" fill="#3b82f6" />
+                </template>
 
-              <!-- Left Side: Buccal for Upper, Lingual for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Buccal on Left -->
-                <path v-if="toothData.buccal.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
-              </template>
-              <template v-else>
-                <!-- Lower: Lingual on Left -->
-                <path v-if="toothData.lingual.pi[2]" d="M50 50 L6.7 25 L50 0 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[1]" d="M50 50 L6.7 75 L6.7 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[0]" d="M50 50 L50 100 L6.7 75 Z" fill="#3b82f6" />
-              </template>
+                <!-- Bottom Half -->
+                <template v-if="isUpperTooth(toothId)">
+                  <path v-if="toothData.lingual.pi[0]" d="M50 50 L0 50 L0 100 Z" fill="#3b82f6" />
+                  <path v-if="toothData.lingual.pi[1]" d="M50 50 L0 100 L100 100 Z" fill="#3b82f6" />
+                  <path v-if="toothData.lingual.pi[2]" d="M50 50 L100 100 L100 50 Z" fill="#3b82f6" />
+                </template>
+                <template v-else>
+                  <path v-if="toothData.buccal.pi[0]" d="M50 50 L0 50 L0 100 Z" fill="#3b82f6" />
+                  <path v-if="toothData.buccal.pi[1]" d="M50 50 L0 100 L100 100 Z" fill="#3b82f6" />
+                  <path v-if="toothData.buccal.pi[2]" d="M50 50 L100 100 L100 50 Z" fill="#3b82f6" />
+                </template>
 
-              <!-- Right Side: Lingual/Palatal for Upper, Buccal for Lower -->
-              <template v-if="isUpperTooth(toothId)">
-                <!-- Upper: Palatal on Right -->
-                <path v-if="toothData.lingual.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
-                <path v-if="toothData.lingual.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
-              </template>
-              <template v-else>
-                <!-- Lower: Buccal on Right -->
-                <path v-if="toothData.buccal.pi[2]" d="M50 50 L50 0 L93.3 25 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[1]" d="M50 50 L93.3 25 L93.3 75 Z" fill="#3b82f6" />
-                <path v-if="toothData.buccal.pi[0]" d="M50 50 L93.3 75 L50 100 Z" fill="#3b82f6" />
-              </template>
-
-              <!-- Divider Lines -->
-              <line x1="50" y1="50" x2="50" y2="0" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="25" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="93.3" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="50" y2="100" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="75" stroke="#e2e8f0" stroke-width="1" />
-              <line x1="50" y1="50" x2="6.7" y2="25" stroke="#e2e8f0" stroke-width="1" />
+                <!-- Divider Lines -->
+                <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
+                <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#e2e8f0" stroke-width="1.5" />
+              </g>
+              <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#e2e8f0" stroke-width="2" />
             </svg>
           </div>
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">PI (6 Sites)</p>

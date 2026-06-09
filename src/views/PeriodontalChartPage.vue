@@ -542,7 +542,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               @click="handleSaveClick"
               :disabled="isSaving"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-green-600 text-white hover:bg-green-700'"
+              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />

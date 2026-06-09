@@ -451,61 +451,56 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                       viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
                       :height="getToothWidth(id)"
-                      class="select-none transition-opacity duration-200 transform rotate-90"
+                      class="select-none transition-opacity duration-200"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Background Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="white"
-                        />
-                        <!-- Left Side: Buccal -->
-                        <path
-                          d="M50 50 L6.7 25 L50 0 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L6.7 75 L6.7 25 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L50 100 L6.7 75 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Right Side: Palatal -->
-                        <path
-                          d="M50 50 L50 0 L93.3 25 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 25 L93.3 75 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 75 L50 100 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Outer Stroke Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="none"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                        />
-                        <!-- Divider Lines -->
-                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <defs>
+                          <clipPath :id="`squircle-clip-pi-upper-${id}`">
+                            <rect x="4" y="4" width="92" height="92" rx="26" />
+                          </clipPath>
+                        </defs>
+                        <g :clip-path="`url(#squircle-clip-pi-upper-${id})`">
+                          <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                          <!-- Top Half: Buccal -->
+                          <path
+                            d="M50 50 L0 50 L0 0 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 0 L100 0 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 0 L100 50 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Bottom Half: Palatal -->
+                          <path
+                            d="M50 50 L0 50 L0 100 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 100 L100 100 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 100 L100 50 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Divider Lines -->
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
+                        </g>
+                        <!-- Outer Stroke -->
+                        <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -532,61 +527,56 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                       viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
                       :height="getToothWidth(id)"
-                      class="select-none transition-opacity duration-200 transform rotate-90"
+                      class="select-none transition-opacity duration-200"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Background Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="white"
-                        />
-                        <!-- Left Side: Lingual -->
-                        <path
-                          d="M50 50 L6.7 25 L50 0 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L6.7 75 L6.7 25 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L50 100 L6.7 75 Z"
-                          :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Right Side: Buccal -->
-                        <path
-                          d="M50 50 L50 0 L93.3 25 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 25 L93.3 75 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 75 L50 100 Z"
-                          :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Outer Stroke Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="none"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                        />
-                        <!-- Divider Lines -->
-                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <defs>
+                          <clipPath :id="`squircle-clip-pi-lower-${id}`">
+                            <rect x="4" y="4" width="92" height="92" rx="26" />
+                          </clipPath>
+                        </defs>
+                        <g :clip-path="`url(#squircle-clip-pi-lower-${id})`">
+                          <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                          <!-- Top Half: Lingual -->
+                          <path
+                            d="M50 50 L0 50 L0 0 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 0 L100 0 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 0 L100 50 Z"
+                            :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Bottom Half: Buccal -->
+                          <path
+                            d="M50 50 L0 50 L0 100 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 100 L100 100 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[1] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 100 L100 50 Z"
+                            :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Divider Lines -->
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
+                        </g>
+                        <!-- Outer Stroke -->
+                        <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -623,61 +613,56 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                       viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
                       :height="getToothWidth(id)"
-                      class="select-none transition-opacity duration-200 transform rotate-90"
+                      class="select-none transition-opacity duration-200"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Background Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="white"
-                        />
-                        <!-- Left Side: Buccal -->
-                        <path
-                          d="M50 50 L6.7 25 L50 0 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L6.7 75 L6.7 25 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L50 100 L6.7 75 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Right Side: Palatal -->
-                        <path
-                          d="M50 50 L50 0 L93.3 25 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 25 L93.3 75 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 75 L50 100 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Outer Stroke Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="none"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                        />
-                        <!-- Divider Lines -->
-                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <defs>
+                          <clipPath :id="`squircle-clip-bop-upper-${id}`">
+                            <rect x="4" y="4" width="92" height="92" rx="26" />
+                          </clipPath>
+                        </defs>
+                        <g :clip-path="`url(#squircle-clip-bop-upper-${id})`">
+                          <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                          <!-- Top Half: Buccal -->
+                          <path
+                            d="M50 50 L0 50 L0 0 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 0 L100 0 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 0 L100 50 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Bottom Half: Palatal -->
+                          <path
+                            d="M50 50 L0 50 L0 100 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 100 L100 100 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 100 L100 50 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Divider Lines -->
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
+                        </g>
+                        <!-- Outer Stroke -->
+                        <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
@@ -704,61 +689,56 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                       viewBox="0 0 100 100"
                       :width="getToothWidth(id)"
                       :height="getToothWidth(id)"
-                      class="select-none transition-opacity duration-200 transform rotate-90"
+                      class="select-none transition-opacity duration-200"
                       :class="chartData[id]?.extracted ? 'opacity-20' : ''"
                     >
                       <g v-if="!chartData[id]?.extracted">
-                        <!-- Background Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="white"
-                        />
-                        <!-- Left Side: Lingual -->
-                        <path
-                          d="M50 50 L6.7 25 L50 0 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L6.7 75 L6.7 25 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L50 100 L6.7 75 Z"
-                          :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Right Side: Buccal -->
-                        <path
-                          d="M50 50 L50 0 L93.3 25 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 25 L93.3 75 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <path
-                          d="M50 50 L93.3 75 L50 100 Z"
-                          :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
-                          class="transition-all duration-200"
-                        />
-                        <!-- Outer Stroke Frame -->
-                        <polygon
-                          points="50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25"
-                          fill="none"
-                          stroke="#cbd5e1"
-                          stroke-width="2"
-                        />
-                        <!-- Divider Lines -->
-                        <line x1="50" y1="50" x2="50" y2="0" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="93.3" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="50" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="75" stroke="#cbd5e1" stroke-width="1.5" />
-                        <line x1="50" y1="50" x2="6.7" y2="25" stroke="#cbd5e1" stroke-width="1.5" />
+                        <defs>
+                          <clipPath :id="`squircle-clip-bop-lower-${id}`">
+                            <rect x="4" y="4" width="92" height="92" rx="26" />
+                          </clipPath>
+                        </defs>
+                        <g :clip-path="`url(#squircle-clip-bop-lower-${id})`">
+                          <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
+                          <!-- Top Half: Lingual -->
+                          <path
+                            d="M50 50 L0 50 L0 0 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 0 L100 0 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 0 L100 50 Z"
+                            :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Bottom Half: Buccal -->
+                          <path
+                            d="M50 50 L0 50 L0 100 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L0 100 L100 100 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[1] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <path
+                            d="M50 50 L100 100 L100 50 Z"
+                            :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
+                            class="transition-all duration-200"
+                          />
+                          <!-- Divider Lines -->
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+                          <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
+                        </g>
+                        <!-- Outer Stroke -->
+                        <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
                         <!-- Extracted representation -->
