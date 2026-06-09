@@ -655,7 +655,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showSaveConfirmModal"
             title="Save Chart"
-            message="ต้องการบันทึกข้อมูล Chart นี้หรือไม่?<br/>เมื่อบันทึกแล้ว คุณยังสามารถกด Edit เพื่อแก้ไขในภายหลังได้"
+            message="Do you want to save this chart?<br/>Once saved, you can still click Edit to modify it later."
             confirm-text="Save"
             cancel-text="Cancel"
             @confirm="confirmSaveChart"
@@ -665,10 +665,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <!-- Close Tab Warning Modal -->
           <ConfirmModal
             :show="showCloseTabWarningModal"
-            title="ยังไม่ได้บันทึก"
-            message="Chart นี้<strong>ยังไม่ได้บันทึก</strong><br/>คุณต้องการปิด Tab นี้จริงหรือไม่? ข้อมูลจะหายไป"
-            confirm-text="ปิด Tab"
-            cancel-text="ยกเลิก"
+            title="Unsaved Changes"
+            message="This chart has <strong>not been saved</strong>.<br/>Are you sure you want to close this tab? Your data will be lost."
+            confirm-text="Close Tab"
+            cancel-text="Cancel"
             type="danger"
             @confirm="confirmCloseTab"
             @cancel="showCloseTabWarningModal = false"
@@ -677,10 +677,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <!-- Draft Recovery Modal -->
           <ConfirmModal
             :show="showDraftRecoveryModal"
-            title="พบข้อมูล Draft ค้างอยู่"
-            :message="`พบข้อมูล Chart ของ <strong>${patientInfo.patientName || 'คนไข้'}</strong> ที่ยังไม่ได้บันทึก<br/>ต้องการดึงข้อมูลนี้กลับมาทำต่อหรือไม่?`"
-            confirm-text="ดึงข้อมูลกลับมา"
-            cancel-text="ทิ้งข้อมูล"
+            title="Draft Found"
+            :message="`Found unsaved chart data for <strong>${patientInfo.patientName || 'patient'}</strong>.<br/>Do you want to recover this data to continue working?`"
+            confirm-text="Recover Data"
+            cancel-text="Discard Data"
             @confirm="showDraftRecoveryModal = false"
             @cancel="discardDraft"
           />
