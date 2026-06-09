@@ -8,6 +8,8 @@ import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import PatientChartHeader from '@/components/chart/PatientChartHeader.vue'
 import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
+import VirtualNumpad from '@/components/chart/VirtualNumpad.vue'
+import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
@@ -226,6 +228,14 @@ const showCancelEditConfirmModal = ref(false)
 
 // ID of the visit tab the user is trying to close (pending confirmation)
 let pendingCloseVisitId: string | null = null
+
+// Auto-fit scale toggle
+const enableAutoFit = ref(false)
+
+const isTouchDevice = ref(false)
+onMounted(() => {
+  isTouchDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+})
 
 // Switch to a different visit (tab click)
 const handleSwitchVisit = async (visitId: string) => {
@@ -467,7 +477,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
 
     <div class="bg-white border-b border-slate-200 py-1.5 sticky top-16 z-40">
       <div class="max-w-400 mx-auto px-4 flex items-center justify-center">
-        <div class="inline-flex p-0.5 bg-slate-100/80 rounded-xl border border-slate-200">
+        <div class="flex items-center gap-1.5 p-0.5 bg-slate-100/80 rounded-xl border border-slate-200 overflow-x-auto min-w-max">
           <button
             class="flex items-center gap-1.5 px-4 py-1 rounded-lg text-[12px] font-bold transition-all duration-200"
             :class="activeSubNav === 'chart' ? 'bg-white text-[#0052ff] shadow-sm' : 'text-slate-500 hover:text-slate-700'"
@@ -504,24 +514,30 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </div>
 
       <template v-else>
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
           <button
             class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
-            :class="selectedToothId !== null ? 'ml-18' : 'ml-63'"
+            :class="selectedToothId !== null ? 'xl:ml-18' : 'xl:ml-63'"
             @click="showOverviewModal = true"
           >
             <FileText class="w-3.5 h-3.5" /> Overview
           </button>
 
-          <div class="flex items-center gap-2 mr-50">
+          <div class="flex flex-wrap items-center gap-2 xl:mr-50">
             <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors">
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
+            </button>
+            <button 
+              class="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg font-bold text-[11px] transition-all duration-200 xl:hidden" 
+              @click="enableAutoFit = !enableAutoFit"
+              :class="enableAutoFit ? 'bg-[#0052ff] border-[#0052ff] text-white shadow-inner transform scale-[0.98]' : 'bg-white border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50'"
+            >
+              Zoom to Fit
             </button>
             <button v-if="!isNewPatientMode" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- Edit button: existing draft, not yet in edit mode -->
             <!-- Edit button: existing visit, not yet in edit mode -->
             <button
               v-if="isExistingVisit && !editMode"
@@ -555,10 +571,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           </div>
         </div>
 
-        <div class="flex gap-4 transition-all duration-500">
-          <ChartLegend :is-sidebar-open="selectedToothId !== null" />
+        <div class="flex flex-col xl:flex-row gap-4 transition-all duration-500">
+          <ChartLegend :is-sidebar-open="selectedToothId !== null" class="hidden xl:flex" />
 
-          <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
+          <div class="w-full xl:w-255 shrink-0 flex flex-col gap-0 transition-all duration-500 min-w-0">
             <!-- Visit Tabs: always visible when there are visits/drafts -->
             <div v-if="!isNewPatientMode || visits.length > 0" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
@@ -626,22 +642,28 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- fieldset disables native inputs/checkboxes when read-only; the
                  store guard covers the div-based toggles (BoP/PI/fur/Ext). -->
             <fieldset :disabled="!chartEditable" class="border-0 p-0 m-0 min-w-0">
-              <PeriodontalChartGrid
-                :chart-data="teethData"
-                :selected-tooth-id="selectedToothId"
-                @select-tooth="chartStore.selectTooth"
-                @toggle-bop="chartStore.toggleBop"
-                @toggle-pi="chartStore.togglePi"
-                @toggle-fur="chartStore.toggleFur"
-                @update-pd="chartStore.updatePd"
-                @update-rec="chartStore.updateRec"
-                @update-mobility="chartStore.updateMobility"
-                @update-ktw="chartStore.updateKtw"
-                :get-field-validation="validationStore.getFieldValidation"
-                @validate-field="validationStore.setFieldValidation"
-                @toggle-extracted="chartStore.toggleExtracted"
-                @toggle-implant="chartStore.toggleImplant"
-              />
+              <div class="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent" :class="isTouchDevice ? 'pb-96' : 'pb-4'">
+                <AutoFitWrapper :enable-auto-fit="enableAutoFit">
+                  <div class="min-w-max">
+                    <PeriodontalChartGrid
+                      :chart-data="teethData"
+                      :selected-tooth-id="selectedToothId"
+                      @select-tooth="chartStore.selectTooth"
+                      @toggle-bop="chartStore.toggleBop"
+                      @toggle-pi="chartStore.togglePi"
+                      @toggle-fur="chartStore.toggleFur"
+                      @update-pd="chartStore.updatePd"
+                      @update-rec="chartStore.updateRec"
+                      @update-mobility="chartStore.updateMobility"
+                      @update-ktw="chartStore.updateKtw"
+                      :get-field-validation="validationStore.getFieldValidation"
+                      @validate-field="validationStore.setFieldValidation"
+                      @toggle-extracted="chartStore.toggleExtracted"
+                      @toggle-implant="chartStore.toggleImplant"
+                    />
+                  </div>
+                </AutoFitWrapper>
+              </div>
             </fieldset>
           </div>
 
@@ -706,6 +728,9 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @confirm="confirmCancelEdit"
             @cancel="showCancelEditConfirmModal = false"
           />
+
+          <!-- Virtual Numpad -->
+          <VirtualNumpad />
         </div>
       </template>
     </main>

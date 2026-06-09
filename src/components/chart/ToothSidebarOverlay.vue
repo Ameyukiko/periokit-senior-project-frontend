@@ -25,15 +25,18 @@ const emit = defineEmits<{
   >
     <aside
       v-if="isOpen && toothId"
-      class="w-80 sticky top-32 h-[calc(100vh-160px)] shrink-0"
+      class="fixed inset-0 z-[150] bg-black/40 xl:bg-transparent xl:static xl:w-80 xl:sticky xl:top-32 xl:h-[calc(100vh-160px)] xl:shrink-0 flex flex-col justify-end xl:block p-2 xl:p-0"
+      @click.self="emit('close')"
     >
-      <ToothSidebar
-        :toothId="toothId"
-        :toothData="toothData"
-        :readonly="readonly"
-        @close="emit('close')"
-        @update-note="($event) => emit('update-note', $event)"
-      />
+      <div class="w-full h-[85vh] xl:h-full transition-transform">
+        <ToothSidebar
+          :toothId="toothId"
+          :toothData="toothData"
+          :readonly="readonly"
+          @close="emit('close')"
+          @update-note="($event) => emit('update-note', $event)"
+        />
+      </div>
     </aside>
   </Transition>
 </template>

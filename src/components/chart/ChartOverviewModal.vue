@@ -357,9 +357,9 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 <div
                   v-for="section in clinicalSections"
                   :key="section.title"
-                  class="w-full"
+                  class="w-full overflow-x-auto"
                 >
-                  <table class="w-full border-collapse">
+                  <table class="w-full border-collapse min-w-max">
                     <thead>
                       <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="text-left py-2.5 pl-3 pr-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-[30%] rounded-l-lg">
@@ -433,9 +433,10 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 <h3 class="text-sm font-semibold text-slate-900 tracking-tight">PI (%)</h3>
                 <span class="text-xl font-bold text-blue-600 tracking-tight">{{ piPercentage }}%</span>
               </div>
-              <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center">
-                <!-- Upper Arch Teeth -->
-                <div class="flex justify-center items-center gap-0 h-16 w-full">
+              <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center overflow-x-auto">
+                <div class="min-w-max mx-auto px-4">
+                  <!-- Upper Arch Teeth -->
+                  <div class="flex justify-center items-center gap-0 h-16">
                   <div
                     v-for="id in UPPER_TEETH"
                     :key="id"
@@ -511,7 +512,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                   </div>
                 </div>
                 <!-- Lower Arch Teeth -->
-                <div class="flex justify-center items-center gap-0 h-16 w-full mt-1">
+                <div class="flex justify-center items-center gap-0 h-16 mt-1">
                   <div
                     v-for="id in LOWER_TEETH"
                     :key="id"
@@ -586,6 +587,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     </svg>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
 
@@ -595,9 +597,10 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 <h3 class="text-sm font-semibold text-slate-900 tracking-tight">BOP (%)</h3>
                 <span class="text-xl font-bold text-red-600 tracking-tight">{{ bopPercentage }}%</span>
               </div>
-              <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center">
-                <!-- Upper Arch Teeth -->
-                <div class="flex justify-center items-center gap-0 h-16 w-full">
+              <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center overflow-x-auto">
+                <div class="min-w-max mx-auto px-4">
+                  <!-- Upper Arch Teeth -->
+                  <div class="flex justify-center items-center gap-0 h-16">
                   <div
                     v-for="id in UPPER_TEETH"
                     :key="id"
@@ -673,7 +676,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                   </div>
                 </div>
                 <!-- Lower Arch Teeth -->
-                <div class="flex justify-center items-center gap-0 h-16 w-full mt-1">
+                <div class="flex justify-center items-center gap-0 h-16 mt-1">
                   <div
                     v-for="id in LOWER_TEETH"
                     :key="id"
@@ -748,9 +751,10 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     </svg>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
-                </div>
+          </div>
               </Transition>
 
             </div>

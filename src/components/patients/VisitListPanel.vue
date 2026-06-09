@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import { patientApi, type Patient } from '@/services/api/patient.api'
-import { X, Users, Plus, Search, User, ArrowUpDown } from 'lucide-vue-next'
+import { X, Users, Plus, Search, User, ArrowUpDown, Activity } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean
@@ -40,6 +40,11 @@ const viewAllPatients = () => {
 const newPatient = () => {
   emit('update:open', false)
   router.push('/chart')
+}
+
+const navigateTo = (path: string) => {
+  emit('update:open', false)
+  router.push(path)
 }
 
 // Search
@@ -158,7 +163,7 @@ const formatDate = (dateString: string | null) => {
 
       <!-- Drawer -->
       <div
-        class="relative w-[340px] max-w-sm bg-white h-full shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out"
+        class="relative w-full sm:w-[340px] max-w-sm bg-white h-full shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out"
         :class="open ? 'translate-x-0' : '-translate-x-full'"
       >
       <!-- Header -->
@@ -168,6 +173,16 @@ const formatDate = (dateString: string | null) => {
         </h2>
         <button @click="emit('update:open', false)" class="p-1 hover:bg-slate-100 rounded-full text-slate-500 transition-colors shrink-0">
           <X class="w-5 h-5" />
+        </button>
+      </div>
+
+      <!-- Navigation (Mobile Only) -->
+      <div class="md:hidden p-4 border-b border-slate-200 shrink-0 space-y-2 bg-slate-50">
+        <button @click="navigateTo('/chart')" class="w-full py-2 flex items-center gap-3 text-slate-700 font-bold hover:text-[#0052ff] transition-colors">
+          <Activity class="w-5 h-5" /> Periodontal Chart
+        </button>
+        <button @click="navigateTo('/patients')" class="w-full py-2 flex items-center gap-3 text-slate-700 font-bold hover:text-[#0052ff] transition-colors">
+          <Users class="w-5 h-5" /> My Patient
         </button>
       </div>
 

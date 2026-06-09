@@ -52,10 +52,10 @@ const sortedPdBreakdown = computed(() => {
 </script>
 
 <template>
-  <section class="bg-white rounded-r-3xl rounded-bl-3xl shadow-xl border border-slate-200 overflow-hidden relative z-0">
-    <div class="p-6 border-b border-slate-100 bg-white">
-      <div class="flex items-center justify-between mb-5">
-        <div class="flex items-center gap-2">
+  <section class="bg-white rounded-2xl xl:rounded-l-none xl:rounded-r-3xl xl:rounded-bl-3xl xl:rounded-tl-none shadow-md xl:shadow-xl border border-slate-200 overflow-hidden relative z-0">
+    <div class="p-4 xl:p-6 border-b border-slate-100 bg-white">
+      <div class="flex flex-col xl:flex-row items-center justify-between gap-3 xl:gap-4 mb-4 xl:mb-5">
+        <div class="flex items-center gap-2 w-full xl:w-auto justify-center xl:justify-start">
           <span class="text-[16px] font-bold text-slate-800">HN-</span>
           <input
             v-model="localPatientInfo.hn"
@@ -69,11 +69,11 @@ const sortedPdBreakdown = computed(() => {
             ]"
           />
         </div>
-        <h1 class="text-3xl font-bold text-slate-800 tracking-tight text-center">Periodontal Chart</h1>
-        <div class="w-40"></div>
+        <h1 class="text-xl xl:text-3xl font-bold text-slate-800 tracking-tight text-center">Periodontal Chart</h1>
+        <div class="w-40 hidden xl:block"></div>
       </div>
 
-      <div class="flex justify-center gap-8 mb-5">
+      <div class="flex flex-wrap justify-center gap-3 xl:gap-8 mb-4 xl:mb-5">
         <label class="flex items-center gap-2 group" :class="props.visitFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
           <input
             type="checkbox"
@@ -106,23 +106,23 @@ const sortedPdBreakdown = computed(() => {
         </label>
       </div>
 
-      <div class="grid grid-cols-12 gap-y-4 gap-x-5 items-center">
+      <div class="grid grid-cols-2 xl:grid-cols-12 gap-y-3 xl:gap-y-4 gap-x-3 xl:gap-x-5 items-center">
         <!-- Row 3 -->
-        <div class="col-span-3 flex items-center gap-2">
+        <div class="col-span-2 xl:col-span-4 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Date:</span>
           <input v-model="localPatientInfo.date" type="date" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
-        <div class="col-span-6 flex items-center gap-2">
+        <div class="col-span-2 xl:col-span-4 xl:col-span-6 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor:</span>
           <input v-model="localPatientInfo.doctor" type="text" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
-        <div class="col-span-3 flex items-center gap-2">
+        <div class="col-span-2 xl:col-span-4 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Doctor ID:</span>
           <input v-model="localPatientInfo.studentId" type="text" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
 
         <!-- Row 4 -->
-        <div class="col-span-4 flex items-center gap-2">
+        <div class="col-span-2 xl:col-span-6 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Patient:</span>
           <input
             v-model="localPatientInfo.patientName"
@@ -136,16 +136,14 @@ const sortedPdBreakdown = computed(() => {
             ]"
           />
         </div>
-        <div class="col-span-3 flex items-center gap-2">
+        <div class="col-span-1 xl:col-span-6 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Age:</span>
-          <input v-model="localPatientInfo.age" type="number" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
-          <span class="text-[14px] text-slate-800 whitespace-nowrap shrink-0">years old</span>
+          <div class="flex items-center gap-2">
+            <input v-model="localPatientInfo.age" type="number" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-12 xl:w-16 outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
+            <span class="text-[12px] xl:text-[14px] text-slate-800 whitespace-nowrap shrink-0">years</span>
+          </div>
         </div>
-        <div class="col-span-2 flex items-center gap-2">
-          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Nationality:</span>
-          <input v-model="localPatientInfo.nationality" type="text" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
-        </div>
-        <div class="col-span-3 flex items-center gap-2 justify-end">
+        <div class="col-span-1 xl:col-span-6 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2 xl:justify-end">
           <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Gender:</span>
           <div class="flex gap-3">
             <label class="flex items-center gap-1.5 group" :class="props.patientFieldsDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
@@ -157,6 +155,10 @@ const sortedPdBreakdown = computed(() => {
               <span class="text-[14px] font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">Female</span>
             </label>
           </div>
+        </div>
+        <div class="col-span-2 xl:col-span-6 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
+          <span class="text-[14px] font-bold text-slate-800 whitespace-nowrap shrink-0">Nationality:</span>
+          <input v-model="localPatientInfo.nationality" type="text" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
       </div>
     </div>

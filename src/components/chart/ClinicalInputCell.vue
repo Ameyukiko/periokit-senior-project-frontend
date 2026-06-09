@@ -174,6 +174,7 @@ const containerClasses = computed(() => ({
     <template v-if="inputType === 'numeric'">
       <input
         type="text"
+        inputmode="none"
         :value="isFocused ? value : formatKtwValue(value)"
         :disabled="disabled"
         :readonly="readonly"
@@ -187,7 +188,7 @@ const containerClasses = computed(() => ({
         :data-section="section"
         :data-field="fieldName"
         :data-site="sitePosition"
-        class="chart-input w-full h-full text-center text-[10px] outline-none bg-transparent transition-colors focus:bg-white z-10"
+        class="chart-input w-full h-full text-center text-[16px] xl:text-[10px] outline-none bg-transparent transition-colors focus:bg-white z-10"
         :tabindex="readonly ? -1 : 0"
         :class="[
           isAbnormal ? 'text-red-600 font-bold' : '',
