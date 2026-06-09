@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { X } from 'lucide-vue-next'
 import type { ChartSummary } from '@/domain/chart/chart.types'
 
 const props = defineProps<{
   summary: ChartSummary
   label?: string
+}>()
+
+const emit = defineEmits<{
+  close: []
 }>()
 
 const presentTeeth = computed(() => props.summary.totalTeeth - props.summary.missingTeeth)
@@ -31,11 +36,16 @@ const toneClass: Record<string, string> = {
 </script>
 
 <template>
-  <div class="w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 space-y-4">
+  <div class="w-[300px] xl:w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 space-y-4 mx-auto xl:mx-0">
     <!-- Title -->
     <div class="flex items-center justify-between">
-      <p class="text-[11px] font-black uppercase tracking-widest text-slate-700">Summary</p>
-      <span v-if="label" class="text-[10px] font-bold text-[#0052ff]">{{ label }}</span>
+      <div class="flex items-center gap-2">
+        <p class="text-[11px] font-black uppercase tracking-widest text-slate-700">Summary</p>
+        <span v-if="label" class="text-[10px] font-bold text-[#0052ff]">{{ label }}</span>
+      </div>
+      <button @click="emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100">
+        <X class="w-4 h-4" />
+      </button>
     </div>
 
     <!-- Pocket health distribution -->
@@ -58,10 +68,10 @@ const toneClass: Record<string, string> = {
       <div
         v-for="tile in tiles"
         :key="tile.key"
-        class="rounded-xl border px-2.5 py-2 text-center"
+        class="rounded-xl border px-2 py-2 text-center"
         :class="toneClass[tile.tone]"
       >
-        <p class="text-[9px] font-bold uppercase tracking-wider opacity-70">{{ tile.label }}</p>
+        <p class="text-[8px] xl:text-[9px] font-bold uppercase tracking-wide xl:tracking-wider opacity-70 truncate">{{ tile.label }}</p>
         <p class="text-sm font-black leading-tight mt-0.5">{{ tile.value }}</p>
       </div>
     </div>

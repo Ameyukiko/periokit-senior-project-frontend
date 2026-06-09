@@ -89,10 +89,10 @@ const getPrognosisColorKC = (val?: string) => {
   >
     <aside
       v-if="open && toothId"
-      class="w-[480px] sticky top-6 shrink-0 self-start"
-      style="height: calc(100vh / 0.9 - 160px);"
+      class="fixed inset-0 z-[150] bg-black/40 xl:bg-transparent xl:static xl:w-[480px] xl:sticky xl:top-6 xl:shrink-0 xl:self-start flex flex-col justify-end xl:block p-2 xl:p-0 desktop-height"
+      @click.self="emit('close')"
     >
-      <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-full">
+      <div class="w-full h-[85vh] xl:h-full bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
 
         <!-- Header -->
         <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -577,3 +577,11 @@ const getPrognosisColorKC = (val?: string) => {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+@media (min-width: 1280px) {
+  .desktop-height {
+    height: calc(100vh / 0.9 - 160px);
+  }
+}
+</style>
