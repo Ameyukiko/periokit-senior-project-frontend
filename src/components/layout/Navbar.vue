@@ -63,11 +63,11 @@ const hasMyPatientRoute = computed(() => {
 
 <template>
   <nav
-    class="bg-white border-b border-[#e2e8f0] h-16 flex items-center justify-between px-8 sticky top-0 z-50 shadow-sm"
+    class="bg-white border-b border-[#e2e8f0] h-16 flex items-center justify-between px-4 xl:px-8 sticky top-0 z-50 shadow-sm"
   >
     <!-- Left: Hamburger + Logo + Nav Links -->
-    <div class="flex items-center gap-8">
-      <div class="flex items-center gap-6">
+    <div class="flex items-center gap-4 xl:gap-8">
+      <div class="flex items-center gap-3 xl:gap-6">
         <!-- Hamburger Menu (Placeholder) -->
         <button @click="emit('toggle-drawer')" class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
           <Menu class="w-6 h-6 text-[#1f2937]" />
@@ -84,7 +84,7 @@ const hasMyPatientRoute = computed(() => {
       </div>
 
       <!-- Navigation Links -->
-      <div class="hidden md:flex items-center gap-6">
+      <div class="hidden xl:flex items-center gap-6">
         <router-link
           to="/chart"
           class="flex items-center gap-2 text-[#4b5563] hover:text-[#0052ff] font-bold text-sm transition-colors"
@@ -153,7 +153,7 @@ const hasMyPatientRoute = computed(() => {
           </div>
 
           <!-- Name + Email -->
-          <div class="text-left hidden sm:block">
+          <div class="text-left hidden xl:block">
             <p
               class="text-sm font-bold text-[#1f2937] leading-none mb-0.5 group-hover:text-[#0052ff] transition-colors"
             >
@@ -178,7 +178,7 @@ const hasMyPatientRoute = computed(() => {
           class="absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] py-2 z-50"
         >
           <!-- User Info (Mobile/Small screens) -->
-          <div class="px-4 py-3 border-b border-[#e2e8f0] mb-1 sm:hidden">
+          <div class="px-4 py-3 border-b border-[#e2e8f0] mb-1 xl:hidden">
             <div class="flex items-center gap-3 mb-1">
               <div
                 class="w-8 h-8 rounded-full bg-[#0052ff]/10 flex items-center justify-center overflow-hidden shrink-0"

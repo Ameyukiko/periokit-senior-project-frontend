@@ -236,8 +236,8 @@ const handleNewPatient = () => {
         </div>
 
         <!-- Pagination -->
-        <div class="bg-white px-6 py-4 flex items-center justify-between border-t border-slate-100">
-          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div class="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-slate-100">
+          <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <p class="text-sm text-slate-500">
                 Showing

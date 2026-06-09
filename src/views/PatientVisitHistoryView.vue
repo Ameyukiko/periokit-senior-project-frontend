@@ -412,8 +412,8 @@ onUnmounted(() => {
         </div>
 
         <!-- Pagination -->
-        <div v-if="totalPages > 0" class="bg-white px-6 py-4 flex items-center justify-between border-t border-slate-100">
-          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-end">
+        <div v-if="totalPages > 0" class="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-slate-100">
+          <div class="w-full flex flex-col sm:flex-row items-center justify-between sm:justify-end gap-4">
             <nav class="relative z-0 inline-flex items-center gap-2" aria-label="Pagination">
               <button
                 @click="page > 1 && page--"

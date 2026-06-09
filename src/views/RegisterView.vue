@@ -165,7 +165,7 @@ const register = async () => {
   >
     <div class="w-full max-w-162.5">
       <div
-        class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-10"
+        class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-10"
       >
         <!-- Logo & Header -->
         <div class="mb-6">
@@ -174,7 +174,7 @@ const register = async () => {
             alt="PerioKit Logo"
             class="h-24 w-20 ml-4 mb-4"
           />
-          <h2 class="text-[32px] font-bold text-[#0052ff] leading-none mb-2">
+          <h2 class="text-[28px] sm:text-[32px] font-bold text-[#0052ff] leading-none mb-2">
             Sign up
           </h2>
           <p class="text-[#6b7280] text-[15px]">
@@ -256,7 +256,7 @@ const register = async () => {
           </div>
 
           <!-- First Name & Surname -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
                 >First Name</label
@@ -322,7 +322,7 @@ const register = async () => {
           </div>
 
           <!-- Password & Confirm Password -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
                 >Password</label
