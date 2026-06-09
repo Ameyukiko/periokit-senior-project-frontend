@@ -415,7 +415,11 @@ watch(activeVisitId, () => { editMode.value = false })
 const handleEditVisit = () => { editMode.value = true }
 
 const handleCancelEditClick = () => {
-  showCancelEditConfirmModal.value = true
+  if (chartStore.isDirty) {
+    showCancelEditConfirmModal.value = true
+  } else {
+    editMode.value = false
+  }
 }
 
 const confirmCancelEdit = async () => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { X, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
+import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 import {
   calculatePrognosisKC,
@@ -16,6 +17,7 @@ import { isUpperTooth } from '@/domain/chart/chart.rules'
 const prognosisModalType = ref<'MN' | 'KC' | null>(null)
 const isEditingNote = ref(false)
 const noteInput = ref('')
+const showCancelNoteConfirmModal = ref(false)
 
 const props = defineProps<{
   toothId: number | string | null
@@ -49,6 +51,17 @@ const deleteNote = () => {
 }
 
 const cancelEditing = () => {
+  const originalNote = props.toothData?.note || ''
+  if (noteInput.value !== originalNote) {
+    showCancelNoteConfirmModal.value = true
+  } else {
+    isEditingNote.value = false
+    noteInput.value = ''
+  }
+}
+
+const confirmCancelNote = () => {
+  showCancelNoteConfirmModal.value = false
   isEditingNote.value = false
   noteInput.value = ''
 }
@@ -539,5 +552,17 @@ const analysisData = computed(() => {
       </div>
     </Transition>
   </Teleport>
+
+  <!-- Cancel Note Editing Confirmation Modal -->
+  <ConfirmModal
+    :show="showCancelNoteConfirmModal"
+    title="Cancel Editing"
+    message="Are you sure you want to cancel?<br/>Any unsaved changes will be lost."
+    confirm-text="Discard Changes"
+    cancel-text="Continue Editing"
+    type="danger"
+    @confirm="confirmCancelNote"
+    @cancel="showCancelNoteConfirmModal = false"
+  />
 </template>
 
