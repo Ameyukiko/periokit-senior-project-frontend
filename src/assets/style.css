@@ -165,4 +165,7 @@ div.border-b:has(> [class*="bg-slate-900"]) {
   z-index: 20;
 }
 
-
+/* Filter Panel */
+.filter-panel {
+  position: relative;
+}

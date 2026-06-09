@@ -6,7 +6,7 @@ import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
-import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type } from 'lucide-vue-next'
+import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type, User } from 'lucide-vue-next'
 
 const router = useRouter()
 const drawerOpen = ref(false)
@@ -187,6 +187,9 @@ const handleNewPatient = () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                      <User class="w-4 h-4 text-[#0052ff]" />
+                    </div>
                     <span class="text-sm font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">{{ patient.firstName }} {{ patient.lastName }}</span>
                   </div>
                 </td>
