@@ -132,7 +132,7 @@ const getVisitNumber = (visitId: string) => {
 }
 
 const createNewVisit = () => {
-  router.push({ name: 'chart', query: { patientId } })
+  router.push({ name: 'chart', query: { patientId, visitId: 'new' } })
 }
 
 const formatDateThai = (dateString: string) => {

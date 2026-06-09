@@ -6,6 +6,7 @@ import { registerSessionClearListener } from '@/services/session'
 export const useVisitStore = defineStore('visit', () => {
   const activeVisitId = ref<string | null>(null)
   const visits = ref<Visit[]>([])
+  const patientVisits = ref<Visit[]>([])
 
   function setActiveVisit(visitId: string | null) {
     activeVisitId.value = visitId
@@ -13,6 +14,7 @@ export const useVisitStore = defineStore('visit', () => {
 
   function clearVisits() {
     visits.value = []
+    patientVisits.value = []
     activeVisitId.value = null
   }
 
@@ -36,7 +38,9 @@ export const useVisitStore = defineStore('visit', () => {
 
   async function loadVisits(patientId: string) {
     const { visitApi } = await import('@/services/api/visit.api')
-    visits.value = await visitApi.getByPatient(patientId)
+    const fetched = await visitApi.getByPatient(patientId)
+    patientVisits.value = fetched
+    return fetched
   }
 
   // Add a local draft tab immediately so the user sees the new visit in the
@@ -61,6 +65,7 @@ export const useVisitStore = defineStore('visit', () => {
   return {
     activeVisitId,
     visits,
+    patientVisits,
     setActiveVisit,
     clearVisits,
     removeVisit,

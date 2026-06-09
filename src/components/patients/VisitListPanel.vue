@@ -21,12 +21,12 @@ const chartStore = usePeriodontalChartStore()
 const visitStore = useVisitStore()
 
 const { patientInfo } = storeToRefs(chartStore)
-const { visits } = storeToRefs(visitStore)
+const { patientVisits } = storeToRefs(visitStore)
 
 const sortOrder = ref<'desc' | 'asc'>('desc')
 
 const sortedVisits = computed(() => {
-  const sorted = [...visits.value].sort(
+  const sorted = [...patientVisits.value].sort(
     (a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0)
   )
   return sortOrder.value === 'desc' ? sorted.reverse() : sorted
@@ -120,7 +120,7 @@ const viewChart = async (visitId: string) => {
 
   // Update query params; the chart page's watcher on `visitId` handles
   // setActiveVisit + loadFromBackend, so we don't load here (avoids double-load).
-  const patientId = route.query.patientId || visits.value.find(v => v.id === visitId)?.patientId
+  const patientId = route.query.patientId || patientVisits.value.find(v => v.id === visitId)?.patientId
   await router.replace({
     query: patientId
       ? { ...route.query, visitId, patientId }
@@ -131,7 +131,7 @@ const viewChart = async (visitId: string) => {
 const startCompare = (_visitId: string) => {
   emit('update:open', false)
   // Go to visit history page for the current patient
-  const currentPatientId = route.query.patientId as string || visits.value[0]?.patientId
+  const currentPatientId = route.query.patientId as string || patientVisits.value[0]?.patientId
   if (currentPatientId) {
     router.push({ name: 'patient-visits', params: { patientId: currentPatientId } })
   }

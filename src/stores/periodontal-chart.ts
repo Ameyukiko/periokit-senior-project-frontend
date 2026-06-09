@@ -277,7 +277,23 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         // Refresh the visit tab strip so a newly-created visit (or the
         // hasChart flag of an existing one) shows up immediately.
         if (this.currentPatientId) {
-          await visitStore.loadVisits(this.currentPatientId)
+          const fetchedVisits = await visitStore.loadVisits(this.currentPatientId)
+          if (savedChart?.visitId) {
+            const newRealVisit = fetchedVisits.find(v => v.id === savedChart.visitId)
+            if (newRealVisit) {
+              const newIdx = visitStore.visits.findIndex(v => v.id === 'new')
+              if (newIdx !== -1) {
+                visitStore.visits[newIdx] = newRealVisit
+              } else {
+                const existingIdx = visitStore.visits.findIndex(v => v.id === savedChart.visitId)
+                if (existingIdx !== -1) {
+                  visitStore.visits[existingIdx] = newRealVisit
+                } else {
+                  visitStore.visits.push(newRealVisit)
+                }
+              }
+            }
+          }
         }
       } catch (err) {
         console.error('Save chart error:', err)

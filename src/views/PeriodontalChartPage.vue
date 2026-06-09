@@ -60,21 +60,29 @@ onMounted(async () => {
     urlVisitId.value = visitId
     try {
       await chartStore.loadPatientById(patientId)
-      await visitStore.loadVisits(patientId)
+      const fetchedVisits = await visitStore.loadVisits(patientId)
       visitStore.setActiveVisit(visitId)
       if (visitId !== 'new') {
+        const selectedVisit = fetchedVisits.find(v => v.id === visitId)
+        if (selectedVisit) {
+          visitStore.visits = [selectedVisit]
+        } else {
+          visitStore.visits = []
+        }
         await chartStore.loadFromBackend(visitId)
       } else if (hadDirtyWork && persistedPatientId === patientId) {
         // Page reload with an unsaved draft for this patient — keep teethData
         // intact (restored from sessionStorage) but re-add the draft tab to the
         // visit strip, since the visit store isn't persisted and loadVisits above
         // only returns backend visits.
+        visitStore.visits = []
         visitStore.addDraftVisit(
           patientId,
           chartStore.patientInfo.date || new Date().toISOString().split('T')[0],
           chartStore.patientInfo.visitPhase || 'before_hygienic',
         )
       } else {
+        visitStore.visits = []
         await enterNewVisitState()
       }
     } catch (error) {
@@ -84,14 +92,19 @@ onMounted(async () => {
     visitStore.setActiveVisit(null)
     chartStore.resetChart()
     try {
-      await Promise.all([
-        chartStore.loadPatientById(patientId),
-        visitStore.loadVisits(patientId),
-      ])
+      await chartStore.loadPatientById(patientId)
+      const fetchedVisits = await visitStore.loadVisits(patientId)
       // Patient has no visits yet — auto-open a blank draft so the tab row shows immediately
-      if (visitStore.visits.length === 0) {
+      if (fetchedVisits.length === 0) {
+        visitStore.visits = []
         await enterNewVisitState()
         router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
+      } else {
+        // Redirect to the latest visit's chart (sorted by visitNumber)
+        const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
+        const latest = sorted[sorted.length - 1]
+        visitStore.visits = [latest]
+        router.replace({ name: 'chart', query: { patientId, visitId: latest.id } })
       }
     } catch (error) {
       console.error('Failed to load patient:', error)
@@ -102,13 +115,22 @@ onMounted(async () => {
     if (visitId !== 'new') {
       try {
         await chartStore.loadFromBackend(visitId)
+        if (chartStore.currentPatientId) {
+          const fetchedVisits = await visitStore.loadVisits(chartStore.currentPatientId)
+          const selectedVisit = fetchedVisits.find(v => v.id === visitId)
+          if (selectedVisit) {
+            visitStore.visits = [selectedVisit]
+          }
+        }
       } catch (error) {
         console.error('Failed to load chart:', error)
       }
     } else {
+      visitStore.visits = []
       await enterNewVisitState()
     }
   } else {
+    visitStore.visits = []
     await enterNewVisitState()
   }
 })
@@ -119,6 +141,24 @@ watch(() => route.query.visitId, async (newVisitId) => {
     urlVisitId.value = newVisitId
     visitStore.setActiveVisit(newVisitId)
     if (newVisitId !== 'new') {
+      // Ensure this visit is in visitStore.visits (our opened tabs)
+      const existing = visitStore.visits.find(v => v.id === newVisitId)
+      if (!existing) {
+        const selectedVisit = visitStore.patientVisits.find(v => v.id === newVisitId)
+        if (selectedVisit) {
+          visitStore.visits.push(selectedVisit)
+        } else {
+          // Fallback: load patient visits and find it
+          const patientId = route.query.patientId as string || chartStore.currentPatientId
+          if (patientId) {
+            const fetchedVisits = await visitStore.loadVisits(patientId)
+            const updatedVisit = fetchedVisits.find(v => v.id === newVisitId)
+            if (updatedVisit) {
+              visitStore.visits.push(updatedVisit)
+            }
+          }
+        }
+      }
       try {
         await chartStore.loadFromBackend(newVisitId)
       } catch (error) {
@@ -149,9 +189,13 @@ watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
 watch(() => chartStore.currentPatientId, async (newPatientId, oldPatientId) => {
   if (!newPatientId || newPatientId === oldPatientId || oldPatientId === null) return
   visitStore.clearVisits()
-  await visitStore.loadVisits(newPatientId)
-  if (visitStore.visits.length > 0) {
-    await handleSwitchVisit(visitStore.visits[0].id)
+  const fetchedVisits = await visitStore.loadVisits(newPatientId)
+  if (fetchedVisits.length > 0) {
+    // Open the latest visit as a tab by default
+    const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
+    const latest = sorted[sorted.length - 1]
+    visitStore.visits = [latest]
+    await handleSwitchVisit(latest.id)
   } else {
     chartStore.resetChart()
     await chartStore.loadPatientById(newPatientId)
