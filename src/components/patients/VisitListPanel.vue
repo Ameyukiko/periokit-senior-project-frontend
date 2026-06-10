@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import { patientApi, type Patient } from '@/services/api/patient.api'
-import { X, Users, Plus, Search, User, ArrowUpDown, Activity, AlertCircle } from 'lucide-vue-next'
+import { X, Users, Plus, Search, User, ArrowUpDown, Activity } from 'lucide-vue-next'
 import type { Visit } from '@/services/api/visit.api'
 
 
@@ -111,8 +111,6 @@ const handleClickOutside = (e: MouseEvent) => {
 }
 
 // Compare features state
-const clickedCompareVisit = ref<Visit | null>(null)
-const showCompareChoiceModal = ref(false)
 const compareFirstVisitId = ref<string | null>(null)
 const compareSecondVisitId = ref<string | null>(null)
 
@@ -149,8 +147,6 @@ watch(() => props.open, async (newVal) => {
     isSearchOpen.value = false
     compareFirstVisitId.value = null
     compareSecondVisitId.value = null
-    clickedCompareVisit.value = null
-    showCompareChoiceModal.value = false
     document.removeEventListener('mousedown', handleClickOutside)
   }
 })
@@ -175,35 +171,11 @@ const viewChart = async (visitId: string) => {
 
 const handleCompareClick = (visit: Visit) => {
   if (openVisit.value && openVisit.value.id !== visit.id) {
-    clickedCompareVisit.value = visit
-    showCompareChoiceModal.value = true
+    compareFirstVisitId.value = openVisit.value.id
+    compareSecondVisitId.value = visit.id
   } else {
     compareFirstVisitId.value = visit.id
   }
-}
-
-const compareWithOpenChart = () => {
-  if (!clickedCompareVisit.value || !openVisit.value) return
-  showCompareChoiceModal.value = false
-  emit('update:open', false)
-
-  const currentPatientId = route.query.patientId as string || patientVisits.value[0]?.patientId
-  router.push({
-    name: 'compare-charts',
-    query: {
-      patientId: currentPatientId,
-      visitA: openVisit.value.id,
-      visitB: clickedCompareVisit.value.id
-    }
-  })
-  clickedCompareVisit.value = null
-}
-
-const chooseAnotherVisit = () => {
-  if (!clickedCompareVisit.value) return
-  showCompareChoiceModal.value = false
-  compareFirstVisitId.value = clickedCompareVisit.value.id
-  clickedCompareVisit.value = null
 }
 
 const toggleVisitSelection = (visitId: string) => {
@@ -247,11 +219,6 @@ const executeCompare = () => {
 const cancelCompareSelection = () => {
   compareFirstVisitId.value = null
   compareSecondVisitId.value = null
-}
-
-const cancelCompareChoice = () => {
-  showCompareChoiceModal.value = false
-  clickedCompareVisit.value = null
 }
 
 
@@ -536,71 +503,5 @@ const formatDate = (dateString: string | null) => {
       </div>
     </div>
   </div>
-    <!-- Compare Choice Modal -->
-    <Transition name="fade">
-      <div
-        v-if="showCompareChoiceModal"
-        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      >
-        <!-- Backdrop -->
-        <div
-          class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          @click="cancelCompareChoice"
-        ></div>
-
-        <!-- Modal Content -->
-        <Transition name="scale">
-          <div
-            v-if="showCompareChoiceModal"
-            class="relative bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-md overflow-hidden mx-4"
-          >
-            <!-- Background Glow Effect -->
-            <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full blur-3xl opacity-20 pointer-events-none bg-[#0052ff]"></div>
-
-            <div class="p-6 relative z-10">
-              <!-- Header Section -->
-              <div class="flex justify-between items-start mb-4">
-                <h3 class="text-xl font-bold text-[#0052ff] pr-4">
-                  Compare Visit #{{ clickedCompareVisit?.visitNumber }}
-                </h3>
-                <div class="text-[#0052ff] flex-shrink-0">
-                  <AlertCircle class="w-7 h-7" />
-                </div>
-              </div>
-
-              <!-- Body -->
-              <p class="text-sm text-gray-500 font-semibold leading-relaxed mb-6">
-                Would you like to compare this visit with the currently open chart (Visit #{{ openVisit?.visitNumber }}) or select another visit instead?
-              </p>
-
-              <!-- Actions Stack -->
-              <div class="space-y-2.5">
-                <button
-                  @click="compareWithOpenChart"
-                  class="w-full py-3 px-4 bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Activity class="w-4 h-4" />
-                  Compare with Open Chart (Visit #{{ openVisit?.visitNumber }})
-                </button>
-                
-                <button
-                  @click="chooseAnotherVisit"
-                  class="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl transition-all active:scale-95 text-center"
-                >
-                  Select another visit instead
-                </button>
-
-                <button
-                  @click="cancelCompareChoice"
-                  class="w-full py-2 text-sm text-slate-500 hover:text-slate-700 font-bold transition-all text-center mt-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </Transition>
-      </div>
-    </Transition>
     </Teleport>
   </template>
