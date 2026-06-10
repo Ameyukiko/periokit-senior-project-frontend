@@ -60,6 +60,11 @@ onMounted(async () => {
 
   if (patientId && visitId) {
     urlVisitId.value = visitId
+    // Null out currentPatientId before loadPatientById so that if Pinia's
+    // persisted state has a different (non-null) patient, the
+    // currentPatientId watcher fires with oldPatientId===null and skips,
+    // avoiding a race where it clears our visits mid-setup.
+    chartStore.currentPatientId = null
     try {
       await chartStore.loadPatientById(patientId)
       const fetchedVisits = await visitStore.loadVisits(patientId)
@@ -113,6 +118,7 @@ onMounted(async () => {
     }
   } else if (visitId) {
     urlVisitId.value = visitId
+    chartStore.currentPatientId = null
     visitStore.setActiveVisit(visitId)
     if (visitId !== 'new') {
       try {
