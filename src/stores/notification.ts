@@ -6,6 +6,7 @@ export type NotificationType = "success" | "error" | "info" | "warning";
 export interface Notification {
   id: string;
   message: string;
+  description?: string;
   type: NotificationType;
   duration: number;
 }
@@ -17,9 +18,10 @@ export const useNotificationStore = defineStore("notification", () => {
     message: string,
     type: NotificationType = "info",
     duration: number = 1000,
+    description?: string,
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    const notification: Notification = { id, message, type, duration };
+    const notification: Notification = { id, message, type, duration, description };
 
     notifications.value.push(notification);
 
@@ -37,14 +39,14 @@ export const useNotificationStore = defineStore("notification", () => {
     }
   };
 
-  const success = (message: string, duration?: number) =>
-    show(message, "success", duration);
-  const error = (message: string, duration?: number) =>
-    show(message, "error", duration);
-  const info = (message: string, duration?: number) =>
-    show(message, "info", duration);
-  const warning = (message: string, duration?: number) =>
-    show(message, "warning", duration);
+  const success = (message: string, description?: string, duration?: number) =>
+    show(message, "success", duration || 3000, description);
+  const error = (message: string, description?: string, duration?: number) =>
+    show(message, "error", duration || 3000, description);
+  const info = (message: string, description?: string, duration?: number) =>
+    show(message, "info", duration || 3000, description);
+  const warning = (message: string, description?: string, duration?: number) =>
+    show(message, "warning", duration || 3000, description);
 
   return {
     notifications,

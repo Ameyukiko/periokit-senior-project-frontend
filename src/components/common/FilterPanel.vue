@@ -248,7 +248,7 @@ const getColorClasses = (color: string) => {
       <!-- Unified Filter Menu -->
       <div
         v-if="activePopover"
-        class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden flex flex-col"
+        class="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden flex flex-col origin-top-left sm:origin-top-right"
         @click.stop
       >
         <!-- Main Menu -->

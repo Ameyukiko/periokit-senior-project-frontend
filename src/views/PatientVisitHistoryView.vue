@@ -26,6 +26,7 @@ const isLoading = ref(true)
 // UI States
 const searchInput = ref('')
 const compareAnchorVisitId = ref<string | null>(null)
+const compareSecondVisitId = ref<string | null>(null)
 const page = ref(1)
 const pageSize = ref(10)
 
@@ -101,29 +102,48 @@ const handleCompare = (visitId: string) => {
   const visit = visits.value.find(v => v.id === visitId)
   if (!visit?.hasChart) return
 
-  if (!compareAnchorVisitId.value) {
-    // First time: set anchor visit
-    compareAnchorVisitId.value = visitId
-  } else {
-    // Second time: navigate to compare (if it's not the same visit)
-    if (compareAnchorVisitId.value === visitId) {
-      compareAnchorVisitId.value = null
-      return
-    }
-    router.push({
-      name: 'compare-charts',
-      query: {
-        visitA: compareAnchorVisitId.value,
-        visitB: visitId,
-      }
-    })
-    compareAnchorVisitId.value = null
+  // Toggle off if this visit is already one of the selected ones
+  if (compareAnchorVisitId.value === visitId) {
+    compareAnchorVisitId.value = compareSecondVisitId.value
+    compareSecondVisitId.value = null
+    return
   }
+  if (compareSecondVisitId.value === visitId) {
+    compareSecondVisitId.value = null
+    return
+  }
+
+  if (!compareAnchorVisitId.value) {
+    // First selection
+    compareAnchorVisitId.value = visitId
+  } else if (!compareSecondVisitId.value) {
+    // Second selection — wait for explicit "Start Compare"
+    compareSecondVisitId.value = visitId
+  }
+  // Both already chosen: ignore further selections until one is cleared
+}
+
+const startCompare = () => {
+  if (!compareAnchorVisitId.value || !compareSecondVisitId.value) return
+  router.push({
+    name: 'compare-charts',
+    query: {
+      patientId,
+      visitA: compareAnchorVisitId.value,
+      visitB: compareSecondVisitId.value,
+    }
+  })
+  compareAnchorVisitId.value = null
+  compareSecondVisitId.value = null
 }
 
 const cancelCompare = () => {
   compareAnchorVisitId.value = null
+  compareSecondVisitId.value = null
 }
+
+const isVisitSelectedForCompare = (visitId: string) =>
+  compareAnchorVisitId.value === visitId || compareSecondVisitId.value === visitId
 
 const compareAnchorVisitNumber = computed(() => {
   if (!compareAnchorVisitId.value) return null
@@ -131,20 +151,30 @@ const compareAnchorVisitNumber = computed(() => {
   return visit ? visit.visitNumber : null
 })
 
+const compareSecondVisitNumber = computed(() => {
+  if (!compareSecondVisitId.value) return null
+  const visit = visits.value.find(v => v.id === compareSecondVisitId.value)
+  return visit ? visit.visitNumber : null
+})
+
+const canStartCompare = computed(() =>
+  !!compareAnchorVisitId.value && !!compareSecondVisitId.value
+)
+
 const createNewVisit = () => {
   router.push({ name: 'chart', query: { patientId, visitId: 'new' } })
 }
 
-const formatDateThai = (dateString: string) => {
+const formatDate = (dateString: string) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
-  const thaiMonths = [
-    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ]
   const day = date.getDate()
-  const month = thaiMonths[date.getMonth()]
-  const year = date.getFullYear() + 543
+  const month = months[date.getMonth()]
+  const year = date.getFullYear()
   return `${day} ${month} ${year}`
 }
 
@@ -189,7 +219,7 @@ const filteredVisits = computed(() => {
     result.sort(
       (a, b) =>
         new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
-        new Date(b.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
         b.id.localeCompare(a.id)
     )
   }
@@ -280,12 +310,26 @@ onUnmounted(() => {
         <div class="flex items-center gap-3">
           <AlertCircle class="w-5 h-5 text-[#0052ff]" />
           <p class="text-blue-900 font-medium text-sm">
-            กำลังเลือก Visit #{{ compareAnchorVisitNumber }} เพื่อ Compare — เลือก Visit ที่ 2
+            <template v-if="canStartCompare">
+              Comparing Visit #{{ compareAnchorVisitNumber }} and Visit #{{ compareSecondVisitNumber }}
+            </template>
+            <template v-else>
+              Selecting Visit #{{ compareAnchorVisitNumber }} to Compare — select the 2nd visit
+            </template>
           </p>
         </div>
-        <button @click="cancelCompare" class="text-slate-500 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-blue-100">
-          <X class="w-5 h-5" />
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="canStartCompare"
+            @click="startCompare"
+            class="px-5 py-2 bg-[#0052ff] text-white rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors animate-in fade-in"
+          >
+            Start Compare
+          </button>
+          <button @click="cancelCompare" class="text-slate-500 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-blue-100">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <!-- Visit Timeline Card -->
@@ -309,7 +353,7 @@ onUnmounted(() => {
             :key="visit.id"
             class="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl border transition-all duration-200"
             :class="[
-              compareAnchorVisitId === visit.id
+              isVisitSelectedForCompare(visit.id)
                 ? 'border-[#0052ff] ring-1 ring-[#0052ff] bg-blue-50/30'
                 : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
             ]"
@@ -333,7 +377,7 @@ onUnmounted(() => {
                 <div class="flex items-center gap-3 text-sm text-slate-500">
                   <div class="flex items-center gap-1.5">
                     <Calendar class="w-4 h-4" />
-                    {{ formatDateThai(visit.visitDate) }}
+                    {{ formatDate(visit.visitDate) }}
                   </div>
                   <span>•</span>
                   <span>by {{ visit.doctorName || 'Unknown Doctor' }}</span>
@@ -353,14 +397,14 @@ onUnmounted(() => {
               <div class="relative group flex">
                 <button
                   @click="handleCompare(visit.id)"
-                  :disabled="!visit.hasChart"
+                  :disabled="!visit.hasChart || (canStartCompare && !isVisitSelectedForCompare(visit.id))"
                   class="px-5 py-2 bg-white text-[#0052ff] border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-not-allowed uppercase text-[11px] tracking-wider"
-                  :class="{ 'ring-2 ring-[#0052ff] ring-offset-1': compareAnchorVisitId === visit.id }"
+                  :class="{ 'ring-2 ring-[#0052ff] ring-offset-1': isVisitSelectedForCompare(visit.id) }"
                 >
-                  {{ compareAnchorVisitId === visit.id ? 'Cancel' : 'Compare' }}
+                  {{ isVisitSelectedForCompare(visit.id) ? 'Selected' : 'Compare' }}
                 </button>
                 <div v-if="!visit.hasChart" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  ยังไม่มี chart
+                  No chart yet
                 </div>
               </div>
             </div>
@@ -368,8 +412,8 @@ onUnmounted(() => {
         </div>
 
         <!-- Pagination -->
-        <div v-if="totalPages > 0" class="bg-white px-6 py-4 flex items-center justify-between border-t border-slate-100">
-          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-end">
+        <div v-if="totalPages > 0" class="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-slate-100">
+          <div class="w-full flex flex-col sm:flex-row items-center justify-between sm:justify-end gap-4">
             <nav class="relative z-0 inline-flex items-center gap-2" aria-label="Pagination">
               <button
                 @click="page > 1 && page--"

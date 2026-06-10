@@ -31,6 +31,7 @@ defineProps<{
   imageClass?: string
   labelPosition: 'top' | 'bottom'
   baselineY?: number  // Custom baseline position for PD graph
+  showNumbers?: boolean  // Render a tooth-number row at the arch edge
 }>()
 
 const emit = defineEmits<{

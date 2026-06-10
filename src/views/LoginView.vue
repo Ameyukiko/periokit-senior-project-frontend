@@ -103,7 +103,7 @@ const handleLogin = async () => {
   >
     <div class="w-full max-w-[480px]">
       <div
-        class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-12"
+        class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-12"
       >
         <!-- Logo & Header -->
         <div class="mb-10 text-center flex flex-col items-center">
@@ -112,7 +112,7 @@ const handleLogin = async () => {
             alt="PerioKit Logo"
             class="h-23 w-20 mb-4"
           />
-          <h2 class="text-[36px] font-bold text-[#0052ff] leading-none mb-3">
+          <h2 class="text-[28px] sm:text-[36px] font-bold text-[#0052ff] leading-none mb-3">
             PerioKit
           </h2>
           <p class="text-[#6b7280] text-[16px] font-medium">

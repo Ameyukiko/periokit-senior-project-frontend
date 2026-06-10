@@ -6,14 +6,23 @@ import { BUCCAL_ROWS, INNER_SURFACE_ROWS, LINGUAL_ROWS, LOWER_ARCH, PALATAL_ROWS
 import { getToothColumnWidth } from '@/domain/chart/chart.image'
 import type { ChartData, SiteIndex, Surface, ToothId } from '@/domain/chart/chart.types'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   chartData: ChartData
   selectedToothId: ToothId | null
-  getFieldValidation: (id: ToothId, surface: Surface, field: string, site: number) => 'valid' | 'invalid' | 'none'
-}>()
+  getFieldValidation?: (id: ToothId, surface: Surface, field: string, site: number) => 'valid' | 'invalid' | 'none'
+  readonly?: boolean
+  archFilter?: 'upper' | 'lower' | 'both'
+  summaryMode?: boolean
+}>(), {
+  readonly: false,
+  archFilter: 'both',
+  summaryMode: false,
+  getFieldValidation: () => 'none' as 'valid' | 'invalid' | 'none'
+})
 
 const emit = defineEmits<{
   selectTooth: [id: ToothId]
+  'tooth-click': [id: ToothId]
   toggleBop: [id: ToothId, surface: Surface, site: SiteIndex]
   togglePi: [id: ToothId, surface: Surface, site: SiteIndex]
   toggleFur: [id: ToothId, surface: Surface, index: number]
@@ -25,6 +34,14 @@ const emit = defineEmits<{
   toggleExtracted: [id: ToothId]
   toggleImplant: [id: ToothId]
 }>()
+
+const handleSelectTooth = (id: ToothId) => {
+  if (props.readonly) {
+    emit('tooth-click', id)
+    return
+  }
+  emit('selectTooth', id)
+}
 
 const chartContainerRef = ref<HTMLElement | null>(null)
 
@@ -301,8 +318,9 @@ const handleKeyDown = (event: KeyboardEvent) => {
     <div class="p-3 bg-[#f8fafc] overflow-x-auto">
       <div ref="chartContainerRef" class="w-fit mx-auto" @keydown="handleKeyDown">
 
+        <template v-if="archFilter !== 'lower'">
         <!-- Upper Arch Buccal -->
-        <div class="flex items-end mb-1" data-section="upper-buccal">
+        <div v-if="!summaryMode" class="flex items-end mb-1" data-section="upper-buccal">
           <div class="flex flex-col bg-white border-l border-t border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div class="h-7 border-b border-r border-slate-200"></div>
             <div v-for="row in BUCCAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-200">{{ row }}</div>
@@ -321,7 +339,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   header-position="top"
                   :midline="gIdx === 1 && idx === 3"
                   :selected="selectedToothId === id"
-                  @select="emit('selectTooth', $event)"
+                  @select="handleSelectTooth"
                   @toggle-bop="(...args) => emit('toggleBop', ...args)"
                   @toggle-pi="(...args) => emit('togglePi', ...args)"
                   @toggle-fur="(...args) => emit('toggleFur', ...args)"
@@ -340,14 +358,27 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </div>
 
         <!-- Upper Arch - Extracted Button-->
-        <div class="flex mb-4">
+        <div v-if="!summaryMode" class="flex mb-4">
           <div class="w-20"></div>
           <div class="flex">
             <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
               <div class="flex">
                 <div v-for="id in group" :key="id" class="h-8 flex shrink-0 items-center justify-center" :style="getToothColumnStyle(id)">
-                  <button class="w-full h-6 text-[9px] font-black transition-all duration-200 border border-slate-300" :class="chartData[id].extracted ? 'bg-red-500 text-white border-red-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'" @click="emit('toggleExtracted', id)">Ext</button>
+                  <button class="w-full h-6 text-[9px] font-black transition-all duration-200 border border-slate-300" :class="chartData[id].extracted ? 'bg-red-500 text-white border-red-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'" :disabled="readonly" @click="!readonly && emit('toggleExtracted', id)">Ext</button>
                 </div>
+              </div>
+              <div v-if="gIdx !== UPPER_ARCH.length - 1" class="w-4"></div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Upper Arch - Tooth Numbers (summary/compare only) -->
+        <div v-if="summaryMode" class="flex mb-2">
+          <div class="w-20"></div>
+          <div class="flex">
+            <template v-for="(group, gIdx) in UPPER_ARCH" :key="gIdx">
+              <div class="flex">
+                <div v-for="id in group" :key="id" class="flex shrink-0 items-center justify-center text-[11px] font-bold text-slate-500" :style="getToothColumnStyle(id)">{{ id }}</div>
               </div>
               <div v-if="gIdx !== UPPER_ARCH.length - 1" class="w-4"></div>
             </template>
@@ -356,12 +387,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
         <!-- Upper Arch - Images -->
         <div class="flex flex-col gap-6 mb-4">
-          <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" @select-tooth="emit('selectTooth', $event)" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
-          <ToothImageRow label="PALATAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-4" label-position="top" :baseline-y="62" @select-tooth="emit('selectTooth', $event)" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
+          <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
+          <ToothImageRow label="PALATAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-4" label-position="top" :baseline-y="62" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
         </div>
 
         <!-- Upper Arch Palatal -->
-        <div class="flex mt-4 mb-10" data-section="upper-palatal">
+        <div v-if="!summaryMode" class="flex mt-4 mb-10" data-section="upper-palatal">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 w-20 sticky left-0 z-20">
             <div v-for="row in PALATAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
           </div>
@@ -379,7 +410,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   header-position="none"
                   :midline="gIdx === 1 && idx === 3"
                   :selected="selectedToothId === id"
-                  @select="emit('selectTooth', $event)"
+                  @select="handleSelectTooth"
                   @toggle-bop="(...args) => emit('toggleBop', ...args)"
                   @toggle-pi="(...args) => emit('togglePi', ...args)"
                   @toggle-fur="(...args) => emit('toggleFur', ...args)"
@@ -396,9 +427,24 @@ const handleKeyDown = (event: KeyboardEvent) => {
             </template>
           </div>
         </div>
+        </template>
+
+        <template v-if="archFilter !== 'upper'">
+        <!-- Lower Arch - Tooth Numbers (summary/compare only) -->
+        <div v-if="summaryMode" class="flex mb-2">
+          <div class="w-20"></div>
+          <div class="flex">
+            <template v-for="(group, gIdx) in LOWER_ARCH" :key="gIdx">
+              <div class="flex">
+                <div v-for="id in group" :key="id" class="flex shrink-0 items-center justify-center text-[11px] font-bold text-slate-500" :style="getToothColumnStyle(id)">{{ id }}</div>
+              </div>
+              <div v-if="gIdx !== LOWER_ARCH.length - 1" class="w-6"></div>
+            </template>
+          </div>
+        </div>
 
         <!-- Lower Arch Lingual -->
-        <div class="flex mb-1 mt-8" data-section="lower-lingual">
+        <div v-if="!summaryMode" class="flex mb-1 mt-8" data-section="lower-lingual">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in LINGUAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
           </div>
@@ -416,7 +462,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   header-position="none"
                   :midline="gIdx === 1 && idx === 3"
                   :selected="selectedToothId === id"
-                  @select="emit('selectTooth', $event)"
+                  @select="handleSelectTooth"
                   @toggle-bop="(...args) => emit('toggleBop', ...args)"
                   @toggle-pi="(...args) => emit('togglePi', ...args)"
                   @toggle-fur="(...args) => emit('toggleFur', ...args)"
@@ -435,13 +481,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </div>
 
         <!-- Lower Arch - Extracted Button -->
-        <div class="flex mt-1 mb-4">
+        <div v-if="!summaryMode" class="flex mt-1 mb-4">
           <div class="w-20"></div>
           <div class="flex">
             <template v-for="(group, gIdx) in LOWER_ARCH" :key="gIdx">
               <div class="flex">
                 <div v-for="id in group" :key="id" class="h-8 flex shrink-0 items-center justify-center" :style="getToothColumnStyle(id)">
-                  <button class="w-full h-6 text-[9px] font-black uppercase transition-all duration-200 border border-slate-300" :class="chartData[id].extracted ? 'bg-red-500 text-white border-red-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'" @click="emit('toggleExtracted', id)">Ext</button>
+                  <button class="w-full h-6 text-[9px] font-black uppercase transition-all duration-200 border border-slate-300" :class="chartData[id].extracted ? 'bg-red-500 text-white border-red-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'" :disabled="readonly" @click="!readonly && emit('toggleExtracted', id)">Ext</button>
                 </div>
               </div>
               <div v-if="gIdx !== LOWER_ARCH.length - 1" class="w-6"></div>
@@ -450,12 +496,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </div>
 
         <div class="flex flex-col gap-6 mb-4">
-          <ToothImageRow label="LINGUAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-6" label-position="bottom" :baseline-y="99" @select-tooth="emit('selectTooth', $event)" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
-          <ToothImageRow label="BUCCAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-6" label-position="bottom" :baseline-y="62" @select-tooth="emit('selectTooth', $event)" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
+          <ToothImageRow label="LINGUAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-6" label-position="bottom" :baseline-y="99" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
+          <ToothImageRow label="BUCCAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-6" label-position="bottom" :baseline-y="62" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
         </div>
 
         <!-- Lower Arch Buccal -->
-        <div class="flex mb-4" data-section="lower-buccal">
+        <div v-if="!summaryMode" class="flex mb-4" data-section="lower-buccal">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in INNER_SURFACE_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
             <div class="h-7 border-t border-r border-slate-200 bg-slate-50"></div>
@@ -474,7 +520,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                   header-position="bottom"
                   :midline="gIdx === 1 && idx === 3"
                   :selected="selectedToothId === id"
-                  @select="emit('selectTooth', $event)"
+                  @select="handleSelectTooth"
                   @toggle-bop="(...args) => emit('toggleBop', ...args)"
                   @toggle-pi="(...args) => emit('togglePi', ...args)"
                   @toggle-fur="(...args) => emit('toggleFur', ...args)"
@@ -491,6 +537,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
             </template>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </section>

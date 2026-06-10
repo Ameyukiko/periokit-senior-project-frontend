@@ -8,6 +8,8 @@ import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import PatientChartHeader from '@/components/chart/PatientChartHeader.vue'
 import PeriodontalChartGrid from '@/components/chart/PeriodontalChartGrid.vue'
 import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
+import VirtualNumpad from '@/components/chart/VirtualNumpad.vue'
+import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
@@ -222,9 +224,18 @@ const showSaveConfirmModal = ref(false)
 const showCloseTabWarningModal = ref(false)
 const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
+const showCancelEditConfirmModal = ref(false)
 
 // ID of the visit tab the user is trying to close (pending confirmation)
 let pendingCloseVisitId: string | null = null
+
+// Auto-fit scale toggle
+const enableAutoFit = ref(false)
+
+const isTouchDevice = ref(false)
+onMounted(() => {
+  isTouchDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+})
 
 // Switch to a different visit (tab click)
 const handleSwitchVisit = async (visitId: string) => {
@@ -413,7 +424,16 @@ watch(activeVisitId, () => { editMode.value = false })
 
 const handleEditVisit = () => { editMode.value = true }
 
-const handleCancelEdit = async () => {
+const handleCancelEditClick = () => {
+  if (chartStore.isDirty) {
+    showCancelEditConfirmModal.value = true
+  } else {
+    editMode.value = false
+  }
+}
+
+const confirmCancelEdit = async () => {
+  showCancelEditConfirmModal.value = false
   editMode.value = false
   // Discard unsaved edits by reloading from backend
   const visitId = activeVisitId.value
@@ -457,7 +477,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
 
     <div class="bg-white border-b border-slate-200 py-1.5 sticky top-16 z-40">
       <div class="max-w-400 mx-auto px-4 flex items-center justify-center">
-        <div class="inline-flex p-0.5 bg-slate-100/80 rounded-xl border border-slate-200">
+        <div class="flex items-center gap-1.5 p-0.5 bg-slate-100/80 rounded-xl border border-slate-200 overflow-x-auto min-w-max">
           <button
             class="flex items-center gap-1.5 px-4 py-1 rounded-lg text-[12px] font-bold transition-all duration-200"
             :class="activeSubNav === 'chart' ? 'bg-white text-[#0052ff] shadow-sm' : 'text-slate-500 hover:text-slate-700'"
@@ -494,24 +514,30 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </div>
 
       <template v-else>
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
           <button
             class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
-            :class="selectedToothId !== null ? 'ml-18' : 'ml-63'"
+            :class="selectedToothId !== null ? 'xl:ml-18' : 'xl:ml-63'"
             @click="showOverviewModal = true"
           >
             <FileText class="w-3.5 h-3.5" /> Overview
           </button>
 
-          <div class="flex items-center gap-2 mr-50">
+          <div class="flex flex-wrap items-center gap-2 xl:mr-50">
             <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors">
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
+            </button>
+            <button 
+              class="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg font-bold text-[11px] transition-all duration-200 xl:hidden" 
+              @click="enableAutoFit = !enableAutoFit"
+              :class="enableAutoFit ? 'bg-[#0052ff] border-[#0052ff] text-white shadow-inner transform scale-[0.98]' : 'bg-white border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50'"
+            >
+              Zoom to Fit
             </button>
             <button v-if="!isNewPatientMode" class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors" @click="handleNewVisit">
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- Edit button: existing draft, not yet in edit mode -->
             <!-- Edit button: existing visit, not yet in edit mode -->
             <button
               v-if="isExistingVisit && !editMode"
@@ -524,7 +550,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- Cancel edit: discard unsaved edits -->
             <button
               v-if="isExistingVisit && editMode"
-              @click="handleCancelEdit"
+              @click="handleCancelEditClick"
               class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
             >
               <X class="w-3.5 h-3.5" /> Cancel
@@ -536,7 +562,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               @click="handleSaveClick"
               :disabled="isSaving"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-green-600 text-white hover:bg-green-700'"
+              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />
@@ -545,10 +571,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           </div>
         </div>
 
-        <div class="flex gap-4 transition-all duration-500">
-          <ChartLegend :is-sidebar-open="selectedToothId !== null" />
+        <div class="flex flex-col xl:flex-row gap-4 transition-all duration-500">
+          <ChartLegend :is-sidebar-open="selectedToothId !== null" class="hidden xl:flex" />
 
-          <div class="w-255 max-w-full shrink-0 flex flex-col gap-0 transition-all duration-500">
+          <div class="w-full xl:w-255 shrink-0 flex flex-col gap-0 transition-all duration-500 min-w-0">
             <!-- Visit Tabs: always visible when there are visits/drafts -->
             <div v-if="!isNewPatientMode || visits.length > 0" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
@@ -616,22 +642,28 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- fieldset disables native inputs/checkboxes when read-only; the
                  store guard covers the div-based toggles (BoP/PI/fur/Ext). -->
             <fieldset :disabled="!chartEditable" class="border-0 p-0 m-0 min-w-0">
-              <PeriodontalChartGrid
-                :chart-data="teethData"
-                :selected-tooth-id="selectedToothId"
-                @select-tooth="chartStore.selectTooth"
-                @toggle-bop="chartStore.toggleBop"
-                @toggle-pi="chartStore.togglePi"
-                @toggle-fur="chartStore.toggleFur"
-                @update-pd="chartStore.updatePd"
-                @update-rec="chartStore.updateRec"
-                @update-mobility="chartStore.updateMobility"
-                @update-ktw="chartStore.updateKtw"
-                :get-field-validation="validationStore.getFieldValidation"
-                @validate-field="validationStore.setFieldValidation"
-                @toggle-extracted="chartStore.toggleExtracted"
-                @toggle-implant="chartStore.toggleImplant"
-              />
+              <div class="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent" :class="isTouchDevice ? 'pb-96' : 'pb-4'">
+                <AutoFitWrapper :enable-auto-fit="enableAutoFit">
+                  <div class="min-w-max">
+                    <PeriodontalChartGrid
+                      :chart-data="teethData"
+                      :selected-tooth-id="selectedToothId"
+                      @select-tooth="chartStore.selectTooth"
+                      @toggle-bop="chartStore.toggleBop"
+                      @toggle-pi="chartStore.togglePi"
+                      @toggle-fur="chartStore.toggleFur"
+                      @update-pd="chartStore.updatePd"
+                      @update-rec="chartStore.updateRec"
+                      @update-mobility="chartStore.updateMobility"
+                      @update-ktw="chartStore.updateKtw"
+                      :get-field-validation="validationStore.getFieldValidation"
+                      @validate-field="validationStore.setFieldValidation"
+                      @toggle-extracted="chartStore.toggleExtracted"
+                      @toggle-implant="chartStore.toggleImplant"
+                    />
+                  </div>
+                </AutoFitWrapper>
+              </div>
             </fieldset>
           </div>
 
@@ -655,7 +687,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showSaveConfirmModal"
             title="Save Chart"
-            message="ต้องการบันทึกข้อมูล Chart นี้หรือไม่?<br/>เมื่อบันทึกแล้ว คุณยังสามารถกด Edit เพื่อแก้ไขในภายหลังได้"
+            message="Do you want to save this chart?<br/>Once saved, you can still click Edit to modify it later."
             confirm-text="Save"
             cancel-text="Cancel"
             @confirm="confirmSaveChart"
@@ -665,10 +697,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <!-- Close Tab Warning Modal -->
           <ConfirmModal
             :show="showCloseTabWarningModal"
-            title="ยังไม่ได้บันทึก"
-            message="Chart นี้<strong>ยังไม่ได้บันทึก</strong><br/>คุณต้องการปิด Tab นี้จริงหรือไม่? ข้อมูลจะหายไป"
-            confirm-text="ปิด Tab"
-            cancel-text="ยกเลิก"
+            title="Unsaved Changes"
+            message="This chart has <strong>not been saved</strong>.<br/>Are you sure you want to close this tab? Your data will be lost."
+            confirm-text="Close Tab"
+            cancel-text="Cancel"
             type="danger"
             @confirm="confirmCloseTab"
             @cancel="showCloseTabWarningModal = false"
@@ -677,13 +709,28 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <!-- Draft Recovery Modal -->
           <ConfirmModal
             :show="showDraftRecoveryModal"
-            title="พบข้อมูล Draft ค้างอยู่"
-            :message="`พบข้อมูล Chart ของ <strong>${patientInfo.patientName || 'คนไข้'}</strong> ที่ยังไม่ได้บันทึก<br/>ต้องการดึงข้อมูลนี้กลับมาทำต่อหรือไม่?`"
-            confirm-text="ดึงข้อมูลกลับมา"
-            cancel-text="ทิ้งข้อมูล"
+            title="Draft Found"
+            :message="`Found unsaved chart data for <strong>${patientInfo.patientName || 'patient'}</strong>.<br/>Do you want to recover this data to continue working?`"
+            confirm-text="Recover Data"
+            cancel-text="Discard Data"
             @confirm="showDraftRecoveryModal = false"
             @cancel="discardDraft"
           />
+
+          <!-- Cancel Edit Confirmation Modal -->
+          <ConfirmModal
+            :show="showCancelEditConfirmModal"
+            title="Cancel Editing"
+            message="Are you sure you want to cancel?<br/>Any unsaved changes will be lost."
+            confirm-text="Discard Changes"
+            cancel-text="Continue Editing"
+            type="danger"
+            @confirm="confirmCancelEdit"
+            @cancel="showCancelEditConfirmModal = false"
+          />
+
+          <!-- Virtual Numpad -->
+          <VirtualNumpad />
         </div>
       </template>
     </main>

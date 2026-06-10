@@ -36,6 +36,12 @@ const router = createRouter({
       component: () => import("../views/PeriodontalChartPage.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/compare-charts",
+      name: "compare-charts",
+      component: () => import("../views/CompareChartsView.vue"),
+      meta: { requiresAuth: true },
+    },
 
     {
       path: "/",
