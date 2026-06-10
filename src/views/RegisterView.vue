@@ -3,7 +3,7 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notification";
-import { Upload, Eye, EyeOff } from "lucide-vue-next";
+import { Upload, Eye, EyeOff, Loader2 } from "lucide-vue-next";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -165,8 +165,31 @@ const register = async () => {
   >
     <div class="w-full max-w-162.5">
       <div
-        class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-10"
+        class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-10 relative overflow-hidden"
       >
+        <!-- Loading Overlay -->
+        <transition name="fade">
+          <div
+            v-if="loading"
+            class="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all duration-300"
+          >
+            <div class="flex flex-col items-center gap-4">
+              <!-- Animated loading indicator -->
+              <div class="relative w-20 h-20 flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-4 border-[#0052ff]/10 border-t-[#0052ff] animate-spin"></div>
+                <img
+                  src="../assets/mini_Logo_Periokit.png"
+                  alt="PerioKit Logo"
+                  class="h-10 w-8 animate-pulse"
+                />
+              </div>
+              <div class="flex flex-col items-center">
+                <span class="text-[#0052ff] font-bold text-[18px] tracking-wide animate-pulse">Creating Account...</span>
+                <span class="text-[#6b7280] text-[13px] mt-1">Please wait, setting up your profile</span>
+              </div>
+            </div>
+          </div>
+        </transition>
         <!-- Logo & Header -->
         <div class="mb-6">
           <img
@@ -392,9 +415,10 @@ const register = async () => {
             <button
               type="submit"
               :disabled="loading"
-              class="w-full bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold py-3 rounded-[10px] transition-colors disabled:opacity-50"
+              class="w-full bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold py-3 rounded-[10px] transition-all disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
-              {{ loading ? "Signing up..." : "Confirm" }}
+              <Loader2 v-if="loading" class="h-5 w-5 animate-spin" />
+              <span>{{ loading ? "Signing up..." : "Confirm" }}</span>
             </button>
           </div>
         </form>
