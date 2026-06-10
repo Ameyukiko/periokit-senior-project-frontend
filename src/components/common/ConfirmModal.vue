@@ -29,7 +29,7 @@ const emit = defineEmits(["confirm", "cancel"]);
       <Transition name="scale">
         <div
           v-if="show"
-          class="relative bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-md overflow-hidden"
+          class="relative bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-lg overflow-hidden"
         >
           <!-- Background Glow Effect -->
           <div 
@@ -40,7 +40,10 @@ const emit = defineEmits(["confirm", "cancel"]);
           <div class="p-8 relative z-10">
             <!-- Header/Icon Section -->
             <div class="flex justify-between items-start mb-2">
-              <h3 class="text-2xl font-bold text-gray-900 pr-4">
+              <h3 
+                class="text-2xl font-bold pr-4"
+                :class="type === 'danger' ? 'text-red-600' : 'text-[#0052ff]'"
+              >
                 {{ title }}
               </h3>
               <div 
@@ -54,7 +57,7 @@ const emit = defineEmits(["confirm", "cancel"]);
 
             <!-- Body -->
             <p
-              class="text-gray-500 font-medium leading-relaxed whitespace-pre-line mb-8"
+              class="text-gray-500 font-semibold leading-relaxed whitespace-pre-line mb-8"
               v-html="message"
             ></p>
 

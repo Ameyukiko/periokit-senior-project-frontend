@@ -236,22 +236,22 @@ const FUR_MARKER_POSITIONS_BY_TOOTH: Partial<Record<`${number}-${ClinicalSurface
 }
 
 export const getFurImage = (grade: number) => {
-  if (grade === 1) return '/images/teeth/vacio.png'
-  if (grade === 2) return '/images/teeth/mediolleno.png'
-  if (grade === 3) return '/images/teeth/lleno.png'
+  if (grade === 1) return '/images/teeth/fur-empty.png'
+  if (grade === 2) return '/images/teeth/fur-half.png'
+  if (grade === 3) return '/images/teeth/fur-full.png'
   return ''
 }
 
 export const getToothImage = (id: number | string, surface: Surface, data?: ToothData) => {
-  const arch = isUpperTooth(id) ? 'arriba' : 'abajo'
+  const arch = isUpperTooth(id) ? 'upper' : 'lower'
   const clinicalSurface = getClinicalSurface(id, surface)
   const suffix = clinicalSurface === 'palatal' || (!isUpperTooth(id) && clinicalSurface === 'buccal') ? 'b' : ''
 
   let state = ''
-  if (data?.extracted) state = 'tachados-'
-  else if (data?.implant) state = 'tornillo-'
+  if (data?.extracted) state = 'extracted-'
+  else if (data?.implant) state = 'implant-'
 
-  return `/images/teeth/periodontograma-dientes-${arch}-${state}${id}${suffix}.png`
+  return `/images/teeth/tooth-${arch}-${state}${id}${suffix}.png`
 }
 
 export const getToothImageTopOffset = (id: ToothId, surface: Surface) => {

@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Navbar from '../components/layout/Navbar.vue'
 import PeriodontalChartGrid from '../components/chart/PeriodontalChartGrid.vue'
 import CompareSidebarCard from '../components/chart/CompareSidebarCard.vue'
 import CompareSummaryCard from '../components/chart/CompareSummaryCard.vue'
 import ChartOverviewModal from '../components/chart/ChartOverviewModal.vue'
-import { ArrowLeft, ArrowRight } from 'lucide-vue-next'
+import PatientDrawer from '@/components/patients/VisitListPanel.vue'
+import { ArrowLeft, ArrowRight, Activity } from 'lucide-vue-next'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
 import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
 import { calculateChartSummary } from '@/domain/chart/chart.calculations'
-import { Activity } from 'lucide-vue-next'
 import type { ChartData, ToothId } from '@/domain/chart/chart.types'
+import { UPPER_ARCH, LOWER_ARCH } from '@/domain/chart/chart.constants'
+import { getToothColumnWidth } from '@/domain/chart/chart.image'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,6 +36,40 @@ const showOverviewA = ref(false)
 const showOverviewB = ref(false)
 const showSummaryA = ref(false)
 const showSummaryB = ref(false)
+const drawerOpen = ref(false)
+
+// Scale-to-fit logic for compare chart blocks
+const chartWrapperRef = ref<HTMLElement | null>(null)
+const chartContentRefA = ref<HTMLElement | null>(null)
+const chartScale = ref(1)
+const scaledChartHeight = ref(0)
+
+const getChartNaturalWidth = () => {
+  const groups = archFilter.value === 'lower' ? LOWER_ARCH : UPPER_ARCH
+  const teethWidth = groups.reduce((total, group) => {
+    return total + group.reduce((s, id) => s + getToothColumnWidth(id), 0) + 4 // +4 for group borders
+  }, 0)
+  return 80 + teethWidth + (groups.length - 1) * 16 + 24 // label + gaps + padding
+}
+
+const updateScaleAndHeight = async () => {
+  if (!chartWrapperRef.value) return
+  const containerWidth = chartWrapperRef.value.clientWidth
+  const naturalWidth = getChartNaturalWidth()
+  chartScale.value = Math.min(1, containerWidth / naturalWidth)
+  await nextTick()
+  if (chartContentRefA.value) {
+    scaledChartHeight.value = chartContentRefA.value.scrollHeight * chartScale.value
+  }
+}
+
+const chartScaleStyle = computed(() => ({
+  transform: `scale(${chartScale.value})`,
+  transformOrigin: 'top left',
+  width: chartScale.value < 1 ? `${(100 / chartScale.value).toFixed(2)}%` : '100%'
+}))
+
+let resizeObserver: ResizeObserver | null = null
 
 const visitA = computed(() => visits.value.find(v => v.id === selectedVisitIdA.value))
 const visitB = computed(() => visits.value.find(v => v.id === selectedVisitIdB.value))
@@ -89,6 +125,16 @@ const canCompare = computed(() => !!selectedVisitIdA.value && !!selectedVisitIdB
 onMounted(async () => {
   await fetchPatientVisits()
   if (canCompare.value) await refreshCharts()
+  await nextTick()
+  resizeObserver = new ResizeObserver(updateScaleAndHeight)
+  if (chartWrapperRef.value) resizeObserver.observe(chartWrapperRef.value)
+  await updateScaleAndHeight()
+})
+
+onUnmounted(() => resizeObserver?.disconnect())
+
+watch([chartDataA, archFilter], async () => {
+  if (chartDataA.value) await updateScaleAndHeight()
 })
 
 // Re-run the comparison automatically whenever either visit selection changes.
@@ -123,7 +169,8 @@ const goBack = () => {
 
 <template>
   <div class="min-h-screen bg-[#f1f5f9] font-sans flex flex-col h-screen overflow-hidden">
-    <Navbar />
+    <Navbar @toggle-drawer="drawerOpen = !drawerOpen" />
+    <PatientDrawer v-model:open="drawerOpen" />
 
     <main
       class="flex-1 overflow-y-auto px-4 xl:px-6 xl:px-8 py-8 relative transition-[padding] duration-300 ease-out"
@@ -194,9 +241,9 @@ const goBack = () => {
             <div class="flex-1 min-w-0 space-y-6 transition-all duration-300">
 
               <!-- Header Row 1 -->
-              <div class="flex flex-col xl:flex-row items-center justify-between gap-3 xl:gap-4">
+              <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
                 <!-- Arch Toggle -->
-                <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center">
+                <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center shrink-0">
                   <button
                     @click="archFilter = 'upper'"
                     :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all w-1/2', archFilter === 'upper' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
@@ -210,20 +257,21 @@ const goBack = () => {
                     Lower
                   </button>
                 </div>
-                <div class="flex w-full xl:w-auto items-center gap-2 xl:gap-4">
-                  <div class="relative flex-1 xl:flex-none">
-                    <button
-                      @click="showSummaryA = true"
-                      :class="['w-full xl:w-auto flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors border', showSummaryA ? 'bg-[#0052ff] text-white border-[#0052ff]' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100']"
-                    >
-                      <Activity class="w-3.5 h-3.5" /> Summary
-                    </button>
-                  </div>
-                  <button @click="showOverviewA = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Overview
-                  </button>
-                </div>
+                
+                <!-- Summary (Long Bar) -->
+                <!-- Summary (Long Bar) -->
+                <button
+                  @click="showSummaryA = true"
+                  :class="['flex-1 w-full flex justify-center items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold uppercase tracking-widest transition-all duration-300 border', showSummaryA ? 'bg-[#0052ff] text-white border-[#0052ff] shadow-md shadow-blue-500/20' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100 hover:border-blue-200']"
+                >
+                  <Activity class="w-4 h-4" /> summary
+                </button>
+
+                <!-- Overview Button -->
+                <button @click="showOverviewA = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  Overview
+                </button>
               </div>
 
               <!-- Visit 1 -->
@@ -231,8 +279,8 @@ const goBack = () => {
                 <div class="flex justify-center mb-6">
                   <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
                 </div>
-                <div class="overflow-x-auto w-full pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-                  <div class="min-w-max">
+                <div ref="chartWrapperRef" class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                  <div ref="chartContentRefA" :style="chartScaleStyle">
                     <PeriodontalChartGrid
                       :key="selectedVisitIdA"
                       :chart-data="chartDataA"
@@ -240,6 +288,7 @@ const goBack = () => {
                       :readonly="true"
                       :arch-filter="archFilter"
                       :summary-mode="summaryMode"
+                      :fit-width="true"
                       :get-field-validation="() => 'none'"
                       @tooth-click="handleToothClick"
                     />
@@ -248,22 +297,21 @@ const goBack = () => {
               </div>
 
               <!-- Header Row 2 -->
-              <div class="flex flex-col xl:flex-row items-center justify-between gap-3 xl:gap-4 pt-2">
-                <div class="w-full xl:w-[140px] hidden xl:block"></div>
-                <div class="flex w-full xl:w-auto items-center gap-2 xl:gap-4">
-                  <div class="relative flex-1 xl:flex-none">
-                    <button
-                      @click="showSummaryB = true"
-                      :class="['w-full xl:w-auto flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors border', showSummaryB ? 'bg-[#0052ff] text-white border-[#0052ff]' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100']"
-                    >
-                      <Activity class="w-3.5 h-3.5" /> Summary
-                    </button>
-                  </div>
-                  <button @click="showOverviewB = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Overview
-                  </button>
-                </div>
+              <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 pt-2 mb-4">
+                <div class="w-full xl:w-[140px] hidden xl:block shrink-0"></div>
+                <!-- Summary (Long Bar) -->
+                <!-- Summary (Long Bar) -->
+                <button
+                  @click="showSummaryB = true"
+                  :class="['flex-1 w-full flex justify-center items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold uppercase tracking-widest transition-all duration-300 border', showSummaryB ? 'bg-[#0052ff] text-white border-[#0052ff] shadow-md shadow-blue-500/20' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100 hover:border-blue-200']"
+                >
+                  <Activity class="w-4 h-4" /> summary
+                </button>
+
+                <button @click="showOverviewB = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  Overview
+                </button>
               </div>
 
               <!-- Visit 2 -->
@@ -271,8 +319,8 @@ const goBack = () => {
                 <div class="flex justify-center mb-6">
                   <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
                 </div>
-                <div class="overflow-x-auto w-full pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-                  <div class="min-w-max">
+                <div class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                  <div :style="chartScaleStyle">
                     <PeriodontalChartGrid
                       :key="selectedVisitIdB"
                       :chart-data="chartDataB"
@@ -280,6 +328,7 @@ const goBack = () => {
                       :readonly="true"
                       :arch-filter="archFilter"
                       :summary-mode="summaryMode"
+                      :fit-width="true"
                       :get-field-validation="() => 'none'"
                       @tooth-click="handleToothClick"
                     />

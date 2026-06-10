@@ -560,9 +560,9 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <button
               v-if="chartEditable"
               @click="handleSaveClick"
-              :disabled="isSaving"
+              :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty)"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
+              :class="(isSaving || (isExistingVisit && editMode && !chartStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />
@@ -687,7 +687,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showSaveConfirmModal"
             title="Save Chart"
-            message="Do you want to save this chart?<br/>Once saved, you can still click Edit to modify it later."
+            message="<span class='text-slate-800 font-bold text-lg block mb-1'>Do you want to save this chart?</span><span class='text-slate-500 font-normal'>Once saved, you can still click Edit to modify it later.</span>"
             confirm-text="Save"
             cancel-text="Cancel"
             @confirm="confirmSaveChart"
@@ -698,7 +698,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showCloseTabWarningModal"
             title="Unsaved Changes"
-            message="This chart has <strong>not been saved</strong>.<br/>Are you sure you want to close this tab? Your data will be lost."
+            message="<span class='text-slate-800 font-bold text-lg block mb-1'>This chart has not been saved.</span><span class='text-slate-500 font-normal'>Are you sure you want to close this tab? Your data will be lost.</span>"
             confirm-text="Close Tab"
             cancel-text="Cancel"
             type="danger"
@@ -710,7 +710,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showDraftRecoveryModal"
             title="Draft Found"
-            :message="`Found unsaved chart data for <strong>${patientInfo.patientName || 'patient'}</strong>.<br/>Do you want to recover this data to continue working?`"
+            :message="`<span class='text-slate-800 font-bold text-lg block mb-1'>Found unsaved chart data for ${patientInfo.patientName || 'patient'}.</span><span class='text-slate-500 font-normal'>Do you want to recover this data to continue working?</span>`"
             confirm-text="Recover Data"
             cancel-text="Discard Data"
             @confirm="showDraftRecoveryModal = false"
@@ -721,7 +721,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ConfirmModal
             :show="showCancelEditConfirmModal"
             title="Cancel Editing"
-            message="Are you sure you want to cancel?<br/>Any unsaved changes will be lost."
+            message="<span class='text-slate-800 font-bold text-lg block mb-1'>Are you sure you want to cancel?</span><span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
             confirm-text="Discard Changes"
             cancel-text="Continue Editing"
             type="danger"
