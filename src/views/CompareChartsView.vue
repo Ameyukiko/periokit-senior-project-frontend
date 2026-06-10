@@ -7,7 +7,7 @@ import CompareSidebarCard from '../components/chart/CompareSidebarCard.vue'
 import CompareSummaryCard from '../components/chart/CompareSummaryCard.vue'
 import ChartOverviewModal from '../components/chart/ChartOverviewModal.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
-import { ArrowLeft, ArrowRight, Activity } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Activity, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
 import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
@@ -36,6 +36,7 @@ const showOverviewA = ref(false)
 const showOverviewB = ref(false)
 const showSummaryA = ref(false)
 const showSummaryB = ref(false)
+const fullChartMode = ref(false)
 const drawerOpen = ref(false)
 
 // Scale-to-fit logic for compare chart blocks
@@ -45,7 +46,7 @@ const chartScale = ref(1)
 const scaledChartHeight = ref(0)
 
 const getChartNaturalWidth = () => {
-  const groups = archFilter.value === 'lower' ? LOWER_ARCH : UPPER_ARCH
+  const groups = (!fullChartMode.value && archFilter.value === 'lower') ? LOWER_ARCH : UPPER_ARCH
   const teethWidth = groups.reduce((total, group) => {
     return total + group.reduce((s, id) => s + getToothColumnWidth(id), 0) + 4 // +4 for group borders
   }, 0)
@@ -151,7 +152,7 @@ onMounted(async () => {
 
 onUnmounted(() => resizeObserver?.disconnect())
 
-watch([chartDataA, archFilter], async () => {
+watch([chartDataA, archFilter, fullChartMode], async () => {
   if (chartDataA.value) await updateScaleAndHeight()
 })
 
@@ -261,7 +262,7 @@ const goBack = () => {
               <!-- Header Row 1 -->
               <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
                 <!-- Arch Toggle -->
-                <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center shrink-0">
+                <div :class="['flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center shrink-0 transition-opacity', fullChartMode ? 'opacity-30 pointer-events-none' : '']">
                   <button
                     @click="archFilter = 'upper'"
                     :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all w-1/2', archFilter === 'upper' ? 'bg-[#0052ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700']"
@@ -355,11 +356,18 @@ const goBack = () => {
                   </template>
                 </div>
 
-                <!-- Overview Button -->
-                <button @click="showOverviewA = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                  Overview
-                </button>
+                <!-- Action buttons -->
+                <div class="flex items-center gap-2 shrink-0 w-full xl:w-auto">
+                  <button @click="fullChartMode = !fullChartMode" :class="['flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors', fullChartMode ? 'border border-teal-500 text-teal-700 bg-teal-100 hover:bg-teal-200' : 'border border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-400']">
+                    <Minimize2 v-if="fullChartMode" class="w-3.5 h-3.5" />
+                    <Maximize2 v-else class="w-3.5 h-3.5" />
+                    {{ fullChartMode ? 'Compact' : 'Full Chart' }}
+                  </button>
+                  <button @click="showOverviewA = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Overview
+                  </button>
+                </div>
               </div>
 
               <!-- Visit 1 -->
@@ -367,15 +375,15 @@ const goBack = () => {
                 <div class="flex justify-center mb-6">
                   <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
                 </div>
-                <div ref="chartWrapperRef" class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                <div ref="chartWrapperRef" class="w-full overflow-hidden" :style="!fullChartMode && scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
                   <div ref="chartContentRefA" :style="chartScaleStyle">
                     <PeriodontalChartGrid
-                      :key="selectedVisitIdA"
+                      :key="`${selectedVisitIdA}-${fullChartMode}`"
                       :chart-data="chartDataA"
                       :selected-tooth-id="selectedToothId"
                       :readonly="true"
-                      :arch-filter="archFilter"
-                      :summary-mode="summaryMode"
+                      :arch-filter="fullChartMode ? 'both' : archFilter"
+                      :summary-mode="fullChartMode ? false : summaryMode"
                       :fit-width="true"
                       :get-field-validation="() => 'none'"
                       @tooth-click="handleToothClick"
@@ -466,10 +474,12 @@ const goBack = () => {
                   </template>
                 </div>
 
-                <button @click="showOverviewB = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                  Overview
-                </button>
+                <div class="flex items-center gap-2 shrink-0 w-full xl:w-auto">
+                  <button @click="showOverviewB = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Overview
+                  </button>
+                </div>
               </div>
 
               <!-- Visit 2 -->
@@ -477,15 +487,15 @@ const goBack = () => {
                 <div class="flex justify-center mb-6">
                   <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
                 </div>
-                <div class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                <div class="w-full overflow-hidden" :style="!fullChartMode && scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
                   <div :style="chartScaleStyle">
                     <PeriodontalChartGrid
-                      :key="selectedVisitIdB"
+                      :key="`${selectedVisitIdB}-${fullChartMode}`"
                       :chart-data="chartDataB"
                       :selected-tooth-id="selectedToothId"
                       :readonly="true"
-                      :arch-filter="archFilter"
-                      :summary-mode="summaryMode"
+                      :arch-filter="fullChartMode ? 'both' : archFilter"
+                      :summary-mode="fullChartMode ? false : summaryMode"
                       :fit-width="true"
                       :get-field-validation="() => 'none'"
                       @tooth-click="handleToothClick"
@@ -585,6 +595,7 @@ const goBack = () => {
         :chart-data="chartDataB"
         @close="showOverviewB = false"
       />
+
     </main>
   </div>
 </template>
