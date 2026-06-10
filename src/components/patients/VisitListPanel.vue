@@ -23,6 +23,12 @@ const visitStore = useVisitStore()
 const { patientInfo } = storeToRefs(chartStore)
 const { patientVisits } = storeToRefs(visitStore)
 
+const fetchedPatientName = ref('')
+
+const patientDisplayName = computed(
+  () => patientInfo.value?.patientName || fetchedPatientName.value || 'Unknown'
+)
+
 const sortOrder = ref<'desc' | 'asc'>('desc')
 
 const sortedVisits = computed(() => {
@@ -102,11 +108,20 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 }
 
-watch(() => props.open, (newVal) => {
+watch(() => props.open, async (newVal) => {
   if (newVal) {
     searchQuery.value = ''
     fetchRecentPatients()
     document.addEventListener('mousedown', handleClickOutside)
+    if (!patientInfo.value?.patientName) {
+      const routePatientId = route.query.patientId as string
+      if (routePatientId) {
+        try {
+          const patient = await patientApi.getById(routePatientId)
+          if (patient) fetchedPatientName.value = `${patient.firstName} ${patient.lastName}`.trim()
+        } catch { /* silent */ }
+      }
+    }
   } else {
     searchQuery.value = ''
     searchResults.value = []
@@ -169,7 +184,7 @@ const formatDate = (dateString: string | null) => {
       <!-- Header -->
       <div class="px-4 py-4 flex items-center justify-between border-b border-slate-200 shrink-0">
         <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 max-w-[250px] truncate">
-          Patient - {{ patientInfo?.patientName || 'Unknown' }}
+          Patient - {{ patientDisplayName }}
         </h2>
         <button @click="emit('update:open', false)" class="p-1 hover:bg-slate-100 rounded-full text-slate-500 transition-colors shrink-0">
           <X class="w-5 h-5" />

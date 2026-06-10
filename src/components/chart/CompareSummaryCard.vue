@@ -36,27 +36,27 @@ const toneClass: Record<string, string> = {
 </script>
 
 <template>
-  <div class="w-[300px] xl:w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 space-y-4 mx-auto xl:mx-0">
+  <div class="w-[400px] xl:w-[480px] bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 xl:p-8 space-y-6 mx-auto xl:mx-0">
     <!-- Title -->
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <p class="text-[11px] font-black uppercase tracking-widest text-slate-700">Summary</p>
-        <span v-if="label" class="text-[10px] font-bold text-[#0052ff]">{{ label }}</span>
+      <div class="flex items-center gap-3">
+        <p class="text-sm font-black uppercase tracking-widest text-slate-700">Summary</p>
+        <span v-if="label" class="text-xs font-bold text-[#0052ff] bg-blue-50 px-2 py-1 rounded-md">{{ label }}</span>
       </div>
-      <button @click="emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100">
-        <X class="w-4 h-4" />
+      <button @click="emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-xl hover:bg-slate-100">
+        <X class="w-5 h-5" />
       </button>
     </div>
 
     <!-- Pocket health distribution -->
-    <div>
-      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Pocket Health</p>
-      <div class="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
+    <div class="space-y-2">
+      <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Pocket Health</p>
+      <div class="flex h-3 rounded-full overflow-hidden bg-slate-100">
         <div class="bg-emerald-500 transition-all" :style="{ width: summary.healthDistribution.healthy + '%' }"></div>
         <div class="bg-amber-400 transition-all" :style="{ width: summary.healthDistribution.moderate + '%' }"></div>
         <div class="bg-rose-500 transition-all" :style="{ width: summary.healthDistribution.severe + '%' }"></div>
       </div>
-      <div class="flex justify-between mt-1.5 text-[9px] font-black">
+      <div class="flex justify-between text-[11px] font-black pt-1">
         <span class="text-emerald-600">Healthy {{ summary.healthDistribution.healthy }}%</span>
         <span class="text-amber-600">Mod {{ summary.healthDistribution.moderate }}%</span>
         <span class="text-rose-600">Severe {{ summary.healthDistribution.severe }}%</span>
@@ -64,15 +64,15 @@ const toneClass: Record<string, string> = {
     </div>
 
     <!-- Metric tiles -->
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-3 gap-3">
       <div
         v-for="tile in tiles"
         :key="tile.key"
-        class="rounded-xl border px-2 py-2 text-center"
+        class="rounded-2xl border px-3 py-3 xl:py-4 text-center transition-all hover:scale-[1.02]"
         :class="toneClass[tile.tone]"
       >
-        <p class="text-[8px] xl:text-[9px] font-bold uppercase tracking-wide xl:tracking-wider opacity-70 truncate">{{ tile.label }}</p>
-        <p class="text-sm font-black leading-tight mt-0.5">{{ tile.value }}</p>
+        <p class="text-[10px] xl:text-xs font-bold uppercase tracking-wide xl:tracking-wider opacity-70 truncate">{{ tile.label }}</p>
+        <p class="text-xl xl:text-2xl font-black leading-tight mt-1">{{ tile.value }}</p>
       </div>
     </div>
   </div>

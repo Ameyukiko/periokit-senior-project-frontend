@@ -222,7 +222,7 @@ const hasMyPatientRoute = computed(() => {
   <ConfirmModal
     :show="showLogoutConfirm"
     title="Sign Out"
-    :message="`Are you sure you want to sign out of PerioKit?\nYou will need to login again to access your charts.`"
+    message="<span class='text-slate-800 font-bold text-lg block mb-1'>Are you sure you want to sign out of PerioKit?</span><span class='text-slate-500 font-normal'>You will need to login again to access your charts.</span>"
     confirmText="Sign Out"
     type="danger"
     @confirm="confirmLogout"
