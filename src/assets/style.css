@@ -114,13 +114,13 @@ input[type="number"] {
 }
 
 .clinical-grid-bg {
-  background-image: url("/images/teeth/fondo-grafico.png");
+  background-image: url("/images/teeth/chart-background-upper.png");
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
 .clinical-grid-bg-inf {
-  background-image: url("/images/teeth/fondo-grafico-inf.png");
+  background-image: url("/images/teeth/chart-background-lower.png");
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
