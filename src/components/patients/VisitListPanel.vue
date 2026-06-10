@@ -5,7 +5,9 @@ import { storeToRefs } from 'pinia'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import { patientApi, type Patient } from '@/services/api/patient.api'
-import { X, Users, Plus, Search, User, ArrowUpDown, Activity } from 'lucide-vue-next'
+import { X, Users, Plus, Search, User, ArrowUpDown, Activity, AlertCircle } from 'lucide-vue-next'
+import type { Visit } from '@/services/api/visit.api'
+
 
 const props = defineProps<{
   open: boolean
@@ -108,6 +110,25 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 }
 
+// Compare features state
+const clickedCompareVisit = ref<Visit | null>(null)
+const showCompareChoiceModal = ref(false)
+const compareFirstVisitId = ref<string | null>(null)
+const compareSecondVisitId = ref<string | null>(null)
+
+const openVisitId = computed(() => {
+  if (route.name === 'chart' && route.query.visitId) {
+    return route.query.visitId as string
+  }
+  return visitStore.activeVisitId
+})
+
+const openVisit = computed(() => {
+  if (!openVisitId.value) return null
+  const visit = patientVisits.value.find(v => v.id === openVisitId.value)
+  return (visit && visit.hasChart) ? visit : null
+})
+
 watch(() => props.open, async (newVal) => {
   if (newVal) {
     searchQuery.value = ''
@@ -126,6 +147,10 @@ watch(() => props.open, async (newVal) => {
     searchQuery.value = ''
     searchResults.value = []
     isSearchOpen.value = false
+    compareFirstVisitId.value = null
+    compareSecondVisitId.value = null
+    clickedCompareVisit.value = null
+    showCompareChoiceModal.value = false
     document.removeEventListener('mousedown', handleClickOutside)
   }
 })
@@ -148,14 +173,87 @@ const viewChart = async (visitId: string) => {
   })
 }
 
-const startCompare = (_visitId: string) => {
-  emit('update:open', false)
-  // Go to visit history page for the current patient
-  const currentPatientId = route.query.patientId as string || patientVisits.value[0]?.patientId
-  if (currentPatientId) {
-    router.push({ name: 'patient-visits', params: { patientId: currentPatientId } })
+const handleCompareClick = (visit: Visit) => {
+  if (openVisit.value && openVisit.value.id !== visit.id) {
+    clickedCompareVisit.value = visit
+    showCompareChoiceModal.value = true
+  } else {
+    compareFirstVisitId.value = visit.id
   }
 }
+
+const compareWithOpenChart = () => {
+  if (!clickedCompareVisit.value || !openVisit.value) return
+  showCompareChoiceModal.value = false
+  emit('update:open', false)
+
+  const currentPatientId = route.query.patientId as string || patientVisits.value[0]?.patientId
+  router.push({
+    name: 'compare-charts',
+    query: {
+      patientId: currentPatientId,
+      visitA: openVisit.value.id,
+      visitB: clickedCompareVisit.value.id
+    }
+  })
+  clickedCompareVisit.value = null
+}
+
+const chooseAnotherVisit = () => {
+  if (!clickedCompareVisit.value) return
+  showCompareChoiceModal.value = false
+  compareFirstVisitId.value = clickedCompareVisit.value.id
+  clickedCompareVisit.value = null
+}
+
+const toggleVisitSelection = (visitId: string) => {
+  if (compareFirstVisitId.value === visitId) {
+    // Deselect first visit, shift second visit to first if present
+    compareFirstVisitId.value = compareSecondVisitId.value
+    compareSecondVisitId.value = null
+  } else if (compareSecondVisitId.value === visitId) {
+    // Deselect second visit
+    compareSecondVisitId.value = null
+  } else if (!compareFirstVisitId.value) {
+    // Set as first selection
+    compareFirstVisitId.value = visitId
+  } else {
+    // Set as second selection
+    compareSecondVisitId.value = visitId
+  }
+}
+
+const executeCompare = () => {
+  if (!compareFirstVisitId.value || !compareSecondVisitId.value) return
+  emit('update:open', false)
+
+  const currentPatientId = route.query.patientId as string || patientVisits.value[0]?.patientId
+  const idA = compareFirstVisitId.value
+  const idB = compareSecondVisitId.value
+
+  compareFirstVisitId.value = null
+  compareSecondVisitId.value = null
+
+  router.push({
+    name: 'compare-charts',
+    query: {
+      patientId: currentPatientId,
+      visitA: idA,
+      visitB: idB
+    }
+  })
+}
+
+const cancelCompareSelection = () => {
+  compareFirstVisitId.value = null
+  compareSecondVisitId.value = null
+}
+
+const cancelCompareChoice = () => {
+  showCompareChoiceModal.value = false
+  clickedCompareVisit.value = null
+}
+
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
@@ -246,10 +344,11 @@ const formatDate = (dateString: string | null) => {
                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
                    <User class="w-4 h-4 text-[#0052ff]" />
                  </div>
-                 <div class="flex-1 min-w-0">
-                   <div class="font-bold text-slate-800 text-[13px] truncate">{{ patient.firstName }} {{ patient.lastName }}</div>
-                   <div class="text-[11px] text-slate-500 mt-0.5 truncate">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
-                 </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-bold text-slate-500 text-[11px] truncate">HN-{{ patient.hn.replace('HN', '').replace('-', '').trim() }}</div>
+                    <div class="text-slate-800 text-[13px] font-bold mt-0.5 truncate">{{ patient.firstName }} {{ patient.lastName }}</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
+                  </div>
                </div>
                
                <button 
@@ -281,8 +380,9 @@ const formatDate = (dateString: string | null) => {
               <User class="w-5 h-5 text-[#0052ff]" />
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-slate-800 text-sm truncate">{{ patient.firstName }} {{ patient.lastName }}</div>
-              <div class="text-xs text-slate-500 mt-1">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
+              <div class="font-bold text-slate-500 text-[10px] truncate">HN-{{ patient.hn.replace('HN', '').replace('-', '').trim() }}</div>
+              <div class="text-slate-800 text-[14px] font-bold mt-0.5 truncate">{{ patient.firstName }} {{ patient.lastName }}</div>
+              <div class="text-xs text-slate-500 mt-0.5">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
               <div class="text-xs text-slate-500 mt-0.5">Latest date : {{ formatDate(patient.lastVisitDate) }}</div>
             </div>
             <button 
@@ -311,11 +411,54 @@ const formatDate = (dateString: string | null) => {
             </button>
           </div>
 
+          <!-- Compare Mode Banner in Drawer -->
+          <div v-if="compareFirstVisitId" class="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col gap-2 shadow-xs animate-in fade-in slide-in-from-top-4 duration-300">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-blue-700">
+                <template v-if="compareSecondVisitId">
+                  Comparing Visit #{{ patientVisits.find(v => v.id === compareFirstVisitId)?.visitNumber }} & #{{ patientVisits.find(v => v.id === compareSecondVisitId)?.visitNumber }}
+                </template>
+                <template v-else>
+                  Comparing Visit #{{ patientVisits.find(v => v.id === compareFirstVisitId)?.visitNumber }}
+                </template>
+              </span>
+              <div class="flex items-center gap-2 shrink-0">
+                <button 
+                  v-if="compareSecondVisitId"
+                  @click="executeCompare"
+                  class="text-[10px] font-bold bg-[#0052ff] hover:bg-blue-700 text-white px-2.5 py-1 rounded-md transition-colors shadow-xs"
+                >
+                  Start Compare
+                </button>
+                <button 
+                  @click="cancelCompareSelection"
+                  class="p-1 hover:bg-blue-100 rounded-full text-blue-500 hover:text-blue-700 transition-colors"
+                  title="Cancel compare mode"
+                >
+                  <X class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500">
+              <template v-if="compareSecondVisitId">
+                Ready to compare. Click 'Start Compare' to proceed.
+              </template>
+              <template v-else>
+                Select another visit below to start comparison.
+              </template>
+            </p>
+          </div>
+
           <div class="space-y-3">
             <div
               v-for="visit in sortedVisits"
               :key="visit.id"
-              class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group"
+              class="bg-white border rounded-xl p-3.5 shadow-sm transition-all group"
+              :class="[
+                (compareFirstVisitId === visit.id || compareSecondVisitId === visit.id)
+                  ? 'border-blue-500 bg-blue-50/20 shadow-md scale-[0.99]'
+                  : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
+              ]"
             >
               <div class="flex items-start gap-3 mb-4">
                 <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
@@ -336,20 +479,53 @@ const formatDate = (dateString: string | null) => {
                 </div>
               </div>
               <div class="flex gap-2">
-                <button 
-                  @click="viewChart(visit.id)"
-                  class="flex-1 py-1.5 bg-[#0052ff] text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors text-center shadow-sm"
-                >
-                  view chart
-                </button>
-                <button 
-                  @click="startCompare(visit.id)"
-                  class="flex-1 py-1.5 border border-[#0052ff] text-[#0052ff] rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors text-center shadow-sm"
-                >
-                  compare
-                </button>
+                <!-- If in compare select mode -->
+                <div v-if="compareFirstVisitId" class="w-full">
+                  <!-- Selected first visit -->
+                  <button 
+                    v-if="visit.id === compareFirstVisitId" 
+                    @click="toggleVisitSelection(visit.id)"
+                    class="w-full py-2 bg-blue-50 border border-blue-200 text-[#0052ff] font-bold text-xs rounded-xl shadow-xs hover:bg-blue-100 hover:border-blue-300 transition-colors text-center block"
+                    title="Click to deselect"
+                  >
+                    Selected (Visit #{{ visit.visitNumber }})
+                  </button>
+                  <!-- Selected second visit -->
+                  <button 
+                    v-else-if="visit.id === compareSecondVisitId" 
+                    @click="toggleVisitSelection(visit.id)"
+                    class="w-full py-2 bg-blue-50 border border-blue-200 text-[#0052ff] font-bold text-xs rounded-xl shadow-xs hover:bg-blue-100 hover:border-blue-300 transition-colors text-center block"
+                    title="Click to deselect"
+                  >
+                    Selected (Visit #{{ visit.visitNumber }})
+                  </button>
+                  <!-- Other visits -->
+                  <button 
+                    v-else
+                    @click="toggleVisitSelection(visit.id)"
+                    class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors shadow-sm text-center border border-slate-200 block"
+                  >
+                    Select to Compare
+                  </button>
+                </div>
+                <!-- Normal mode -->
+                <div v-else class="flex gap-2 w-full">
+                  <button 
+                    @click="viewChart(visit.id)"
+                    class="flex-1 py-1.5 bg-[#0052ff] text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors text-center shadow-sm"
+                  >
+                    view chart
+                  </button>
+                  <button 
+                    @click="handleCompareClick(visit)"
+                    class="flex-1 py-1.5 border border-[#0052ff] text-[#0052ff] rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors text-center shadow-sm"
+                  >
+                    compare
+                  </button>
+                </div>
               </div>
             </div>
+
             
             <div v-if="!sortedVisits.length" class="text-center py-8">
                <User class="w-10 h-10 text-slate-300 mx-auto mb-2" />
@@ -360,5 +536,71 @@ const formatDate = (dateString: string | null) => {
       </div>
     </div>
   </div>
-  </Teleport>
-</template>
+    <!-- Compare Choice Modal -->
+    <Transition name="fade">
+      <div
+        v-if="showCompareChoiceModal"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      >
+        <!-- Backdrop -->
+        <div
+          class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          @click="cancelCompareChoice"
+        ></div>
+
+        <!-- Modal Content -->
+        <Transition name="scale">
+          <div
+            v-if="showCompareChoiceModal"
+            class="relative bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-md overflow-hidden mx-4"
+          >
+            <!-- Background Glow Effect -->
+            <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full blur-3xl opacity-20 pointer-events-none bg-[#0052ff]"></div>
+
+            <div class="p-6 relative z-10">
+              <!-- Header Section -->
+              <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-bold text-[#0052ff] pr-4">
+                  Compare Visit #{{ clickedCompareVisit?.visitNumber }}
+                </h3>
+                <div class="text-[#0052ff] flex-shrink-0">
+                  <AlertCircle class="w-7 h-7" />
+                </div>
+              </div>
+
+              <!-- Body -->
+              <p class="text-sm text-gray-500 font-semibold leading-relaxed mb-6">
+                Would you like to compare this visit with the currently open chart (Visit #{{ openVisit?.visitNumber }}) or select another visit instead?
+              </p>
+
+              <!-- Actions Stack -->
+              <div class="space-y-2.5">
+                <button
+                  @click="compareWithOpenChart"
+                  class="w-full py-3 px-4 bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Activity class="w-4 h-4" />
+                  Compare with Open Chart (Visit #{{ openVisit?.visitNumber }})
+                </button>
+                
+                <button
+                  @click="chooseAnotherVisit"
+                  class="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl transition-all active:scale-95 text-center"
+                >
+                  Select another visit instead
+                </button>
+
+                <button
+                  @click="cancelCompareChoice"
+                  class="w-full py-2 text-sm text-slate-500 hover:text-slate-700 font-bold transition-all text-center mt-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+    </Teleport>
+  </template>

@@ -17,7 +17,7 @@ const emit = defineEmits(["confirm", "cancel"]);
   <Transition name="fade">
     <div
       v-if="show"
-      class="fixed inset-0 z-9999 flex items-center justify-center p-4"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
     >
       <!-- Backdrop -->
       <div
