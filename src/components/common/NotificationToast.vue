@@ -20,7 +20,7 @@ const getContainerClass = (type: string) => {
 
 <template>
   <div
-    class="fixed top-6 right-6 z-9999 flex flex-col gap-4 max-w-md w-full sm:w-[400px]"
+    class="fixed top-6 right-6 z-[9999] flex flex-col gap-4 max-w-md w-full sm:w-[400px]"
   >
     <TransitionGroup name="notification" tag="div" class="flex flex-col gap-3">
       <div
