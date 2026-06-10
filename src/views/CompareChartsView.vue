@@ -8,6 +8,7 @@ import CompareSummaryCard from '../components/chart/CompareSummaryCard.vue'
 import ChartOverviewModal from '../components/chart/ChartOverviewModal.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import { ArrowLeft, ArrowRight, Activity, Maximize2, Minimize2, ChevronRight } from 'lucide-vue-next'
+import Skeleton from '../components/common/Skeleton.vue'
 import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
 import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
@@ -250,8 +251,20 @@ const goBack = () => {
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 min-h-[500px]">
           <h2 class="text-sm font-bold text-slate-800 mb-6">Chart Comparison</h2>
 
-          <div v-if="isLoading" class="flex justify-center items-center py-20 text-slate-400">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0052ff]"></div>
+          <div v-if="isLoading" class="space-y-6">
+            <div v-for="j in 2" :key="'chart-skeleton-' + j" class="bg-white border border-slate-100 rounded-[32px] p-6 space-y-4">
+              <div class="flex justify-center mb-6">
+                <Skeleton variant="text" width="100px" height="24px" />
+              </div>
+              <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between gap-4">
+                  <Skeleton variant="rectangular" width="80px" height="24px" custom-class="rounded-lg" />
+                  <div class="flex gap-2 flex-1 justify-end">
+                    <Skeleton v-for="k in 16" :key="k" variant="rectangular" width="5%" height="180px" custom-class="rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div v-else-if="chartDataA && chartDataB" class="flex gap-6 items-start">

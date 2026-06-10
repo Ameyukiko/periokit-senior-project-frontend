@@ -10,6 +10,7 @@ import type { FilterConfig } from '../components/common/FilterPanel.vue'
 import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User, ArrowLeft } from 'lucide-vue-next'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
+import Skeleton from '../components/common/Skeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -340,8 +341,27 @@ onUnmounted(() => {
         </div>
 
         <div class="p-6 space-y-4">
-          <div v-if="isLoading" class="text-center py-8 text-slate-500">
-            Loading visits...
+          <div v-if="isLoading" class="space-y-4">
+            <div v-for="i in 3" :key="'visit-skeleton-' + i" class="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl border border-slate-100 bg-white">
+              <div class="flex items-start gap-4 mb-4 sm:mb-0">
+                <Skeleton variant="circular" width="48px" height="48px" />
+                <div class="space-y-2">
+                  <div class="flex items-center gap-3">
+                    <Skeleton variant="text" width="80px" height="18px" />
+                    <Skeleton variant="rounded" width="120px" height="20px" custom-class="rounded-full" />
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <Skeleton variant="text" width="100px" />
+                    <span class="text-slate-300">•</span>
+                    <Skeleton variant="text" width="120px" />
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 sm:ml-4">
+                <Skeleton variant="rounded" width="70px" height="38px" custom-class="rounded-lg" />
+                <Skeleton variant="rounded" width="90px" height="38px" custom-class="rounded-lg" />
+              </div>
+            </div>
           </div>
           <div v-else-if="filteredVisits.length === 0" class="text-center py-12 text-slate-500">
             No visits found matching the current filters.

@@ -3,7 +3,7 @@ import { reactive, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notification";
-import { Mail, Lock, CheckCircle2, Eye, EyeOff } from "lucide-vue-next";
+import { Mail, Lock, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-vue-next";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -103,8 +103,31 @@ const handleLogin = async () => {
   >
     <div class="w-full max-w-[480px]">
       <div
-        class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-12"
+        class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-12 relative overflow-hidden"
       >
+        <!-- Loading Overlay -->
+        <transition name="fade">
+          <div
+            v-if="loading"
+            class="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all duration-300"
+          >
+            <div class="flex flex-col items-center gap-4">
+              <!-- Animated loading indicator: a pulsing logo and spinning ring -->
+              <div class="relative w-20 h-20 flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-4 border-[#0052ff]/10 border-t-[#0052ff] animate-spin"></div>
+                <img
+                  src="../assets/mini_Logo_Periokit.png"
+                  alt="PerioKit Logo"
+                  class="h-10 w-8 animate-pulse"
+                />
+              </div>
+              <div class="flex flex-col items-center">
+                <span class="text-[#0052ff] font-bold text-[18px] tracking-wide animate-pulse">Signing in...</span>
+                <span class="text-[#6b7280] text-[13px] mt-1">Please wait a moment</span>
+              </div>
+            </div>
+          </div>
+        </transition>
         <!-- Logo & Header -->
         <div class="mb-10 text-center flex flex-col items-center">
           <img
@@ -216,9 +239,10 @@ const handleLogin = async () => {
             <button
               type="submit"
               :disabled="loading"
-              class="w-full bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold py-4 rounded-[12px] transition-colors disabled:opacity-50 text-[16px] shadow-lg shadow-blue-200"
+              class="w-full bg-[#0052ff] hover:bg-[#0042cc] text-white font-bold py-4 rounded-[12px] transition-all disabled:opacity-70 text-[16px] shadow-lg shadow-blue-200 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
-              {{ loading ? "Signing In..." : "Sign In" }}
+              <Loader2 v-if="loading" class="h-5 w-5 animate-spin" />
+              <span>{{ loading ? "Signing In..." : "Sign In" }}</span>
             </button>
           </div>
         </form>

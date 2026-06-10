@@ -7,6 +7,7 @@ import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
 import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type, User } from 'lucide-vue-next'
+import Skeleton from '../components/common/Skeleton.vue'
 
 const router = useRouter()
 const drawerOpen = ref(false)
@@ -184,8 +185,30 @@ const handleNewPatient = () => {
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-100">
-              <tr v-if="isLoading">
-                <td colspan="6" class="px-6 py-12 text-center text-slate-500">Loading patients...</td>
+              <tr v-if="isLoading" v-for="i in 5" :key="'skeleton-' + i">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <Skeleton variant="text" width="60px" />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-3">
+                    <Skeleton variant="circular" width="32px" height="32px" />
+                    <Skeleton variant="text" width="120px" />
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <Skeleton variant="text" width="40px" />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <Skeleton variant="text" width="50px" />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <Skeleton variant="text" width="80px" />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                  <div class="inline-flex justify-end w-full">
+                    <Skeleton variant="rounded" width="70px" height="28px" custom-class="rounded-full" />
+                  </div>
+                </td>
               </tr>
               <tr v-else-if="patients.length === 0">
                 <td colspan="6" class="px-6 py-12 text-center text-slate-500">
