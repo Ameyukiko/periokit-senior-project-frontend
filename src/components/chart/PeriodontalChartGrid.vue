@@ -13,10 +13,12 @@ const props = withDefaults(defineProps<{
   readonly?: boolean
   archFilter?: 'upper' | 'lower' | 'both'
   summaryMode?: boolean
+  fitWidth?: boolean
 }>(), {
   readonly: false,
   archFilter: 'both',
   summaryMode: false,
+  fitWidth: false,
   getFieldValidation: () => 'none' as 'valid' | 'invalid' | 'none'
 })
 
@@ -315,7 +317,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 <template>
   <section class="mt-4 w-full bg-white rounded-3xl shadow-xl border border-slate-300 overflow-hidden">
-    <div class="p-3 bg-[#f8fafc] overflow-x-auto">
+    <div class="p-3 bg-[#f8fafc]" :class="fitWidth ? '' : 'overflow-x-auto'">
       <div ref="chartContainerRef" class="w-fit mx-auto" @keydown="handleKeyDown">
 
         <template v-if="archFilter !== 'lower'">
