@@ -260,6 +260,7 @@ const handleSwitchVisit = async (visitId: string) => {
 
 // Close a visit tab. If the visit has unsaved changes, show a warning first.
 const handleCloseVisit = async (visitId: string) => {
+  if (visits.value.length <= 1) return
   // Only warn for the draft (id='new') or a visit with dirty unsaved edits
   const isDirtyTab = visitId === 'new' && chartStore.isDirty
   if (isDirtyTab && visitId === activeVisitId.value) {
@@ -609,6 +610,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                         <span v-if="visit.id === 'new'" class="text-[8px] bg-blue-100 text-blue-600 px-1 rounded">Draft</span>
                         <span v-else-if="!visit.hasChart" class="text-[8px] bg-amber-100 text-amber-600 px-1 rounded">Empty</span>
                         <button
+                          v-if="visits.length > 1"
                           class="ml-0.5 -mr-1 p-0.5 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
                           title="Close tab"
                           @click.stop="handleCloseVisit(visit.id)"

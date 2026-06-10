@@ -12,7 +12,7 @@ import { visitApi, type Visit } from '../services/api/visit.api'
 import { chartApi } from '../services/api/chart.api'
 import { mapPayloadToChart } from '@/domain/chart/chart.mapper'
 import { calculateChartSummary } from '@/domain/chart/chart.calculations'
-import type { ChartData, ToothId } from '@/domain/chart/chart.types'
+import type { ChartData, ToothId, PdBreakdown } from '@/domain/chart/chart.types'
 import { UPPER_ARCH, LOWER_ARCH } from '@/domain/chart/chart.constants'
 import { getToothColumnWidth } from '@/domain/chart/chart.image'
 
@@ -76,6 +76,24 @@ const visitB = computed(() => visits.value.find(v => v.id === selectedVisitIdB.v
 
 const summaryA = computed(() => chartDataA.value ? calculateChartSummary(chartDataA.value) : null)
 const summaryB = computed(() => chartDataB.value ? calculateChartSummary(chartDataB.value) : null)
+
+const sortedPdBreakdownA = computed(() => {
+  if (!summaryA.value) return []
+  const breakdown: PdBreakdown = summaryA.value.pdBreakdown || {}
+  return Object.entries(breakdown)
+    .filter(([_, count]) => count > 0)
+    .map(([depth, count]) => ({ depth: parseInt(depth), count }))
+    .sort((a, b) => a.depth - b.depth)
+})
+
+const sortedPdBreakdownB = computed(() => {
+  if (!summaryB.value) return []
+  const breakdown: PdBreakdown = summaryB.value.pdBreakdown || {}
+  return Object.entries(breakdown)
+    .filter(([_, count]) => count > 0)
+    .map(([depth, count]) => ({ depth: parseInt(depth), count }))
+    .sort((a, b) => a.depth - b.depth)
+})
 
 const fetchPatientVisits = async () => {
   if (!patientId) return
@@ -258,14 +276,84 @@ const goBack = () => {
                   </button>
                 </div>
                 
-                <!-- Summary (Long Bar) -->
-                <!-- Summary (Long Bar) -->
-                <button
+                <!-- Mini Summary Bar -->
+                <div
+                  v-if="summaryA"
                   @click="showSummaryA = true"
-                  :class="['flex-1 w-full flex justify-center items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold uppercase tracking-widest transition-all duration-300 border', showSummaryA ? 'bg-[#0052ff] text-white border-[#0052ff] shadow-md shadow-blue-500/20' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100 hover:border-blue-200']"
+                  class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center gap-3 overflow-x-auto cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
                 >
-                  <Activity class="w-4 h-4" /> summary
-                </button>
+                  <!-- Full-mouth Summary Label -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
+                    <Activity class="w-3.5 h-3.5 text-blue-500" />
+                    <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
+                  </div>
+
+                  <!-- Teeth Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
+                    <span class="text-[11px] font-black text-slate-600">
+                      {{ summaryA.totalTeeth - summaryA.missingTeeth }}/{{ summaryA.totalTeeth }}
+                    </span>
+                  </div>
+
+                  <!-- Implants Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
+                    <span class="text-[11px] font-black text-violet-600">
+                      {{ summaryA.implantTeeth }}
+                    </span>
+                  </div>
+
+                  <!-- BoP Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
+                    <span class="text-[11px] font-black text-rose-600">
+                      {{ summaryA.bopPercentage }}%
+                    </span>
+                  </div>
+
+                  <!-- PI Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
+                    <span class="text-[11px] font-black text-blue-600">
+                      {{ summaryA.piPercentage }}%
+                    </span>
+                  </div>
+
+                  <!-- Mobility Badge -->
+                  <div v-if="summaryA.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
+                    <span class="text-[11px] font-black text-amber-600">
+                      {{ summaryA.mobilityCount }}
+                    </span>
+                  </div>
+
+                  <!-- Furcation Badge -->
+                  <div v-if="summaryA.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
+                    <span class="text-[11px] font-black text-purple-600">
+                      {{ summaryA.furcationCount }}
+                    </span>
+                  </div>
+
+                  <!-- Keratinized Badge -->
+                  <div v-if="summaryA.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
+                    <span class="text-[11px] font-black text-teal-600">
+                      {{ summaryA.keratinizedLowCount }}
+                    </span>
+                  </div>
+
+                  <!-- PD Breakdown -->
+                  <template v-for="item in sortedPdBreakdownA" :key="item.depth">
+                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                      <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
+                      <span class="text-[11px] font-black text-rose-600">
+                        {{ item.count }}
+                      </span>
+                    </div>
+                  </template>
+                </div>
 
                 <!-- Overview Button -->
                 <button @click="showOverviewA = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
@@ -299,14 +387,84 @@ const goBack = () => {
               <!-- Header Row 2 -->
               <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 pt-2 mb-4">
                 <div class="w-full xl:w-[140px] hidden xl:block shrink-0"></div>
-                <!-- Summary (Long Bar) -->
-                <!-- Summary (Long Bar) -->
-                <button
+                <!-- Mini Summary Bar -->
+                <div
+                  v-if="summaryB"
                   @click="showSummaryB = true"
-                  :class="['flex-1 w-full flex justify-center items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold uppercase tracking-widest transition-all duration-300 border', showSummaryB ? 'bg-[#0052ff] text-white border-[#0052ff] shadow-md shadow-blue-500/20' : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100 hover:border-blue-200']"
+                  class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center gap-3 overflow-x-auto cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
                 >
-                  <Activity class="w-4 h-4" /> summary
-                </button>
+                  <!-- Full-mouth Summary Label -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
+                    <Activity class="w-3.5 h-3.5 text-blue-500" />
+                    <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
+                  </div>
+
+                  <!-- Teeth Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
+                    <span class="text-[11px] font-black text-slate-600">
+                      {{ summaryB.totalTeeth - summaryB.missingTeeth }}/{{ summaryB.totalTeeth }}
+                    </span>
+                  </div>
+
+                  <!-- Implants Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
+                    <span class="text-[11px] font-black text-violet-600">
+                      {{ summaryB.implantTeeth }}
+                    </span>
+                  </div>
+
+                  <!-- BoP Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
+                    <span class="text-[11px] font-black text-rose-600">
+                      {{ summaryB.bopPercentage }}%
+                    </span>
+                  </div>
+
+                  <!-- PI Badge -->
+                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
+                    <span class="text-[11px] font-black text-blue-600">
+                      {{ summaryB.piPercentage }}%
+                    </span>
+                  </div>
+
+                  <!-- Mobility Badge -->
+                  <div v-if="summaryB.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
+                    <span class="text-[11px] font-black text-amber-600">
+                      {{ summaryB.mobilityCount }}
+                    </span>
+                  </div>
+
+                  <!-- Furcation Badge -->
+                  <div v-if="summaryB.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
+                    <span class="text-[11px] font-black text-purple-600">
+                      {{ summaryB.furcationCount }}
+                    </span>
+                  </div>
+
+                  <!-- Keratinized Badge -->
+                  <div v-if="summaryB.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
+                    <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
+                    <span class="text-[11px] font-black text-teal-600">
+                      {{ summaryB.keratinizedLowCount }}
+                    </span>
+                  </div>
+
+                  <!-- PD Breakdown -->
+                  <template v-for="item in sortedPdBreakdownB" :key="item.depth">
+                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                      <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
+                      <span class="text-[11px] font-black text-rose-600">
+                        {{ item.count }}
+                      </span>
+                    </div>
+                  </template>
+                </div>
 
                 <button @click="showOverviewB = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
