@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-vue-next'
 import type { ChartSummary } from '@/domain/chart/chart.types'
 
 const props = defineProps<{
@@ -13,6 +13,33 @@ const emit = defineEmits<{
 }>()
 
 const presentTeeth = computed(() => props.summary.totalTeeth - props.summary.missingTeeth)
+
+// Dynamic overall pocket status computation
+const overallStatus = computed(() => {
+  const healthy = props.summary.healthDistribution.healthy
+  const moderate = props.summary.healthDistribution.moderate
+  const severe = props.summary.healthDistribution.severe
+  
+  if (severe > 15) {
+    return {
+      label: 'Deep Pockets (≥6mm)',
+      icon: AlertTriangle,
+      bgClass: 'bg-rose-50 border-rose-200 text-rose-700'
+    }
+  } else if (severe > 5 || healthy < 75) {
+    return {
+      label: 'Moderate Depth (4-5mm)',
+      icon: AlertCircle,
+      bgClass: 'bg-amber-50 border-amber-200 text-amber-700'
+    }
+  } else {
+    return {
+      label: 'Stable & Healthy (1-3mm)',
+      icon: CheckCircle2,
+      bgClass: 'bg-emerald-50 border-emerald-200 text-emerald-700'
+    }
+  }
+})
 
 const tiles = computed(() => [
   { key: 'teeth', label: 'Teeth', value: `${presentTeeth.value}/${props.summary.totalTeeth}`, tone: 'slate' },
@@ -50,16 +77,29 @@ const toneClass: Record<string, string> = {
 
     <!-- Pocket health distribution -->
     <div class="space-y-2">
-      <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Pocket Health</p>
-      <div class="flex h-3 rounded-full overflow-hidden bg-slate-100">
-        <div class="bg-emerald-500 transition-all" :style="{ width: summary.healthDistribution.healthy + '%' }"></div>
-        <div class="bg-amber-400 transition-all" :style="{ width: summary.healthDistribution.moderate + '%' }"></div>
-        <div class="bg-rose-500 transition-all" :style="{ width: summary.healthDistribution.severe + '%' }"></div>
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-black uppercase tracking-wider text-slate-500">Pocket Health</p>
+        <!-- Dynamic Status Badge -->
+        <div :class="['flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold shadow-xs transition-all', overallStatus.bgClass]">
+          <component :is="overallStatus.icon" class="w-3.5 h-3.5" />
+          {{ overallStatus.label }}
+        </div>
       </div>
-      <div class="flex justify-between text-[11px] font-black pt-1">
-        <span class="text-emerald-600">Healthy {{ summary.healthDistribution.healthy }}%</span>
-        <span class="text-amber-600">Mod {{ summary.healthDistribution.moderate }}%</span>
-        <span class="text-rose-600">Severe {{ summary.healthDistribution.severe }}%</span>
+      
+      <!-- Inline percentages bar -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-[10px] font-black text-slate-600 bg-slate-50/50 border border-slate-200/60 rounded-2xl px-4 py-3 mt-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+          <span class="text-emerald-700">Healthy (1-3mm): <span class="text-slate-800 text-xs font-black ml-0.5">{{ summary.healthDistribution.healthy }}%</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+          <span class="text-amber-700">Moderate (4-5mm): <span class="text-slate-800 text-xs font-black ml-0.5">{{ summary.healthDistribution.moderate }}%</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+          <span class="text-rose-700">Severe (≥6mm): <span class="text-slate-800 text-xs font-black ml-0.5">{{ summary.healthDistribution.severe }}%</span></span>
+        </div>
       </div>
     </div>
 
