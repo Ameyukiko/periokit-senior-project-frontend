@@ -17,7 +17,6 @@ const presentTeeth = computed(() => props.summary.totalTeeth - props.summary.mis
 // Dynamic overall pocket status computation
 const overallStatus = computed(() => {
   const healthy = props.summary.healthDistribution.healthy
-  const moderate = props.summary.healthDistribution.moderate
   const severe = props.summary.healthDistribution.severe
   
   if (severe > 15) {
