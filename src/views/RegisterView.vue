@@ -365,8 +365,8 @@ const register = async () => {
                   @click="showPassword = !showPassword"
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#9ca3af] hover:text-[#0052ff] transition-colors"
                 >
-                  <Eye v-if="!showPassword" class="w-4 h-4" />
-                  <EyeOff v-else class="h-5 w-5" />
+                  <EyeOff v-if="!showPassword" class="h-5 w-5" />
+                  <Eye v-else class="h-5 w-5" />
                 </button>
               </div>
               <p
@@ -397,8 +397,8 @@ const register = async () => {
                   @click="showConfirmPassword = !showConfirmPassword"
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#9ca3af] hover:text-[#0052ff] transition-colors"
                 >
-                  <Eye v-if="!showConfirmPassword" class="w-4 h-4" />
-                  <EyeOff v-else class="h-5 w-5" />
+                  <EyeOff v-if="!showConfirmPassword" class="h-5 w-5" />
+                  <Eye v-else class="h-5 w-5" />
                 </button>
               </div>
               <p

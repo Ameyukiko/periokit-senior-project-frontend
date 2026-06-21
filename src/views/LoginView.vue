@@ -199,8 +199,8 @@ const handleLogin = async () => {
                 @click="showPassword = !showPassword"
                 class="absolute inset-y-0 right-0 pr-4 flex items-center text-[#9ca3af] hover:text-[#0052ff] transition-colors"
               >
-                <Eye v-if="!showPassword" class="h-5 w-5" />
-                <EyeOff v-else class="h-5 w-5" />
+                <EyeOff v-if="!showPassword" class="h-5 w-5" />
+                <Eye v-else class="h-5 w-5" />
               </button>
             </div>
             <p
