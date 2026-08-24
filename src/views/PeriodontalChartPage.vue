@@ -11,7 +11,9 @@ import ToothSidebarOverlay from '@/components/chart/ToothSidebarOverlay.vue'
 import VirtualNumpad from '@/components/chart/VirtualNumpad.vue'
 import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
+import XrayBoardPanel from '@/components/xray/XrayBoardPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
+import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
@@ -27,6 +29,7 @@ chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
 const visitStore = useVisitStore()
 const notifStore = useNotificationStore()
+const xrayStore = useXrayBoardStore()
 
 const drawerOpen = ref(false)
 const urlVisitId = ref<string | null>(null)
@@ -370,6 +373,9 @@ const confirmSaveChart = async () => {
     const activeVisit = activeVisitId.value
     const patientId = currentPatientId.value
 
+    // The draft visit now has a real id — move its X-ray board along with it.
+    await xrayStore.rekeyBoard(xrayBoardKey(patientId, activeVisit))
+
     if (wasNewPatient && patientId) {
       router.push({ name: 'patient-visits', params: { patientId } })
       return
@@ -411,6 +417,13 @@ const isNewPatientMode = computed(() => {
   return !route.query.patientId && !route.query.visitId && !currentPatientId.value
 })
 
+// The X-ray tab replaces the chart area with a full-height board.
+const isXrayTab = computed(() => activeSubNav.value === 'xray' && hasPatient.value)
+const xrayPatientId = computed(
+  () => currentPatientId.value || (route.query.patientId as string) || null,
+)
+const xrayVisitId = computed(() => activeVisitId.value || (route.query.visitId as string) || null)
+
 // --- Read-only / edit mode for saved visits ---
 // - id='new' (unsaved draft): always editable, no Edit button needed
 // - existing draft/completed: read-only by default, Edit button unlocks
@@ -451,7 +464,7 @@ const confirmCancelEdit = async () => {
 
 // --- beforeunload guard (crash/accidental tab close protection) ---
 const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
-  if (chartStore.isDirty) {
+  if (chartStore.isDirty || xrayStore.isDirty) {
     e.preventDefault()
   }
 }
@@ -478,11 +491,14 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f1f5f9] font-sans text-[#1e293b]">
+  <div
+    class="min-h-screen bg-[#f1f5f9] font-sans text-[#1e293b]"
+    :class="{ 'h-screen flex flex-col overflow-hidden': isXrayTab }"
+  >
     <Navbar @toggle-drawer="drawerOpen = !drawerOpen" />
     <PatientDrawer v-model:open="drawerOpen" />
 
-    <div class="bg-white border-b border-slate-200 py-1.5 sticky top-16 z-40">
+    <div class="bg-white border-b border-slate-200 py-1.5 sticky top-16 z-40 shrink-0">
       <div class="max-w-400 mx-auto px-4 flex items-center justify-center">
         <div class="flex items-center gap-1.5 p-0.5 bg-slate-100/80 rounded-xl border border-slate-200 overflow-x-auto min-w-max">
           <button
@@ -514,7 +530,14 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </div>
     </div>
 
-    <main class="max-w-400 mx-auto px-4 py-3">
+    <!-- X-ray board: free canvas of radiographs for the active visit -->
+    <XrayBoardPanel
+      v-if="isXrayTab"
+      :patient-id="xrayPatientId"
+      :visit-id="xrayVisitId"
+    />
+
+    <main v-else class="max-w-400 mx-auto px-4 py-3">
       <!-- Empty state when no patient selected -->
       <div v-if="!hasPatient" class="flex flex-col items-center justify-center py-20">
         <p class="text-slate-400 text-sm">Please select a patient from the drawer</p>
