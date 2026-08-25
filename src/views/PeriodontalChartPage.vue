@@ -55,6 +55,11 @@ async function enterNewVisitState() {
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
+  // Read before the branches below: they can resetChart() (which forces the tab
+  // back to 'chart') and router.replace() away the query we are reading from.
+  const wantsXrayTab = route.query.tab === 'xray'
+  // Carried through the redirects below so a reload keeps the X-ray board open.
+  const xrayTabQuery = wantsXrayTab ? { tab: 'xray' } : {}
 
   // Capture persisted state before any mutations so we can detect a page reload
   // where the user had an unsaved draft for this patient.
@@ -108,13 +113,13 @@ onMounted(async () => {
       if (fetchedVisits.length === 0) {
         visitStore.visits = []
         await enterNewVisitState()
-        router.replace({ name: 'chart', query: { patientId, visitId: 'new' } })
+        router.replace({ name: 'chart', query: { patientId, visitId: 'new', ...xrayTabQuery } })
       } else {
         // Redirect to the latest visit's chart (sorted by visitNumber)
         const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
         const latest = sorted[sorted.length - 1]
         visitStore.visits = [latest]
-        router.replace({ name: 'chart', query: { patientId, visitId: latest.id } })
+        router.replace({ name: 'chart', query: { patientId, visitId: latest.id, ...xrayTabQuery } })
       }
     } catch (error) {
       console.error('Failed to load patient:', error)
@@ -144,6 +149,9 @@ onMounted(async () => {
     visitStore.visits = []
     await enterNewVisitState()
   }
+
+  // Deep link from the Visit History list — open straight on the X-ray board.
+  if (wantsXrayTab) chartStore.activeSubNav = 'xray'
 })
 
 // Watch for visitId changes (when user navigates to different visit)
