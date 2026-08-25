@@ -75,8 +75,17 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   // Films live in memory as blobs + object URLs while the board is open; the
   // blobs are only written to storage when the board is saved.
+  //
+  // Kept apart from `objects` on purpose (SRS-191): recovering a film rewrites
+  // only the URL, so geometry never moves and the board never turns dirty.
   const imageBlobs = new Map<string, Blob>()
   const imageUrls = ref<Record<string, string>>({})
+
+  // Films that could not be shown, and the ones already retried once. Counted
+  // per asset rather than per component so a film that is genuinely gone can't
+  // loop error -> recover -> error forever (SRS-192).
+  const failedAssets = ref(new Set<string>())
+  const retriedAssets = new Set<string>()
 
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
@@ -422,11 +431,52 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     writePref(XRAY_PREF_KEYS.toolbar, toolbarCollapsed.value ? 'hidden' : 'shown')
   }
 
+  // --- film recovery --------------------------------------------------------
+  /**
+   * Re-reads a film from storage after its <img> failed. Runs at most once per
+   * asset; a second failure gives up and leaves the placeholder in place.
+   */
+  async function recoverAsset(assetId: string) {
+    if (retriedAssets.has(assetId)) {
+      failedAssets.value.add(assetId)
+      return
+    }
+    retriedAssets.add(assetId)
+
+    const key = boardKey.value
+    try {
+      const blob = await xrayBoardStorage.getImage(assetId)
+      // The board was closed or swapped while we were reading.
+      if (boardKey.value !== key) return
+      if (!blob) {
+        failedAssets.value.add(assetId)
+        return
+      }
+      const stale = imageUrls.value[assetId]
+      if (stale) URL.revokeObjectURL(stale)
+      imageBlobs.set(assetId, blob)
+      imageUrls.value[assetId] = URL.createObjectURL(blob)
+      failedAssets.value.delete(assetId)
+    } catch (error) {
+      console.error('Failed to reload X-ray image:', error)
+      if (boardKey.value === key) failedAssets.value.add(assetId)
+    }
+  }
+
+  /** The Reload button — the user asked, so the once-per-asset budget resets. */
+  function reloadAsset(assetId: string) {
+    retriedAssets.delete(assetId)
+    failedAssets.value.delete(assetId)
+    return recoverAsset(assetId)
+  }
+
   // --- board lifecycle ------------------------------------------------------
   function releaseImages() {
     for (const url of Object.values(imageUrls.value)) URL.revokeObjectURL(url)
     imageUrls.value = {}
     imageBlobs.clear()
+    failedAssets.value.clear()
+    retriedAssets.clear()
   }
 
   function clearBoardState() {
@@ -447,13 +497,15 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
     boardKey.value = key
     clearBoardState()
+    // Nothing points at the old films any more, so drop them here rather than
+    // mid-load — a failed read would otherwise strand them.
+    releaseImages()
     isLoading.value = true
 
     try {
       const record = await xrayBoardStorage.getBoard(key)
       if (boardKey.value !== key) return
 
-      releaseImages()
       if (record) {
         const stored = await xrayBoardStorage.getImages(key)
         if (boardKey.value !== key) return
@@ -462,6 +514,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           imageUrls.value[image.id] = URL.createObjectURL(image.blob)
         }
         objects.value = record.objects
+
+        // A film the browser evicted leaves its object pointing at nothing.
+        // The read above already came up empty, so there is nothing to retry —
+        // go straight to the placeholder and let the user ask for a reload.
+        for (const object of record.objects) {
+          if (object.objectType === 'image' && !imageUrls.value[object.assetId]) {
+            retriedAssets.add(object.assetId)
+            failedAssets.value.add(object.assetId)
+          }
+        }
         layout.value = record.layout
         saved.value = true
         savedAt.value = new Date(record.savedAt)
@@ -578,6 +640,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     viewport,
     stageSize,
     imageUrls,
+    failedAssets,
     lightCanvas,
     toolbarCollapsed,
     // derived
@@ -617,6 +680,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     pushHistory,
     undo,
     redo,
+    // film recovery
+    recoverAsset,
+    reloadAsset,
     // preferences
     toggleCanvasTheme,
     toggleToolbar,

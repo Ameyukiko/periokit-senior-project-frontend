@@ -142,6 +142,14 @@ export const xrayBoardStorage = {
     }
   },
 
+  /** Re-reads one film — the local stand-in for refreshing an expired URL. */
+  async getImage(id: string): Promise<Blob | null> {
+    const db = await openDb()
+    const store = db.transaction(IMAGE_STORE, 'readonly').objectStore(IMAGE_STORE)
+    const stored = await request<StoredImage | undefined>(store.get(id))
+    return stored?.blob ?? null
+  },
+
   async getImages(boardKey: string): Promise<BoardImage[]> {
     const db = await openDb()
     const index = db
