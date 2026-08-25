@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { ImageOff, RotateCw } from 'lucide-vue-next'
 import {
   FMX_SLOTS,
   GRID_SIZE,
@@ -9,7 +10,7 @@ import {
   MIN_SCALE,
 } from '@/domain/xray/xray.constants'
 import { clamp, rotateVec, toRad } from '@/domain/xray/xray.geometry'
-import type { FmxSlot, Viewport, XrayObject } from '@/domain/xray/xray.types'
+import type { FmxSlot, Viewport, XrayImageObject, XrayObject } from '@/domain/xray/xray.types'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore } from '@/stores/xray-board'
 import { shortcutLabel } from '@/utils/keyboard'
@@ -31,7 +32,13 @@ const {
   editable,
   filledSlots,
   isEmpty,
+  failedAssets,
 } = storeToRefs(board)
+
+/** A missing URL never fires `error`, so the placeholder can't rely on it. */
+function showsFilm(object: XrayImageObject) {
+  return Boolean(imageUrls.value[object.assetId]) && !failedAssets.value.has(object.assetId)
+}
 
 const HANDLES = ['nw', 'ne', 'sw', 'se', 'rot'] as const
 const RESIZE_DIRECTIONS = {
@@ -552,13 +559,30 @@ onBeforeUnmount(() => {
         ]"
         :style="objectStyle(object, index)"
       >
-        <img
-          v-if="object.objectType === 'image'"
-          :src="imageUrls[object.assetId]"
-          class="block h-full w-full rounded bg-black"
-          draggable="false"
-          alt="Radiograph"
-        />
+        <template v-if="object.objectType === 'image'">
+          <img
+            v-if="showsFilm(object)"
+            :src="imageUrls[object.assetId]"
+            class="block h-full w-full rounded bg-black"
+            draggable="false"
+            alt="Radiograph"
+            @error="board.recoverAsset(object.assetId)"
+          />
+          <!-- Never an empty frame (SRS-190): a blank box reads as "deleted". -->
+          <div v-else class="xray-broken">
+            <ImageOff class="h-6 w-6 shrink-0" />
+            <span>Image failed to load</span>
+            <button
+              data-board-ui
+              class="xray-broken-btn"
+              title="Try loading this image again"
+              @click="board.reloadAsset(object.assetId)"
+            >
+              <RotateCw class="h-3.5 w-3.5" />
+              Reload
+            </button>
+          </div>
+        </template>
         <textarea
           v-else
           :ref="el => setNoteRef(object.id, el)"
@@ -627,6 +651,40 @@ onBeforeUnmount(() => {
     0 0 0 calc(1.5px * var(--inv)) #0052ff,
     0 6px 24px rgba(0, 0, 0, 0.55);
 }
+/* Keeps the film's own footprint so the board layout never shifts (SRS-191). */
+.xray-broken {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  overflow: hidden;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px dashed #94a3b8;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+.xray-broken-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11.5px;
+  color: #475569;
+}
+.xray-broken-btn:hover {
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
 .xray-note {
   color: #26303f;
   border-radius: 6px;
