@@ -47,7 +47,7 @@ function pickCustomColor(event: Event) {
         v-for="color in noteColors"
         :key="color"
         class="aspect-square w-full rounded-md border-2 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.14)] transition-transform hover:scale-110"
-        :class="note.color === color ? 'border-[#0052ff]' : 'border-transparent'"
+        :class="note.noteColor === color ? 'border-[#0052ff]' : 'border-transparent'"
         :style="{ background: color }"
         :title="color"
         @click="board.setNoteColor(color)"
@@ -63,19 +63,19 @@ function pickCustomColor(event: Event) {
         ref="colorInput"
         type="color"
         class="pointer-events-none absolute h-0 w-0 opacity-0"
-        :value="note.color"
+        :value="note.noteColor"
         @change="pickCustomColor"
       />
     </div>
 
     <div class="mt-3.5 flex items-center justify-between gap-2">
       <span class="text-[12px] text-slate-500">
-        Text size <b class="font-semibold tabular-nums text-slate-800">{{ note.fontSize }}</b>
+        Text size <b class="font-semibold tabular-nums text-slate-800">{{ note.noteFontSize }}</b>
       </span>
       <div class="flex gap-1.5">
         <button
           class="xray-font-btn"
-          :disabled="note.fontSize <= NOTE_FONT.min"
+          :disabled="note.noteFontSize <= NOTE_FONT.min"
           title="Smaller text"
           @click="board.changeNoteFontSize(-NOTE_FONT.step)"
         >
@@ -83,7 +83,7 @@ function pickCustomColor(event: Event) {
         </button>
         <button
           class="xray-font-btn"
-          :disabled="note.fontSize >= NOTE_FONT.max"
+          :disabled="note.noteFontSize >= NOTE_FONT.max"
           title="Larger text"
           @click="board.changeNoteFontSize(NOTE_FONT.step)"
         >
