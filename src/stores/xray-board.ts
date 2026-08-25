@@ -610,6 +610,27 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     retriedAssets.clear()
   }
 
+  /**
+   * Drops the films nothing on the board points at any more. Only ever safe
+   * where they cannot come back: `cancelEdit` clears the undo history along
+   * with them, whereas a save leaves the history intact, and a doctor who
+   * undoes past a deletion there must find the film, not a broken frame.
+   */
+  function releaseUnreferencedImages() {
+    const inUse = new Set(
+      objects.value.filter(object => object.objectType === 'image').map(object => object.assetId),
+    )
+    for (const assetId of new Set([...Object.keys(imageUrls.value), ...imageBlobs.keys()])) {
+      if (inUse.has(assetId)) continue
+      const url = imageUrls.value[assetId]
+      if (url) URL.revokeObjectURL(url)
+      delete imageUrls.value[assetId]
+      imageBlobs.delete(assetId)
+      failedAssets.value.delete(assetId)
+      retriedAssets.delete(assetId)
+    }
+  }
+
   function clearBoardState() {
     objects.value = []
     layout.value = false
@@ -789,6 +810,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     if (savedSnapshot.value) {
       restore(savedSnapshot.value)
       resetHistory()
+      // The films added during the edit are off the board and out of the undo
+      // history with it, so their blobs belong to nobody now (SRS-353). A
+      // full-mouth series discarded and re-added a few times is a lot of memory
+      // to leave behind for the life of the tab.
+      releaseUnreferencedImages()
     }
   }
 
