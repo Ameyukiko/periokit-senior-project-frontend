@@ -1,4 +1,4 @@
-import type { XrayBoardRecord } from '@/domain/xray/xray.types'
+import type { XrayBoardRecord, XrayObject } from '@/domain/xray/xray.types'
 
 // Local persistence for the X-ray board.
 //
@@ -71,6 +71,59 @@ function runWrite(
   })
 }
 
+/** Object shape written before the fields were renamed to the PER-233 contract. */
+interface LegacyXrayObject {
+  id: string
+  type: 'image' | 'note'
+  x: number
+  y: number
+  w: number
+  h: number
+  rot: number
+  imageId?: string
+  natW?: number
+  natH?: number
+  slot?: number | null
+  text?: string
+  color?: string
+  fontSize?: number
+}
+
+const isLegacy = (object: unknown): object is LegacyXrayObject =>
+  typeof object === 'object' && object !== null && 'type' in object
+
+// Renaming the fields would otherwise strand every board already in a browser:
+// the old keys are gone, so geometry would read back as undefined and the films
+// would collapse. Boards are rewritten in the new shape on their next save.
+function fromLegacy(object: LegacyXrayObject, index: number): XrayObject {
+  const base = {
+    id: object.id,
+    // Legacy boards stacked by array position, so the index *is* the old order.
+    zIndex: index,
+    posX: object.x,
+    posY: object.y,
+    width: object.w,
+    height: object.h,
+    rotation: object.rot,
+  }
+  return object.type === 'image'
+    ? {
+        ...base,
+        objectType: 'image',
+        assetId: object.imageId ?? '',
+        naturalWidth: object.natW ?? object.w,
+        naturalHeight: object.natH ?? object.h,
+        slotCode: object.slot == null ? null : String(object.slot),
+      }
+    : {
+        ...base,
+        objectType: 'note',
+        noteText: object.text ?? '',
+        noteColor: object.color ?? '#fde68a',
+        noteFontSize: object.fontSize ?? 14,
+      }
+}
+
 export const xrayBoardStorage = {
   isSupported(): boolean {
     return typeof indexedDB !== 'undefined'
@@ -80,7 +133,13 @@ export const xrayBoardStorage = {
     const db = await openDb()
     const store = db.transaction(BOARD_STORE, 'readonly').objectStore(BOARD_STORE)
     const record = await request<XrayBoardRecord | undefined>(store.get(key))
-    return record ?? null
+    if (!record) return null
+    return {
+      ...record,
+      objects: record.objects.map((object, index) =>
+        isLegacy(object) ? fromLegacy(object, index) : object,
+      ),
+    }
   },
 
   async getImages(boardKey: string): Promise<BoardImage[]> {
