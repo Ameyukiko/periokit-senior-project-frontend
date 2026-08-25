@@ -13,7 +13,11 @@ import {
 import { useXrayBoardStore } from '@/stores/xray-board'
 import { shortcutLabel } from '@/utils/keyboard'
 
-const emit = defineEmits<{ (event: 'upload'): void }>()
+const emit = defineEmits<{
+  (event: 'upload'): void
+  // Deleting a saved film asks first, and the panel is where the dialog lives.
+  (event: 'delete'): void
+}>()
 
 const undoLabel = `Undo (${shortcutLabel('Z')})`
 const redoLabel = `Redo (${shortcutLabel('Z', { shift: true })})`
@@ -70,7 +74,7 @@ function addNote() {
         class="xray-tool"
         :disabled="!editable || !selectedId"
         title="Delete (Del)"
-        @click="board.removeSelected()"
+        @click="emit('delete')"
       >
         <Trash2 class="h-4 w-4" />
       </button>

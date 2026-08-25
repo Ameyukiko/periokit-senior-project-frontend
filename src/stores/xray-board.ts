@@ -51,6 +51,19 @@ function readImageSize(url: string): Promise<{ width: number; height: number }> 
   })
 }
 
+/**
+ * Flattens the stack to 0..n-1 — no gaps, nothing negative (SRS-280). "Send to
+ * back" counts downwards for as long as the doctor keeps pressing it, and
+ * z_index is a SmallInt on the backend, so the drift has to be squeezed out at
+ * the point the board is written down. Paint order is unchanged: the sort is
+ * what the board was already rendering.
+ */
+function normalizeZIndex(boardObjects: XrayObject[]): XrayObject[] {
+  return [...boardObjects]
+    .sort((a, b) => a.zIndex - b.zIndex)
+    .map((object, index) => ({ ...object, zIndex: index }))
+}
+
 function readPref(key: string): string | null {
   try {
     return localStorage.getItem(key)
@@ -141,6 +154,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const selectedNote = computed(() =>
     selectedObject.value?.objectType === 'note' ? selectedObject.value : null,
   )
+  /**
+   * Was the selected object part of the board as it was last saved? Deleting one
+   * of those is worth a question (SRS-283) — a film added a moment ago is not,
+   * and asking every time is what teaches a doctor to click straight through it.
+   */
+  const selectedIsSaved = computed(() => {
+    if (!selectedId.value || !savedSnapshot.value) return false
+    const parsed = JSON.parse(savedSnapshot.value) as { objects: XrayObject[] }
+    return parsed.objects.some(object => object.id === selectedId.value)
+  })
   const isLoading = computed(() => loadState.value === 'loading')
   const loadFailed = computed(() => loadState.value === 'error')
   /**
@@ -474,9 +497,13 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function reorder(direction: 'front' | 'back') {
     const object = selectedObject.value
     if (!object) return
+    // Already where it is being sent: bumping the zIndex again would leave the
+    // board looking untouched but reading as unsaved (SRS-276, SRS-277).
+    const edge = direction === 'front' ? topZIndex() : bottomZIndex()
+    if (object.zIndex === edge) return
     // Only the moved object changes — everything else keeps the zIndex it was
     // saved with, so restacking one film can't shuffle the rest of the board.
-    object.zIndex = direction === 'front' ? topZIndex() + 1 : bottomZIndex() - 1
+    object.zIndex = direction === 'front' ? edge + 1 : edge - 1
     pushHistory()
   }
 
@@ -679,7 +706,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   async function persist(key: string) {
     // Plain copies: Vue's reactive proxies can't be structured-cloned into IndexedDB.
-    const plainObjects = JSON.parse(JSON.stringify(objects.value)) as XrayObject[]
+    // Normalised on the way out only — the board on screen keeps the zIndex the
+    // doctor's last reorder gave it, so nothing shifts under them mid-session.
+    const plainObjects = normalizeZIndex(
+      JSON.parse(JSON.stringify(objects.value)) as XrayObject[],
+    )
     const images: BoardImage[] = []
     for (const object of plainObjects) {
       if (object.objectType !== 'image') continue
@@ -784,6 +815,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // derived
     selectedObject,
     selectedNote,
+    selectedIsSaved,
     isLoading,
     loadFailed,
     isAddingFiles,

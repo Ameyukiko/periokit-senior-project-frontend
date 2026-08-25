@@ -25,6 +25,8 @@ const {
   savedAt,
   editMode,
   editable,
+  selectedId,
+  selectedIsSaved,
   canSave,
   isSaving,
   isLoading,
@@ -39,6 +41,7 @@ const {
 const fileInput = ref<HTMLInputElement | null>(null)
 const showSaveConfirm = ref(false)
 const showCancelEditConfirm = ref(false)
+const showDeleteConfirm = ref(false)
 
 const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 
@@ -140,6 +143,20 @@ async function onFilesPicked(event: Event) {
     await board.addImageFiles(input.files, center.x, center.y)
   }
   input.value = ''
+}
+
+// A film uploaded by mistake is deleted the moment it is noticed, and a
+// question there is just in the way. One that is already on the saved board is
+// something a colleague may be reading, so that one gets asked about (SRS-283).
+function requestDelete() {
+  if (!editable.value || !selectedId.value) return
+  if (selectedIsSaved.value) showDeleteConfirm.value = true
+  else board.removeSelected()
+}
+
+function confirmDelete() {
+  showDeleteConfirm.value = false
+  board.removeSelected()
 }
 
 function handleSaveClick() {
@@ -265,11 +282,12 @@ function confirmCancelEdit() {
       class="relative mx-[18px] mb-[18px] min-h-0 flex-1 overflow-hidden rounded-[14px] border border-slate-200 shadow-sm"
       :style="canvasVars"
     >
-      <XrayBoardCanvas @request-upload="openFilePicker" />
+      <XrayBoardCanvas @request-upload="openFilePicker" @request-delete="requestDelete" />
 
       <XrayBoardToolbar
         class="absolute top-3.5 left-1/2 z-50 -translate-x-1/2"
         @upload="openFilePicker"
+        @delete="requestDelete"
       />
       <XrayNotePanel class="absolute top-[78px] right-3.5 z-50" />
       <XrayZoomBar class="absolute bottom-3.5 left-3.5 z-50" />
@@ -300,6 +318,17 @@ function confirmCancelEdit() {
       cancel-text="Cancel"
       @confirm="confirmSave"
       @cancel="showSaveConfirm = false"
+    />
+
+    <ConfirmModal
+      :show="showDeleteConfirm"
+      title="Delete X-ray"
+      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Remove this from the saved board?</span><span class='text-slate-500 font-normal'>It stays gone once you save. Until then you can undo, or cancel editing to bring it back.</span>"
+      confirm-text="Delete"
+      cancel-text="Keep"
+      type="danger"
+      @confirm="confirmDelete"
+      @cancel="showDeleteConfirm = false"
     />
 
     <ConfirmModal

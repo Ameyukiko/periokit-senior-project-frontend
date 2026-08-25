@@ -15,7 +15,11 @@ import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore } from '@/stores/xray-board'
 import { shortcutLabel } from '@/utils/keyboard'
 
-const emit = defineEmits<{ (event: 'request-upload'): void }>()
+const emit = defineEmits<{
+  (event: 'request-upload'): void
+  // Deleting a saved film asks first, and the panel is where the dialog lives.
+  (event: 'request-delete'): void
+}>()
 
 const pasteShortcut = shortcutLabel('V')
 
@@ -547,9 +551,13 @@ function onKeyDown(event: KeyboardEvent) {
 
   if (typing) return
 
+  // Nothing selected is not an error, and the key keeps whatever meaning the
+  // browser gives it (A5).
   if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (!editable.value || !selectedId.value) return
     event.preventDefault()
-    if (editable.value) board.removeSelected()
+    emit('request-delete')
+    return
   }
   if (event.key === 'f' || event.key === 'F') board.fit()
   if (event.key === '0') board.resetZoom()
