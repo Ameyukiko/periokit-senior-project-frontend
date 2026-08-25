@@ -22,9 +22,8 @@ import {
   slotCodeOf,
 } from '@/domain/xray/xray.geometry'
 import {
-  checkXrayFiles,
+  checkXrayFile,
   createUploadIds,
-  describeRejection,
   isRetryableReason,
   newUploadId,
   reasonText,
@@ -34,7 +33,6 @@ import type {
   XrayImageObject,
   XrayNoteObject,
   XrayObject,
-  XrayRejection,
   XrayUploadFailure,
   XrayUploadItem,
 } from '@/domain/xray/xray.types'
@@ -401,33 +399,50 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       return
     }
 
-    // PER-260 §6: a batch holding even one bad file is not sent, and nothing
-    // from it lands on the board either. Taking the good ones anyway would
-    // leave the doctor to work out which of the eighteen made it, and would put
-    // films on screen that the upload was never asked to store.
-    const { accepted, rejected, ok } = checkXrayFiles(files)
-    if (!ok) {
-      reportRejected(rejected)
-      return
-    }
-    if (!accepted.length) return
+    const picked = Array.from(files)
+    if (!picked.length) return
 
     // A new batch gets a new list. The rows from the last one have been read by
     // now, and leaving them would bury this batch's failures among them.
     clearUploadQueue()
 
-    // Minted for the whole batch up front, one per file and all different: the
-    // id a film is drawn under here is the id it is filed under server-side
-    // (PER-260 §4), and the id a retry resends (SRS-245).
-    const uploadIds = createUploadIds(accepted.length)
-    accepted.forEach((file, index) => {
+    // Minted for everything picked, one per file and all different: the id a
+    // film is drawn under here is the id it is filed under server-side
+    // (PER-260 §4), and the id a retry resends (SRS-245). Files that never
+    // leave the browser get one too, so a row is always a row's own thing.
+    const uploadIds = createUploadIds(picked.length)
+
+    // A file the checks refuse becomes a row in the same list as the films that
+    // go up, in the order the doctor picked them (PER-245): three films land
+    // and the two PDFs among them are named right where they were chosen, so
+    // there is one report to read instead of a message about some of the batch
+    // and a list about the rest.
+    let landing = 0
+    picked.forEach((file, index) => {
       const uploadId = uploadIds[index]
+      const reason = checkXrayFile(file)
+
+      if (reason) {
+        // Sending the same PDF or the same 40 MB again answers the same way, so
+        // this row gets its reason and no button (SRS-238, SRS-239).
+        uploadQueue.value.push({
+          uploadId,
+          fileName: file.name,
+          status: 'failed',
+          progress: 0,
+          error: reasonText(reason),
+          canRetry: false,
+        })
+        return
+      }
+
       queued.set(uploadId, {
         file,
-        // Cascade a multi-file batch so the films don't land on top of each
-        // other — 18 films dropped on one spot look like one film (SRS-232).
-        x: worldX + index * IMAGE_CASCADE_OFFSET,
-        y: worldY + index * IMAGE_CASCADE_OFFSET,
+        // The cascade counts the films that will land rather than the files
+        // that were picked, so two refused PDFs in the middle of a batch don't
+        // leave a gap in the fan (SRS-232).
+        x: worldX + landing * IMAGE_CASCADE_OFFSET,
+        y: worldY + landing * IMAGE_CASCADE_OFFSET,
       })
       uploadQueue.value.push({
         uploadId,
@@ -436,9 +451,12 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         progress: 0,
         canRetry: false,
       })
+      landing += 1
     })
 
-    await runUploadQueue()
+    // Every file was refused: the rows are the whole report, and there is
+    // nothing to send.
+    if (landing > 0) await runUploadQueue()
   }
 
   function failItem(item: XrayUploadItem, error: string, canRetry: boolean) {
@@ -675,25 +693,6 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function resetUploadQueue() {
     uploadQueue.value = []
     queued.clear()
-  }
-
-  /**
-   * The PER-260 §6 case: one file failed the checks, so the whole batch was
-   * refused before anything was sent. Nothing reached the upload queue, so this
-   * is the one report that still has to be a message — and one message rather
-   * than a toast per file, because 18 toasts for 18 bad files is a stampede,
-   * not a report. Names and plain reasons only, never a code (SRS-238, SRS-239).
-   */
-  function reportRejected(rejected: XrayRejection[]) {
-    if (!rejected.length) return
-    notifications.warning(
-      'No films were added',
-      [
-        ...rejected.map(describeRejection),
-        'Remove or replace them, then add the films again.',
-      ].join('\n'),
-      8000,
-    )
   }
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {

@@ -1,7 +1,6 @@
 import { UPLOAD_ACCEPTED_TYPES, UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from './xray.constants'
 import type {
   XrayRejectReason,
-  XrayRejection,
   XrayUploadFailure,
   XrayUploadOutcome,
   XrayUploadResponse,
@@ -11,6 +10,10 @@ import type {
 // Everything PER-260 asks for on the way to `POST /visits/:visitId/xray-assets`,
 // kept free of Vue, Pinia and fetch so the checks can run before a request is
 // built and again on what comes back.
+//
+// PER-260 §6 refused a whole batch over one bad file. Reversed on 2026-08-26 at
+// the user's decision, in favour of PER-245's DoD: the good films go up and the
+// refused ones are named beside them in the same report.
 
 /**
  * Plain words for each reason, in the second half of "name — reason". A code
@@ -51,8 +54,22 @@ export function reasonText(reason: XrayRejectReason): string {
   return REASON_TEXT[reason]
 }
 
-export function describeRejection(rejection: XrayRejection): string {
-  return `${rejection.fileName} — ${REASON_TEXT[rejection.reason]}`
+/**
+ * Type and size, in that order — a 40 MB PDF is refused for being a PDF, which
+ * is the thing the doctor has to fix. `null` means the file passed.
+ *
+ * Per file rather than per batch, so the caller can keep the doctor's own order
+ * when it lists them: a refusal and a film that went up sit in one report,
+ * where they were picked (PER-245).
+ *
+ * Runs before the upload to spare the user a long transfer that ends in a
+ * rejection; it does not stand in for the server's own check, which is the one
+ * that counts (SRS-208, SRS-211).
+ */
+export function checkXrayFile(file: File): XrayRejectReason | null {
+  if (!UPLOAD_ACCEPTED_TYPES.includes(file.type)) return 'unsupported_type'
+  if (file.size > UPLOAD_MAX_BYTES) return 'file_too_large'
+  return null
 }
 
 /** Anything the server sends that we have no wording for lands on `unknown`. */
@@ -60,41 +77,6 @@ export function toRejectReason(value: unknown): XrayRejectReason {
   return typeof value === 'string' && value in REASON_TEXT
     ? (value as XrayRejectReason)
     : 'unknown'
-}
-
-export interface XrayFileCheck {
-  /** Files that passed every check, in the order they were picked. */
-  accepted: File[]
-  rejected: XrayRejection[]
-  /**
-   * Nothing was refused. PER-260 §6 makes this the gate on sending: a batch
-   * holding even one bad file is not sent at all, so the doctor fixes the list
-   * once instead of finding out file by file which half arrived.
-   */
-  ok: boolean
-}
-
-/**
- * Type and size, in that order — a 40 MB PDF is refused for being a PDF, which
- * is the thing the doctor has to fix. Runs before the upload to spare the user
- * a long transfer that ends in a rejection; it does not stand in for the
- * server's own check, which is the one that counts (SRS-208, SRS-211).
- */
-export function checkXrayFiles(files: FileList | File[]): XrayFileCheck {
-  const accepted: File[] = []
-  const rejected: XrayRejection[] = []
-
-  for (const file of Array.from(files)) {
-    if (!UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
-      rejected.push({ fileName: file.name, reason: 'unsupported_type' })
-    } else if (file.size > UPLOAD_MAX_BYTES) {
-      rejected.push({ fileName: file.name, reason: 'file_too_large' })
-    } else {
-      accepted.push(file)
-    }
-  }
-
-  return { accepted, rejected, ok: rejected.length === 0 }
 }
 
 /**
