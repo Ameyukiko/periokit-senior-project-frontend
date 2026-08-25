@@ -30,11 +30,20 @@ const title = computed(() => {
   return `${done.value} added · ${failed.value.length} not added`
 })
 
-// A clean run needs no report — the films themselves are the result. One that
-// lost a film stays until the doctor has read it and put it away.
+/**
+ * How long a clean run's list stays after the last film lands. Long enough to
+ * read the count, short enough that it reads as a flash of confirmation rather
+ * than something the doctor has to dismiss before carrying on.
+ */
+const CLEAN_HOLD_MS = 1500
+
+// A clean run needs no report — the films themselves are the result, and the
+// board underneath is what the doctor wants to look at. One that lost a film
+// stays: a report nobody had time to read is not a report, and the Retry
+// buttons on it have to still be there to press.
 //
-// The first row's id identifies the batch: a new one picked inside the four
-// seconds gets its own list, and this timer must not clear that one instead.
+// The first row's id identifies the batch: a new one picked inside the hold
+// gets its own list, and this timer must not clear that one instead.
 // `immediate` rather than waiting for the flag to flip: a batch that settles
 // inside one flush would never show the watcher a transition, and the list
 // would then sit there for good. Scheduling twice costs nothing — the id check
@@ -46,18 +55,21 @@ watch(
     const batch = uploadQueue.value[0]?.uploadId
     window.setTimeout(() => {
       if (uploadQueue.value[0]?.uploadId === batch) board.clearUploadQueue()
-    }, 4000)
+    }, CLEAN_HOLD_MS)
   },
   { immediate: true },
 )
 </script>
 
 <template>
-  <div
-    v-if="total"
-    data-board-ui
-    class="w-[320px] overflow-hidden rounded-[10px] border border-slate-200 bg-white/95 text-[12.5px] text-slate-600 shadow-[0_8px_26px_rgba(15,23,42,0.28)] backdrop-blur-md"
-  >
+  <!-- Fading out rather than blinking away: a list that vanishes between two
+       frames reads as a glitch, and the doctor looks for what they missed. -->
+  <Transition name="xray-queue">
+    <div
+      v-if="total"
+      data-board-ui
+      class="w-[320px] overflow-hidden rounded-[10px] border border-slate-200 bg-white/95 text-[12.5px] text-slate-600 shadow-[0_8px_26px_rgba(15,23,42,0.28)] backdrop-blur-md"
+    >
     <div class="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
       <Loader2 v-if="isAddingFiles" class="h-[15px] w-[15px] shrink-0 animate-spin text-[#0052ff]" />
       <TriangleAlert v-else-if="failed.length" class="h-[15px] w-[15px] shrink-0 text-amber-600" />
@@ -138,13 +150,42 @@ watch(
 
     <!-- A draft visit has nothing server-side to upload to, and a doctor who is
          told nothing would assume these films are filed. -->
-    <p v-if="!canUpload" class="border-t border-slate-100 px-3 py-1.5 text-[11.5px] text-slate-500">
-      This visit is not saved yet — these films stay on this device.
-    </p>
-  </div>
+      <p
+        v-if="!canUpload"
+        class="border-t border-slate-100 px-3 py-1.5 text-[11.5px] text-slate-500"
+      >
+        This visit is not saved yet — these films stay on this device.
+      </p>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
+/* In fast, out slower — appearing has to keep up with the first file, leaving
+   is the part that should not startle. */
+.xray-queue-enter-active {
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+.xray-queue-leave-active {
+  transition: opacity 320ms ease-in, transform 320ms ease-in;
+}
+.xray-queue-enter-from,
+.xray-queue-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xray-queue-enter-active,
+  .xray-queue-leave-active {
+    transition: opacity 120ms linear;
+  }
+  .xray-queue-enter-from,
+  .xray-queue-leave-to {
+    transform: none;
+  }
+}
+
 .xray-queue-btn {
   display: flex;
   align-items: center;
