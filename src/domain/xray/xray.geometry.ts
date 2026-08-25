@@ -1,4 +1,9 @@
-import { FMX_SLOTS, SLOT_PADDING, SLOT_SNAP_TOLERANCE } from './xray.constants'
+import {
+  FMX_SLOTS,
+  IMAGE_MAX_LONG_SIDE,
+  SLOT_PADDING,
+  SLOT_SNAP_TOLERANCE,
+} from './xray.constants'
 import type { Bounds, FmxSlot, XrayImageObject, XrayObject } from './xray.types'
 
 export const clamp = (value: number, min: number, max: number) =>
@@ -65,6 +70,20 @@ export function findSlotAt(cx: number, cy: number): FmxSlot | undefined {
  * be reworded, so the stable numeric id is what a saved board points at.
  */
 export const slotCodeOf = (slot: FmxSlot) => String(slot.id)
+
+/**
+ * On-board size a film gets the moment it is added (SRS-223, SRS-224). A sensor
+ * writes films thousands of pixels wide, so the long side is capped — both sides
+ * by the same factor, or the film comes out stretched.
+ */
+export function initialImageSize(naturalWidth: number, naturalHeight: number) {
+  const longSide = Math.max(naturalWidth, naturalHeight)
+  const scale = longSide > IMAGE_MAX_LONG_SIDE ? IMAGE_MAX_LONG_SIDE / longSide : 1
+  return {
+    width: Math.round(naturalWidth * scale),
+    height: Math.round(naturalHeight * scale),
+  }
+}
 
 /** Geometry a film takes once mounted in a slot — centred, upright, aspect kept. */
 export function fitIntoSlot(image: XrayImageObject, slot: FmxSlot) {

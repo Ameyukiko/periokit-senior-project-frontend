@@ -4,7 +4,7 @@ import {
   FIT_MAX_SCALE,
   FIT_PADDING,
   HISTORY_MAX,
-  IMAGE_MAX_LONG_SIDE,
+  IMAGE_CASCADE_OFFSET,
   MAX_SCALE,
   MIN_SCALE,
   NOTE_COLORS,
@@ -16,12 +16,26 @@ import {
   UPLOAD_MAX_MB,
   XRAY_PREF_KEYS,
 } from '@/domain/xray/xray.constants'
-import { boardBounds, clamp, findSlotAt, fitIntoSlot, slotCodeOf } from '@/domain/xray/xray.geometry'
+import {
+  boardBounds,
+  clamp,
+  findSlotAt,
+  fitIntoSlot,
+  initialImageSize,
+  slotCodeOf,
+} from '@/domain/xray/xray.geometry'
 import type { Viewport, XrayImageObject, XrayNoteObject, XrayObject } from '@/domain/xray/xray.types'
 import { xrayBoardStorage, type BoardImage } from '@/services/storage/xray-board.storage'
 import { useNotificationStore } from './notification'
 
-const uid = () => Math.random().toString(36).slice(2, 9)
+/**
+ * Ids the server will mint once the board is saved through PER-254. UUIDs here
+ * so a board drafted offline can never collide with them — with a fallback,
+ * because `randomUUID` only exists in a secure context and the dev server is
+ * reached over plain http on the LAN.
+ */
+const uid = () =>
+  globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 9)
 
 /** One board per visit — the draft visit ('new') gets its own key until saved. */
 export function xrayBoardKey(patientId: string | null, visitId: string | null) {
@@ -347,11 +361,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         imageBlobs.set(assetId, file)
         imageUrls.value[assetId] = url
 
-        // Cascade multi-file drops so they don't land exactly on top of each other.
-        const longSide = Math.max(width, height)
-        const scale = longSide > IMAGE_MAX_LONG_SIDE ? IMAGE_MAX_LONG_SIDE / longSide : 1
-        const boardWidth = Math.round(width * scale)
-        const boardHeight = Math.round(height * scale)
+        const { width: boardWidth, height: boardHeight } = initialImageSize(width, height)
         const object: XrayImageObject = {
           id: uid(),
           zIndex: topZIndex() + 1,
@@ -359,8 +369,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           assetId,
           naturalWidth: width,
           naturalHeight: height,
-          posX: Math.round(worldX + index * 28 - boardWidth / 2),
-          posY: Math.round(worldY + index * 28 - boardHeight / 2),
+          // Cascade a multi-file batch so the films don't land on top of each other.
+          posX: Math.round(worldX + index * IMAGE_CASCADE_OFFSET - boardWidth / 2),
+          posY: Math.round(worldY + index * IMAGE_CASCADE_OFFSET - boardHeight / 2),
           width: boardWidth,
           height: boardHeight,
           rotation: 0,

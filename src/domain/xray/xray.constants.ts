@@ -13,6 +13,12 @@ export const HISTORY_MAX = 30
 
 /** Longest side an added image gets on the board, before the user resizes it. */
 export const IMAGE_MAX_LONG_SIDE = 420
+/**
+ * How far each film of a batch is stepped from the one before it. Films dropped
+ * exactly on top of each other look like a single film, so a doctor who adds 18
+ * at once would think the other 17 never arrived (SRS-232).
+ */
+export const IMAGE_CASCADE_OFFSET = 28
 
 /**
  * What an upload may be. Checked here to spare the user a long upload that ends
