@@ -11,9 +11,6 @@ import {
   NOTE_DEFAULT_COLOR,
   NOTE_DEFAULT_SIZE,
   NOTE_FONT,
-  UPLOAD_ACCEPTED_TYPES,
-  UPLOAD_MAX_BYTES,
-  UPLOAD_MAX_MB,
   XRAY_PREF_KEYS,
 } from '@/domain/xray/xray.constants'
 import {
@@ -24,18 +21,28 @@ import {
   initialImageSize,
   slotCodeOf,
 } from '@/domain/xray/xray.geometry'
-import type { Viewport, XrayImageObject, XrayNoteObject, XrayObject } from '@/domain/xray/xray.types'
+import {
+  checkXrayFiles,
+  createUploadIds,
+  describeRejection,
+  newUploadId,
+} from '@/domain/xray/xray.upload'
+import type {
+  Viewport,
+  XrayImageObject,
+  XrayNoteObject,
+  XrayObject,
+  XrayRejection,
+} from '@/domain/xray/xray.types'
 import { xrayBoardStorage, type BoardImage } from '@/services/storage/xray-board.storage'
 import { useNotificationStore } from './notification'
 
 /**
- * Ids the server will mint once the board is saved through PER-254. UUIDs here
- * so a board drafted offline can never collide with them — with a fallback,
- * because `randomUUID` only exists in a secure context and the dev server is
- * reached over plain http on the LAN.
+ * Ids the server will mint once the board is saved through PER-254. UUIDs so a
+ * board drafted offline can never collide with them — the same generator the
+ * upload uses, since a film's assetId here is the uploadId it goes up under.
  */
-const uid = () =>
-  globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 9)
+const uid = newUploadId
 
 /** One board per visit — the draft visit ('new') gets its own key until saved. */
 export function xrayBoardKey(patientId: string | null, visitId: string | null) {
@@ -364,33 +371,33 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       return
     }
 
-    const images: File[] = []
-    const rejected: string[] = []
-    for (const file of Array.from(files)) {
-      if (!UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
-        rejected.push(`${file.name} — only JPEG, PNG or WebP`)
-      } else if (file.size > UPLOAD_MAX_BYTES) {
-        rejected.push(`${file.name} — larger than ${UPLOAD_MAX_MB} MB`)
-      } else {
-        images.push(file)
-      }
-    }
-
-    if (!images.length) {
-      reportRejected(rejected)
+    // PER-260 §6: a batch holding even one bad file is not sent, and nothing
+    // from it lands on the board either. Taking the good ones anyway would
+    // leave the doctor to work out which of the eighteen made it, and would put
+    // films on screen that the upload was never asked to store.
+    const { accepted, rejected, ok } = checkXrayFiles(files)
+    if (!ok) {
+      reportRejected(rejected, true)
       return
     }
+    if (!accepted.length) return
 
     // Decoding 18 films is not instant. Showing the count moving is the point —
     // a board that sits still looks broken (SRS-205).
-    addProgress.value = { done: 0, total: images.length }
+    addProgress.value = { done: 0, total: accepted.length }
+
+    // Minted for the whole batch up front, one per file and all different: the
+    // id a film is drawn under here is the id it will be filed under server-side
+    // (PER-260 §4).
+    const uploadIds = createUploadIds(accepted.length)
+    const failures: XrayRejection[] = []
 
     let added = 0
-    for (const [index, file] of images.entries()) {
+    for (const [index, file] of accepted.entries()) {
       const url = URL.createObjectURL(file)
       try {
         const { width, height } = await readImageSize(url)
-        const assetId = uid()
+        const assetId = uploadIds[index]
         imageBlobs.set(assetId, file)
         imageUrls.value[assetId] = url
 
@@ -414,18 +421,20 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         selectedId.value = object.id
         added += 1
       } catch (error) {
-        // One bad film does not cost the doctor the other seventeen — this loop
-        // never became a Promise.all for that reason (SRS-240, SRS-243). The
-        // failed file gets no board object at all (SRS-241).
+        // Past the gate above, so this is not a file the doctor can fix by
+        // picking a different one — it passed every check and still would not
+        // decode. One bad film does not cost the doctor the other seventeen;
+        // this loop never became a Promise.all for that reason (SRS-240,
+        // SRS-243). The failed file gets no board object at all (SRS-241).
         URL.revokeObjectURL(url)
         console.error('Failed to read image:', (error as Error)?.message ?? error)
-        rejected.push(`${file.name} — the file could not be opened`)
+        failures.push({ fileName: file.name, reason: 'unreadable' })
       }
-      addProgress.value = { done: index + 1, total: images.length }
+      addProgress.value = { done: index + 1, total: accepted.length }
     }
 
     addProgress.value = null
-    reportRejected(rejected)
+    reportRejected(failures)
     if (added > 0) pushHistory()
   }
 
@@ -433,14 +442,24 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    * One list at the end rather than a toast per file: 18 separate toasts for 18
    * bad files is not a report, it is a stampede. Names and plain reasons only,
    * never an error code (SRS-238, SRS-239).
+   *
+   * `blocked` is the PER-260 §6 case, where the whole batch was refused. It
+   * needs its own wording: "2 files were not added" over a board that gained
+   * nothing reads as though the other sixteen went on.
    */
-  function reportRejected(rejected: string[]) {
+  function reportRejected(rejected: XrayRejection[], blocked = false) {
     if (!rejected.length) return
-    notifications.warning(
-      rejected.length === 1 ? 'One file was not added' : `${rejected.length} files were not added`,
-      rejected.join('\n'),
-      8000,
-    )
+
+    const lines = rejected.map(describeRejection)
+    if (blocked) lines.push('Remove or replace them, then add the films again.')
+
+    const title = blocked
+      ? 'No films were added'
+      : rejected.length === 1
+        ? 'One file was not added'
+        : `${rejected.length} files were not added`
+
+    notifications.warning(title, lines.join('\n'), 8000)
   }
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {

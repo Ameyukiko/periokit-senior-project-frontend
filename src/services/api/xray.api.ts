@@ -1,9 +1,19 @@
 import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
+import { ApiError, apiRequest } from './http'
+import {
+  XrayUploadIdError,
+  buildXrayUploadForm,
+  describeUploadFailure,
+  mapUploadOutcome,
+} from '@/domain/xray/xray.upload'
 import type {
   SaveXrayBoardInput,
   XrayAssetResponse,
   XrayBoardResponse,
+  XrayUploadFailure,
+  XrayUploadOutcome,
+  XrayUploadResponse,
 } from '@/domain/xray/xray.types'
 
 // Written against the schema in PER-233, which exists as a card and not yet as
@@ -110,4 +120,49 @@ export const xrayApi = {
       mutation: SAVE_XRAY_BOARD,
       variables: { input },
     }),
+}
+
+// --- upload (PER-260) -------------------------------------------------------
+// REST rather than GraphQL, because the films go up as multipart. Same standing
+// as the queries above: the endpoint is specified and not yet running, so
+// nothing calls this either. The checks it is built on do run — the board gates
+// every add on `checkXrayFiles` today.
+
+export const xrayAssetApi = {
+  /**
+   * `uploadIds` is passed in rather than minted here so the caller can hand the
+   * same ids to the board: the id under which a film is drawn locally has to be
+   * the id the server files it under, or the board that comes back points at
+   * assets nothing on screen recognises.
+   *
+   * Throws before sending on a bad pairing, and on any transport or status
+   * error — `toUploadFailure` turns whichever one it was into something to say.
+   */
+  async upload(
+    visitId: string,
+    files: File[],
+    uploadIds: string[],
+  ): Promise<XrayUploadOutcome> {
+    const body = buildXrayUploadForm(files, uploadIds)
+    const response = await apiRequest<XrayUploadResponse>(
+      `/visits/${encodeURIComponent(visitId)}/xray-assets`,
+      { method: 'POST', body, auth: true },
+    )
+    return mapUploadOutcome(response.data)
+  },
+}
+
+/**
+ * Anything that is not an ApiError never reached a server — a dropped
+ * connection, a request that timed out — and those are the ones worth offering
+ * a retry for, so they fall through to the catch-all with no status at all.
+ */
+export function toUploadFailure(error: unknown): XrayUploadFailure {
+  if (error instanceof XrayUploadIdError) {
+    return describeUploadFailure({ status: 400, reason: error.reason })
+  }
+  if (error instanceof ApiError) {
+    return describeUploadFailure({ status: error.status, reason: error.reason })
+  }
+  return describeUploadFailure(null)
 }

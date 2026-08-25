@@ -120,6 +120,63 @@ export interface XrayBoardResponse {
   assets: XrayAssetResponse[]
 }
 
+// --- upload shapes (PER-260) -----------------------------------------------
+// The films go up over REST, not GraphQL: `POST /visits/:visitId/xray-assets`,
+// multipart, `files[]` paired position by position with `uploadIds[]`.
+
+/**
+ * Why a film did not make it onto the board. The first three are the codes the
+ * upload endpoint answers with, so a rejection the server sent back and one we
+ * caught before sending read the same to the doctor. `unreadable` has no server
+ * counterpart — a file only fails to decode once it is being drawn, which is
+ * after every check the server would have run.
+ */
+export type XrayRejectReason =
+  | 'unsupported_type'
+  | 'file_too_large'
+  | 'upload_id_count_mismatch'
+  | 'unreadable'
+  | 'unknown'
+
+export interface XrayRejection {
+  fileName: string
+  reason: XrayRejectReason
+}
+
+/**
+ * An asset the upload accepted. Mirrors XrayAssetResponse — the same row, read
+ * back through a different endpoint — plus the `uploadId` we minted, which is
+ * the only way to tell which of the files we sent this one came from.
+ */
+export interface XrayUploadedAsset extends XrayAssetResponse {
+  uploadId: string
+}
+
+/**
+ * Deliberately loose: a partial result is a success as far as the request is
+ * concerned, and a batch where every file was refused still comes back 200 with
+ * an empty `uploaded`. Narrowing happens in the mapper.
+ */
+export interface XrayUploadResponse {
+  uploaded?: Partial<XrayUploadedAsset>[]
+  rejected?: { fileName?: string; reason?: string }[]
+}
+
+export interface XrayUploadOutcome {
+  uploaded: XrayUploadedAsset[]
+  rejected: XrayRejection[]
+}
+
+/** What to tell the doctor when the request itself failed, rather than a file. */
+export interface XrayUploadFailure {
+  title: string
+  detail: string
+  /** Whether sending the same files again could work. */
+  canRetry: boolean
+  /** The doctor has to sign in again before any of this will work. */
+  needsSignIn: boolean
+}
+
 /** No `id`: a save is replace-all, so the server has no old rows to match. */
 export interface XrayBoardObjectInput {
   objectType: string
