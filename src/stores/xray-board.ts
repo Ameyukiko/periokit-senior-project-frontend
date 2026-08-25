@@ -100,6 +100,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const failedAssets = ref(new Set<string>())
   const retriedAssets = new Set<string>()
 
+  /** Films read so far out of the batch being added; null when nothing is running. */
+  const addProgress = ref<{ done: number; total: number } | null>(null)
+
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
 
@@ -154,13 +157,20 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     savedSnapshot.value === null ? objects.value.length > 0 : snapshot() !== savedSnapshot.value,
   )
   const noteColors = computed(() => [...NOTE_COLORS, ...customNoteColors.value])
+  const isAddingFiles = computed(() => addProgress.value !== null)
   /**
    * Saving is only safe once we know what is already on the board (SRS-195) —
    * a save rewrites the whole record, so writing from a board we failed to read
    * would drop every film we never saw.
    */
   const canSave = computed(
-    () => loadState.value === 'loaded' && editable.value && objects.value.length > 0,
+    () =>
+      loadState.value === 'loaded' &&
+      editable.value &&
+      objects.value.length > 0 &&
+      // Saving mid-batch writes half the films and marks the board clean, which
+      // is the same silent loss that blocking uploads during a save prevents.
+      !isAddingFiles.value,
   )
 
   function snapshot() {
@@ -302,6 +312,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       notifications.warning('The board is saving', 'Wait for it to finish, then add the films')
       return
     }
+    if (addProgress.value) {
+      notifications.warning('Still adding the last films', 'Wait for that batch to finish')
+      return
+    }
 
     const images: File[] = []
     const rejected: string[] = []
@@ -315,16 +329,14 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       }
     }
 
-    if (rejected.length) {
-      // Every name, every time. "Some files failed" tells a doctor who picked
-      // 18 films nothing at all (SRS-213).
-      notifications.warning(
-        rejected.length === 1 ? 'One file was not added' : `${rejected.length} files were not added`,
-        rejected.join('\n'),
-        8000,
-      )
+    if (!images.length) {
+      reportRejected(rejected)
+      return
     }
-    if (!images.length) return
+
+    // Decoding 18 films is not instant. Showing the count moving is the point —
+    // a board that sits still looks broken (SRS-205).
+    addProgress.value = { done: 0, total: images.length }
 
     let added = 0
     for (const [index, file] of images.entries()) {
@@ -358,13 +370,33 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         selectedId.value = object.id
         added += 1
       } catch (error) {
+        // One bad film does not cost the doctor the other seventeen — this loop
+        // never became a Promise.all for that reason (SRS-240, SRS-243). The
+        // failed file gets no board object at all (SRS-241).
         URL.revokeObjectURL(url)
-        console.error('Failed to read image:', error)
-        notifications.error(`Could not open "${file.name}"`)
+        console.error('Failed to read image:', (error as Error)?.message ?? error)
+        rejected.push(`${file.name} — the file could not be opened`)
       }
+      addProgress.value = { done: index + 1, total: images.length }
     }
 
+    addProgress.value = null
+    reportRejected(rejected)
     if (added > 0) pushHistory()
+  }
+
+  /**
+   * One list at the end rather than a toast per file: 18 separate toasts for 18
+   * bad files is not a report, it is a stampede. Names and plain reasons only,
+   * never an error code (SRS-238, SRS-239).
+   */
+  function reportRejected(rejected: string[]) {
+    if (!rejected.length) return
+    notifications.warning(
+      rejected.length === 1 ? 'One file was not added' : `${rejected.length} files were not added`,
+      rejected.join('\n'),
+      8000,
+    )
   }
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {
@@ -735,6 +767,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     stageSize,
     imageUrls,
     failedAssets,
+    addProgress,
     lightCanvas,
     toolbarCollapsed,
     // derived
@@ -742,6 +775,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     selectedNote,
     isLoading,
     loadFailed,
+    isAddingFiles,
     editable,
     canSave,
     canUndo,
