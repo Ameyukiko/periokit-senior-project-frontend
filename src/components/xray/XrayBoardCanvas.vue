@@ -351,14 +351,19 @@ function onPointerMove(event: PointerEvent) {
       MIN_OBJECT_SIZE / current.startW,
       MIN_OBJECT_SIZE / current.startH,
     )
-    const width = current.startW * scale
-    const height = current.startH * scale
+    // Whole units only, like every other write on the board: PER-233 types
+    // posX, posY, width and height as Int!, so a film left on a fraction of a
+    // unit would be refused by the scalar the first time a save reaches the API
+    // — long after the resize that caused it. Rounded before the centre is
+    // worked out, so the pinned corner follows the size the object really gets.
+    const width = Math.round(current.startW * scale)
+    const height = Math.round(current.startH * scale)
     const center = rotateVec((current.dirX * width) / 2, (current.dirY * height) / 2, current.angle)
     const written = applyGeometry(object, {
       width,
       height,
-      posX: current.anchorX + center.x - width / 2,
-      posY: current.anchorY + center.y - height / 2,
+      posX: Math.round(current.anchorX + center.x - width / 2),
+      posY: Math.round(current.anchorY + center.y - height / 2),
     })
     if (written) current.moved = true
     return
