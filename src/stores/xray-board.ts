@@ -210,8 +210,18 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       !isAddingFiles.value,
   )
 
+  /**
+   * What "the board" means to a dirty check and to undo: the objects and the
+   * layout toggle, and nothing else. The viewport is deliberately absent — pan
+   * and zoom are ways of looking, not edits, and counting them would ask the
+   * doctor to save a board they only scrolled past (SRS-300, SRS-301).
+   *
+   * zIndex is normalised into the comparison so a stack that ends up back in the
+   * order it was saved in reads as unchanged, the same way a film dragged out
+   * and back does.
+   */
   function snapshot() {
-    return JSON.stringify({ objects: objects.value, layout: layout.value })
+    return JSON.stringify({ objects: normalizeZIndex(objects.value), layout: layout.value })
   }
 
   /** Next free slot on top of the stack. An empty board starts at 0. */

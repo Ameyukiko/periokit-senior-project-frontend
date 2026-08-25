@@ -67,6 +67,8 @@ type Drag =
       moved: boolean
       /** This pan started on empty board — a click here clears the selection. */
       deselect: boolean
+      /** This pan started on an object nobody may move — say so once it moves. */
+      refused: boolean
     }
   | { mode: 'move'; id: string; offsetX: number; offsetY: number; moved: boolean }
   | {
@@ -183,7 +185,7 @@ function capture(event: PointerEvent) {
   }
 }
 
-function startPan(event: PointerEvent, deselect: boolean) {
+function startPan(event: PointerEvent, deselect: boolean, refused = false) {
   drag = {
     mode: 'pan',
     startX: event.clientX,
@@ -192,6 +194,7 @@ function startPan(event: PointerEvent, deselect: boolean) {
     originY: viewport.value.y,
     moved: false,
     deselect,
+    refused,
   }
   isPanning.value = true
   capture(event)
@@ -226,7 +229,7 @@ function onPointerDown(event: PointerEvent) {
   if (!editable.value) {
     blurEditingNote()
     if (object) board.select(object.id)
-    startPan(event, !object)
+    startPan(event, !object, Boolean(object))
     return
   }
 
@@ -329,7 +332,13 @@ function onPointerMove(event: PointerEvent) {
   if (current.mode === 'pan') {
     const dx = event.clientX - current.startX
     const dy = event.clientY - current.startY
-    if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) current.moved = true
+    if (!current.moved && (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP)) {
+      current.moved = true
+      // Dragging a film on a board nobody may change: the board pans under it
+      // and the film stays put. Saying why beats letting the doctor drag at a
+      // picture that will never follow and decide the page has hung (A4).
+      if (current.refused) rejectChange()
+    }
     board.setViewportOrigin(current.originX + dx, current.originY + dy)
     return
   }
