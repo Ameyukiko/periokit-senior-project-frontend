@@ -20,9 +20,35 @@ import type {
 const REASON_TEXT: Record<XrayRejectReason, string> = {
   unsupported_type: 'only JPEG, PNG or WebP',
   file_too_large: `larger than ${UPLOAD_MAX_MB} MB`,
+  invalid_dimensions: 'the image could not be read',
+  upload_failed: 'the upload did not go through',
+  invalid_upload_id: 'the upload did not arrive complete',
+  duplicate_upload_id: 'it was sent twice',
   upload_id_count_mismatch: 'the upload did not arrive complete',
+  invalid_upload: 'the upload did not arrive complete',
   unreadable: 'the file could not be opened',
   unknown: 'it was not accepted',
+}
+
+/**
+ * Sending the same bytes again only helps where the answer was about the trip,
+ * not about the file: a type or a size comes back the same every time, and so
+ * does an image the server could not read. `upload_failed` is the storage or
+ * the database having a bad moment, which is exactly what Retry is for.
+ *
+ * The id reasons are left out deliberately — a retry resends the same
+ * `uploadId` (SRS-245), so an id the server has already refused would be
+ * refused again, and a button that cannot work is worse than no button.
+ */
+const RETRYABLE_REASONS = new Set<XrayRejectReason>(['upload_failed', 'unknown'])
+
+export function isRetryableReason(reason: XrayRejectReason): boolean {
+  return RETRYABLE_REASONS.has(reason)
+}
+
+/** The second half of "name — reason", on its own for the per-file rows. */
+export function reasonText(reason: XrayRejectReason): string {
+  return REASON_TEXT[reason]
 }
 
 export function describeRejection(rejection: XrayRejection): string {
@@ -156,7 +182,9 @@ export function mapUploadOutcome(
     .filter((asset): asset is Partial<XrayUploadedAsset> => Boolean(asset?.id))
     .map(asset => ({
       id: asset.id as string,
-      uploadId: asset.uploadId ?? '',
+      // The endpoint files an asset under the very id we sent it, so `id` is
+      // the `uploadId` whenever the payload does not spell one out separately.
+      uploadId: asset.uploadId ?? (asset.id as string),
       fileName: asset.fileName ?? '',
       mimeType: asset.mimeType ?? '',
       fileSize: asset.fileSize ?? 0,
@@ -194,6 +222,7 @@ export function describeUploadFailure(
       detail: 'Sign in again, then add the films. Nothing has been uploaded.',
       canRetry: false,
       needsSignIn: true,
+      stopsBatch: true,
     }
   }
 
@@ -203,26 +232,28 @@ export function describeUploadFailure(
       detail: 'Ask whoever owns the visit to share it with you. No films were uploaded.',
       canRetry: false,
       needsSignIn: false,
+      stopsBatch: true,
     }
   }
 
   if (status === 400 && reason !== 'unknown') {
     return {
-      title: 'The films were not accepted',
+      title: 'The film was not accepted',
       // Reads as "The upload was refused — larger than 10 MB", which is the
       // same half-sentence a pre-flight rejection ends with.
       detail: `The upload was refused — ${REASON_TEXT[reason]}.`,
-      // Nothing about resending the same bytes changes a size or a type; a
-      // mismatched id count, on the other hand, is fixed by minting fresh ids.
-      canRetry: reason === 'upload_id_count_mismatch',
+      canRetry: isRetryableReason(reason),
       needsSignIn: false,
+      // About this one film, so the rest of the batch still has a chance.
+      stopsBatch: false,
     }
   }
 
   return {
-    title: 'The films could not be uploaded',
-    detail: 'Nothing was lost. The files you picked are still selected — try again.',
+    title: 'The film could not be uploaded',
+    detail: 'Nothing was lost. The file is still here — try again.',
     canRetry: true,
     needsSignIn: false,
+    stopsBatch: false,
   }
 }

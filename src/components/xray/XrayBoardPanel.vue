@@ -7,6 +7,7 @@ import XrayBoardCanvas from './XrayBoardCanvas.vue'
 import XrayBoardToolbar from './XrayBoardToolbar.vue'
 import XrayNotePanel from './XrayNotePanel.vue'
 import XrayShortcutsCard from './XrayShortcutsCard.vue'
+import XrayUploadQueue from './XrayUploadQueue.vue'
 import XrayZoomBar from './XrayZoomBar.vue'
 import { UPLOAD_ACCEPT_ATTR } from '@/domain/xray/xray.constants'
 import { useNotificationStore } from '@/stores/notification'
@@ -45,7 +46,9 @@ const showDeleteConfirm = ref(false)
 
 const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 
-watch(boardKey, key => board.loadBoard(key), { immediate: true })
+// The visit id rides along with the key: the key is where the board is stored,
+// the visit id is where its films are uploaded to.
+watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
 const hint = computed(() =>
   layout.value
@@ -292,6 +295,7 @@ function confirmCancelEdit() {
       <XrayNotePanel class="absolute top-[78px] right-3.5 z-50" />
       <XrayZoomBar class="absolute bottom-3.5 left-3.5 z-50" />
       <XrayShortcutsCard class="absolute right-3.5 bottom-3.5 z-50" />
+      <XrayUploadQueue class="absolute bottom-3.5 left-1/2 z-50 -translate-x-1/2" />
 
       <div
         v-if="isLoading && !isRetrying"

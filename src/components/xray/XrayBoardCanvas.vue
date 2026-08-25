@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ImageOff, Loader2, RotateCw } from 'lucide-vue-next'
+import { ImageOff, RotateCw } from 'lucide-vue-next'
 import {
   FMX_SLOTS,
   GRID_SIZE,
@@ -38,7 +38,6 @@ const {
   isEmpty,
   failedAssets,
   loadFailed,
-  addProgress,
 } = storeToRefs(board)
 
 /** A missing URL never fires `error`, so the placeholder can't rely on it. */
@@ -713,17 +712,6 @@ onBeforeUnmount(() => {
           Choose file
         </button>
       </div>
-    </div>
-
-    <!-- Per-file progress rather than a bare spinner: with 18 films the doctor
-         needs to see the count move, not just that something is happening. -->
-    <div
-      v-if="addProgress"
-      data-board-ui
-      class="absolute bottom-3.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-[10px] border border-slate-200 bg-white/95 px-3 py-2 text-[12.5px] text-slate-600 shadow-[0_8px_26px_rgba(15,23,42,0.28)] backdrop-blur-md"
-    >
-      <Loader2 class="h-[15px] w-[15px] animate-spin text-[#0052ff]" />
-      Adding {{ addProgress.done }} of {{ addProgress.total }}
     </div>
 
     <div

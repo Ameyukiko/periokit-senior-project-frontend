@@ -25,7 +25,9 @@ import {
   checkXrayFiles,
   createUploadIds,
   describeRejection,
+  isRetryableReason,
   newUploadId,
+  reasonText,
 } from '@/domain/xray/xray.upload'
 import type {
   Viewport,
@@ -33,7 +35,10 @@ import type {
   XrayNoteObject,
   XrayObject,
   XrayRejection,
+  XrayUploadFailure,
+  XrayUploadItem,
 } from '@/domain/xray/xray.types'
+import { toUploadFailure, xrayAssetApi } from '@/services/api/xray.api'
 import { xrayBoardStorage, type BoardImage } from '@/services/storage/xray-board.storage'
 import { useNotificationStore } from './notification'
 
@@ -92,6 +97,12 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   // --- board document -------------------------------------------------------
   const boardKey = ref<string | null>(null)
+  /**
+   * The visit the films belong to, kept apart from the board key because the
+   * key is a storage address and this is what the upload endpoint is addressed
+   * by. `'new'` is the draft tab, which has no visit server-side yet.
+   */
+  const visitId = ref<string | null>(null)
   const objects = ref<XrayObject[]>([])
   const layout = ref(false)
   const selectedId = ref<string | null>(null)
@@ -134,8 +145,18 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const failedAssets = ref(new Set<string>())
   const retriedAssets = new Set<string>()
 
-  /** Films read so far out of the batch being added; null when nothing is running. */
-  const addProgress = ref<{ done: number; total: number } | null>(null)
+  // --- upload queue (PER-245) -----------------------------------------------
+  // One row per film the doctor picked, from picked to on the board. It outlives
+  // the batch on purpose: a row that vanishes the moment the last upload settles
+  // takes the report of what failed with it.
+  const uploadQueue = ref<XrayUploadItem[]>([])
+  /**
+   * The file behind each row and where its film should land. Held outside the
+   * reactive list because a File has nothing worth tracking, and kept at all so
+   * a Retry can resend the same bytes to the same spot on the board.
+   */
+  const queued = new Map<string, { file: File; x: number; y: number }>()
+  let queueRunning = false
 
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
@@ -201,7 +222,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     savedSnapshot.value === null ? objects.value.length > 0 : snapshot() !== savedSnapshot.value,
   )
   const noteColors = computed(() => [...NOTE_COLORS, ...customNoteColors.value])
-  const isAddingFiles = computed(() => addProgress.value !== null)
+  const isAddingFiles = computed(() =>
+    uploadQueue.value.some(item => item.status === 'pending' || item.status === 'uploading'),
+  )
+  /**
+   * A visit only exists server-side once `saveChart` has created it, so the
+   * draft tab has nowhere to send films to. Its board still works — the films
+   * stay in this browser until the visit is saved — and the queue says so
+   * rather than reporting an upload that was never attempted.
+   */
+  const canUpload = computed(() => Boolean(visitId.value) && visitId.value !== 'new')
   /**
    * Saving is only safe once we know what is already on the board (SRS-195) —
    * a save rewrites the whole record, so writing from a board we failed to read
@@ -366,7 +396,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       notifications.warning('The board is saving', 'Wait for it to finish, then add the films')
       return
     }
-    if (addProgress.value) {
+    if (isAddingFiles.value) {
       notifications.warning('Still adding the last films', 'Wait for that batch to finish')
       return
     }
@@ -377,89 +407,293 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // films on screen that the upload was never asked to store.
     const { accepted, rejected, ok } = checkXrayFiles(files)
     if (!ok) {
-      reportRejected(rejected, true)
+      reportRejected(rejected)
       return
     }
     if (!accepted.length) return
 
-    // Decoding 18 films is not instant. Showing the count moving is the point —
-    // a board that sits still looks broken (SRS-205).
-    addProgress.value = { done: 0, total: accepted.length }
+    // A new batch gets a new list. The rows from the last one have been read by
+    // now, and leaving them would bury this batch's failures among them.
+    clearUploadQueue()
 
     // Minted for the whole batch up front, one per file and all different: the
-    // id a film is drawn under here is the id it will be filed under server-side
-    // (PER-260 §4).
+    // id a film is drawn under here is the id it is filed under server-side
+    // (PER-260 §4), and the id a retry resends (SRS-245).
     const uploadIds = createUploadIds(accepted.length)
-    const failures: XrayRejection[] = []
+    accepted.forEach((file, index) => {
+      const uploadId = uploadIds[index]
+      queued.set(uploadId, {
+        file,
+        // Cascade a multi-file batch so the films don't land on top of each
+        // other — 18 films dropped on one spot look like one film (SRS-232).
+        x: worldX + index * IMAGE_CASCADE_OFFSET,
+        y: worldY + index * IMAGE_CASCADE_OFFSET,
+      })
+      uploadQueue.value.push({
+        uploadId,
+        fileName: file.name,
+        status: 'pending',
+        progress: 0,
+        canRetry: false,
+      })
+    })
 
-    let added = 0
-    for (const [index, file] of accepted.entries()) {
-      const url = URL.createObjectURL(file)
-      try {
-        const { width, height } = await readImageSize(url)
-        const assetId = uploadIds[index]
-        imageBlobs.set(assetId, file)
-        imageUrls.value[assetId] = url
+    await runUploadQueue()
+  }
 
-        const { width: boardWidth, height: boardHeight } = initialImageSize(width, height)
-        const object: XrayImageObject = {
-          id: uid(),
-          zIndex: topZIndex() + 1,
-          objectType: 'image',
-          assetId,
-          naturalWidth: width,
-          naturalHeight: height,
-          // Cascade a multi-file batch so the films don't land on top of each other.
-          posX: Math.round(worldX + index * IMAGE_CASCADE_OFFSET - boardWidth / 2),
-          posY: Math.round(worldY + index * IMAGE_CASCADE_OFFSET - boardHeight / 2),
-          width: boardWidth,
-          height: boardHeight,
-          rotation: 0,
-          slotCode: null,
-        }
-        objects.value.push(object)
-        selectedId.value = object.id
-        added += 1
-      } catch (error) {
-        // Past the gate above, so this is not a file the doctor can fix by
-        // picking a different one — it passed every check and still would not
-        // decode. One bad film does not cost the doctor the other seventeen;
-        // this loop never became a Promise.all for that reason (SRS-240,
-        // SRS-243). The failed file gets no board object at all (SRS-241).
-        URL.revokeObjectURL(url)
-        console.error('Failed to read image:', (error as Error)?.message ?? error)
-        failures.push({ fileName: file.name, reason: 'unreadable' })
-      }
-      addProgress.value = { done: index + 1, total: accepted.length }
-    }
-
-    addProgress.value = null
-    reportRejected(failures)
-    if (added > 0) pushHistory()
+  function failItem(item: XrayUploadItem, error: string, canRetry: boolean) {
+    item.status = 'failed'
+    item.error = error
+    item.canRetry = canRetry
   }
 
   /**
-   * One list at the end rather than a toast per file: 18 separate toasts for 18
-   * bad files is not a report, it is a stampede. Names and plain reasons only,
-   * never an error code (SRS-238, SRS-239).
-   *
-   * `blocked` is the PER-260 §6 case, where the whole batch was refused. It
-   * needs its own wording: "2 files were not added" over a board that gained
-   * nothing reads as though the other sixteen went on.
+   * How far one film got. `halted` is the only one that concerns the films
+   * behind it: the answer was about the session or the visit rather than about
+   * this film, so the rest would only collect the same refusal. A plain
+   * `refused` stops at its own row — one bad film must not cost the doctor the
+   * other seventeen (SRS-240, SRS-243).
    */
-  function reportRejected(rejected: XrayRejection[], blocked = false) {
+  type UploadStep =
+    | { outcome: 'uploaded'; size: { width: number; height: number } | null }
+    | { outcome: 'refused' }
+    | { outcome: 'halted'; failure: XrayUploadFailure }
+
+  async function uploadOne(item: XrayUploadItem, file: File): Promise<UploadStep> {
+    try {
+      const outcome = await xrayAssetApi.upload(
+        visitId.value as string,
+        [file],
+        [item.uploadId],
+        percent => {
+          item.progress = percent
+        },
+      )
+
+      const rejection = outcome.rejected[0]
+      if (rejection) {
+        failItem(item, reasonText(rejection.reason), isRetryableReason(rejection.reason))
+        return { outcome: 'refused' }
+      }
+
+      const asset = outcome.uploaded[0]
+      if (!asset) {
+        // Accepted, but with neither a film nor a reason: nothing to put on the
+        // board and nothing to explain, so it counts as a trip that didn't land.
+        failItem(item, reasonText('upload_failed'), true)
+        return { outcome: 'refused' }
+      }
+
+      // Only ever the id this visit's endpoint just handed back, so an object
+      // can never end up pointing at another visit's film (SRS-228, SRS-229).
+      item.assetId = asset.id
+      item.progress = 100
+      // The server read the film with sharp on the way in, so its size is
+      // already known and the browser has nothing left to measure (SRS-223).
+      const size =
+        asset.naturalWidth > 0 && asset.naturalHeight > 0
+          ? { width: asset.naturalWidth, height: asset.naturalHeight }
+          : null
+      return { outcome: 'uploaded', size }
+    } catch (error) {
+      const failure = toUploadFailure(error)
+      failItem(item, failure.title, failure.canRetry)
+      return failure.stopsBatch ? { outcome: 'halted', failure } : { outcome: 'refused' }
+    }
+  }
+
+  /**
+   * Puts an uploaded film on the board. Split from the upload because the two
+   * can fail separately: A3 in PER-245 is the film reaching the server and the
+   * board still not being able to take it, and a half-drawn object must never
+   * appear (SRS-241) — the row says what happened and offers another go.
+   */
+  async function placeFilm(
+    item: XrayUploadItem,
+    entry: { file: File; x: number; y: number },
+    naturalSize: { width: number; height: number } | null,
+  ): Promise<boolean> {
+    const assetId = item.assetId ?? item.uploadId
+    const key = boardKey.value
+    const url = URL.createObjectURL(entry.file)
+    try {
+      // The server read the film's size with sharp on the way in, so there is
+      // nothing to decode twice (SRS-223). Without a server there is no other
+      // way to know how big the film is.
+      const { width, height } = naturalSize ?? (await readImageSize(url))
+      // The board was closed or swapped while the film was being read: this one
+      // belongs to a visit nobody is looking at any more.
+      if (boardKey.value !== key) {
+        URL.revokeObjectURL(url)
+        return false
+      }
+      const { width: boardWidth, height: boardHeight } = initialImageSize(width, height)
+
+      imageBlobs.set(assetId, entry.file)
+      // URLs live in this map and never on the object itself (SRS-234).
+      imageUrls.value[assetId] = url
+
+      const object: XrayImageObject = {
+        id: uid(),
+        zIndex: topZIndex() + 1,
+        objectType: 'image',
+        assetId,
+        naturalWidth: width,
+        naturalHeight: height,
+        posX: Math.round(entry.x - boardWidth / 2),
+        posY: Math.round(entry.y - boardHeight / 2),
+        width: boardWidth,
+        height: boardHeight,
+        rotation: 0,
+        slotCode: null,
+      }
+      objects.value.push(object)
+      selectedId.value = object.id
+
+      item.status = 'done'
+      item.progress = 100
+      item.canRetry = false
+      return true
+    } catch (error) {
+      URL.revokeObjectURL(url)
+      console.error('Failed to read image:', (error as Error)?.message ?? error)
+      // Uploaded and then refused by the board is worth another go; a file that
+      // passed every check and still would not decode gives the same answer
+      // however often it is asked, so that row gets no button.
+      if (item.assetId) {
+        failItem(item, 'Uploaded, but it could not be added to the board', true)
+      } else {
+        failItem(item, reasonText('unreadable'), false)
+      }
+      return false
+    }
+  }
+
+  /**
+   * Works through whatever is still pending, one film at a time. One request
+   * per film rather than one for the batch: a batch reports a single byte count
+   * for all of them, and the per-file bar and the per-file Retry both depend on
+   * knowing which film the bytes belong to (SRS-205, SRS-244).
+   */
+  async function runUploadQueue() {
+    if (queueRunning) return
+    queueRunning = true
+    const key = boardKey.value
+    let added = 0
+
+    try {
+      for (const item of uploadQueue.value) {
+        if (item.status !== 'pending') continue
+        // Switching visits mid-batch abandons the rest: the films left in it
+        // were picked for a board that is no longer open.
+        if (boardKey.value !== key) break
+
+        const entry = queued.get(item.uploadId)
+        if (!entry) {
+          failItem(item, 'The file is no longer open', false)
+          continue
+        }
+
+        item.status = 'uploading'
+        item.progress = 0
+        item.error = undefined
+
+        let naturalSize: { width: number; height: number } | null = null
+        if (canUpload.value) {
+          const step = await uploadOne(item, entry.file)
+          if (step.outcome === 'halted') {
+            haltQueue(step.failure)
+            break
+          }
+          if (step.outcome === 'refused') continue
+          naturalSize = step.size
+        }
+
+        if (await placeFilm(item, entry, naturalSize)) added += 1
+      }
+    } finally {
+      queueRunning = false
+    }
+
+    if (added > 0 && boardKey.value === key) pushHistory()
+  }
+
+  /**
+   * 401 and 403 are answers about the session or the visit rather than about
+   * one film, so every film still waiting behind it would only be refused the
+   * same way. One message, once, and the rows say the same thing.
+   */
+  function haltQueue(failure: XrayUploadFailure) {
+    for (const item of uploadQueue.value) {
+      if (item.status === 'pending' || item.status === 'uploading') {
+        failItem(item, failure.title, false)
+      }
+    }
+    notifications.error(failure.title, failure.detail, 8000)
+  }
+
+  /** Retries one film, under the id it already went up with (SRS-245). */
+  async function retryUpload(uploadId: string) {
+    if (isSaving.value || isAddingFiles.value) return
+    const item = uploadQueue.value.find(candidate => candidate.uploadId === uploadId)
+    if (!item || item.status !== 'failed' || !item.canRetry) return
+    item.status = 'pending'
+    item.progress = 0
+    item.error = undefined
+    await runUploadQueue()
+  }
+
+  /**
+   * The films that failed, and only those. A button that resent the whole batch
+   * would upload the ones already on the board a second time, which is the one
+   * thing PER-245 spells out as forbidden.
+   */
+  async function retryFailedUploads() {
+    if (isSaving.value || isAddingFiles.value) return
+    let queuedAny = false
+    for (const item of uploadQueue.value) {
+      if (item.status !== 'failed' || !item.canRetry) continue
+      item.status = 'pending'
+      item.progress = 0
+      item.error = undefined
+      queuedAny = true
+    }
+    if (queuedAny) await runUploadQueue()
+  }
+
+  /** Puts the report away. Never mid-flight — those rows are still moving. */
+  function clearUploadQueue() {
+    if (isAddingFiles.value) return
+    resetUploadQueue()
+  }
+
+  /**
+   * The same, without the question: closing or swapping a board takes its films
+   * with it, so whatever the run was still holding has nowhere to go. Safe
+   * mid-flight because the run checks the board key between films.
+   */
+  function resetUploadQueue() {
+    uploadQueue.value = []
+    queued.clear()
+  }
+
+  /**
+   * The PER-260 §6 case: one file failed the checks, so the whole batch was
+   * refused before anything was sent. Nothing reached the upload queue, so this
+   * is the one report that still has to be a message — and one message rather
+   * than a toast per file, because 18 toasts for 18 bad files is a stampede,
+   * not a report. Names and plain reasons only, never a code (SRS-238, SRS-239).
+   */
+  function reportRejected(rejected: XrayRejection[]) {
     if (!rejected.length) return
-
-    const lines = rejected.map(describeRejection)
-    if (blocked) lines.push('Remove or replace them, then add the films again.')
-
-    const title = blocked
-      ? 'No films were added'
-      : rejected.length === 1
-        ? 'One file was not added'
-        : `${rejected.length} files were not added`
-
-    notifications.warning(title, lines.join('\n'), 8000)
+    notifications.warning(
+      'No films were added',
+      [
+        ...rejected.map(describeRejection),
+        'Remove or replace them, then add the films again.',
+      ].join('\n'),
+      8000,
+    )
   }
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {
@@ -714,14 +948,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
   }
 
-  async function loadBoard(key: string) {
+  async function loadBoard(key: string, visit: string | null) {
     if (boardKey.value === key) return
 
     boardKey.value = key
+    visitId.value = visit
     // A different visit's films must never linger on screen, so this board is
     // cleared up front — there is nothing here worth preserving on failure.
     clearBoardState()
     releaseImages()
+    resetUploadQueue()
     retryFailed.value = false
     await fetchBoard(key)
   }
@@ -778,14 +1014,21 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    * Moves the open board to a new key — the draft visit ('new') has just been
    * saved and got its real visit id, so the board follows it.
    */
-  async function rekeyBoard(nextKey: string) {
+  async function rekeyBoard(nextKey: string, nextVisitId: string | null) {
     const previousKey = boardKey.value
     // Also a write that drops the old record, so it needs the same guard as
-    // saveBoard — never move a board we could not read in full.
+    // saveBoard — never move a board we could not read in full. Bailing here
+    // leaves the key alone, so the panel's own watcher opens the new one.
     if (!previousKey || previousKey === nextKey || !objects.value.length || loadFailed.value) {
       return
     }
     boardKey.value = nextKey
+    // The draft visit has a real id now, so its films finally have somewhere to
+    // go — and this is the only path that moves the board without a reload.
+    visitId.value = nextVisitId
+    // The report was about films added to the draft. It says nothing true about
+    // the visit they have just moved to, so it goes rather than misleads.
+    resetUploadQueue()
     if (!saved.value) return
     try {
       await persist(nextKey)
@@ -829,6 +1072,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     if (savedSnapshot.value) {
       restore(savedSnapshot.value)
       resetHistory()
+      // The films the report was about are off the board with the edit, so a
+      // list still offering to retry them has nothing left to add them to.
+      clearUploadQueue()
       // The films added during the edit are off the board and out of the undo
       // history with it, so their blobs belong to nobody now (SRS-353). A
       // full-mouth series discarded and re-added a few times is a lot of memory
@@ -840,15 +1086,18 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function closeBoard() {
     releaseImages()
     clearBoardState()
+    resetUploadQueue()
     loadState.value = 'loading'
     retryFailed.value = false
     boardKey.value = null
+    visitId.value = null
     viewport.value = { x: 0, y: 0, scale: 1 }
   }
 
   return {
     // state
     boardKey,
+    visitId,
     objects,
     layout,
     selectedId,
@@ -864,7 +1113,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     stageSize,
     imageUrls,
     failedAssets,
-    addProgress,
+    uploadQueue,
     lightCanvas,
     toolbarCollapsed,
     // derived
@@ -874,6 +1123,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     isLoading,
     loadFailed,
     isAddingFiles,
+    canUpload,
     editable,
     canSave,
     canUndo,
@@ -897,6 +1147,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // objects
     select,
     addImageFiles,
+    retryUpload,
+    retryFailedUploads,
+    clearUploadQueue,
     addNote,
     setNoteText,
     setNoteColor,

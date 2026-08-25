@@ -125,16 +125,21 @@ export interface XrayBoardResponse {
 // multipart, `files[]` paired position by position with `uploadIds[]`.
 
 /**
- * Why a film did not make it onto the board. The first three are the codes the
- * upload endpoint answers with, so a rejection the server sent back and one we
- * caught before sending read the same to the doctor. `unreadable` has no server
- * counterpart — a file only fails to decode once it is being drawn, which is
- * after every check the server would have run.
+ * Why a film did not make it onto the board. Everything up to `invalid_upload`
+ * is a code the upload endpoint answers with, so a rejection the server sent
+ * back and one we caught before sending read the same to the doctor.
+ * `unreadable` has no server counterpart — a file only fails to decode once it
+ * is being drawn, which is after every check the server would have run.
  */
 export type XrayRejectReason =
   | 'unsupported_type'
   | 'file_too_large'
+  | 'invalid_dimensions'
+  | 'upload_failed'
+  | 'invalid_upload_id'
+  | 'duplicate_upload_id'
   | 'upload_id_count_mismatch'
+  | 'invalid_upload'
   | 'unreadable'
   | 'unknown'
 
@@ -175,6 +180,33 @@ export interface XrayUploadFailure {
   canRetry: boolean
   /** The doctor has to sign in again before any of this will work. */
   needsSignIn: boolean
+  /**
+   * The answer was about the session or the visit, not about this one film, so
+   * the films still queued behind it would only collect the same refusal.
+   */
+  stopsBatch: boolean
+}
+
+export type XrayUploadStatus = 'pending' | 'uploading' | 'done' | 'failed'
+
+/**
+ * One film's trip to the server, from picked to on the board (PER-245). The
+ * doctor sees one row per entry, so everything here is either shown or is what
+ * decides whether the Retry button on that row is offered.
+ */
+export interface XrayUploadItem {
+  /** The id we minted; also the id the server files the asset under (SRS-245). */
+  uploadId: string
+  fileName: string
+  status: XrayUploadStatus
+  /** 0–100. Only meaningful while `uploading`. */
+  progress: number
+  /** Plain words, never a code — set only when `failed` (SRS-238, SRS-239). */
+  error?: string
+  /** The asset the server accepted. Set once the upload comes back. */
+  assetId?: string
+  /** Whether sending this one film again could end differently (SRS-244). */
+  canRetry: boolean
 }
 
 /** No `id`: a save is replace-all, so the server has no old rows to match. */

@@ -420,8 +420,9 @@ const confirmSaveChart = async () => {
     const activeVisit = activeVisitId.value
     const patientId = currentPatientId.value
 
-    // The draft visit now has a real id — move its X-ray board along with it.
-    await xrayStore.rekeyBoard(xrayBoardKey(patientId, activeVisit))
+    // The draft visit now has a real id — move its X-ray board along with it,
+    // and with it the visit its films upload to.
+    await xrayStore.rekeyBoard(xrayBoardKey(patientId, activeVisit), activeVisit)
 
     if (wasNewPatient && patientId) {
       router.push({ name: 'patient-visits', params: { patientId } })

@@ -1,6 +1,7 @@
 import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
-import { ApiError, apiRequest } from './http'
+import { getAuthHeaders } from '../token-storage'
+import { API_URL, ApiError } from './http'
 import {
   XrayUploadIdError,
   buildXrayUploadForm,
@@ -16,13 +17,13 @@ import type {
   XrayUploadResponse,
 } from '@/domain/xray/xray.types'
 
-// Written against the schema in PER-233, which exists as a card and not yet as
-// a running resolver — nothing calls this file today. The board still reads and
-// writes through `services/storage/xray-board.storage.ts` (IndexedDB), and that
-// stays the only seam the store knows about until the backend lands.
+// Written against the schema in PER-233. The queries below now have resolvers
+// behind them, but nothing calls them yet: `saveXrayBoard` is still a stub
+// server-side (PER-254), so the board would have somewhere to read from and
+// nowhere to write to. It keeps reading and writing through
+// `services/storage/xray-board.storage.ts` (IndexedDB) until that lands.
 //
-// Kept ahead of the backend on purpose: PER-233 says the point of landing the
-// type definitions first is to let the frontend write its queries against them.
+// The upload at the bottom of this file is the part that is live.
 
 const BOARD_FIELDS = gql`
   fragment XrayBoardFields on XrayBoard {
@@ -122,18 +123,91 @@ export const xrayApi = {
     }),
 }
 
-// --- upload (PER-260) -------------------------------------------------------
-// REST rather than GraphQL, because the films go up as multipart. Same standing
-// as the queries above: the endpoint is specified and not yet running, so
-// nothing calls this either. The checks it is built on do run — the board gates
-// every add on `checkXrayFiles` today.
+// --- upload (PER-260, PER-245) ----------------------------------------------
+// REST rather than GraphQL, because the films go up as multipart.
+
+/** The endpoint answers with the payload itself, not the `{ success, data }`
+ *  envelope the rest of the REST API uses, and puts its message under `error`
+ *  rather than `message`. Parsed here rather than through `apiRequest` for that
+ *  reason as much as for the progress events. */
+function parseBody(text: string): Record<string, unknown> | null {
+  if (!text) return null
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+/**
+ * `XMLHttpRequest` rather than `fetch`, because `fetch` says nothing at all
+ * until the response starts coming back: an 8 MB film would sit at 0% for its
+ * entire journey, which is the one thing PER-245 exists to fix.
+ *
+ * Rejects with an `ApiError` when a server answered and refused, and with a
+ * plain `Error` when the request never got that far — `toUploadFailure` tells
+ * the two apart, and only the second is worth offering a retry for.
+ */
+function postWithProgress<T>(
+  path: string,
+  form: FormData,
+  onProgress?: (percent: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest()
+    request.open('POST', `${API_URL}${path}`)
+    for (const [name, value] of Object.entries(getAuthHeaders())) {
+      request.setRequestHeader(name, value)
+    }
+    // Content-Type is left alone on purpose: only the browser knows the
+    // multipart boundary it is about to write.
+
+    request.upload.onprogress = event => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+    }
+
+    request.onerror = () => reject(new Error('The upload could not be sent'))
+    request.ontimeout = () => reject(new Error('The upload timed out'))
+    request.onabort = () => reject(new Error('The upload was cancelled'))
+
+    request.onload = () => {
+      const payload = parseBody(request.responseText)
+      if (request.status >= 200 && request.status < 300) {
+        resolve((payload ?? {}) as T)
+        return
+      }
+      // The controller answers `{ error, reason }`; the auth middleware in front
+      // of it still answers `{ success, message }`. Both are read so a log line
+      // says what actually came back.
+      reject(
+        new ApiError(
+          typeof payload?.error === 'string'
+            ? payload.error
+            : typeof payload?.message === 'string'
+              ? payload.message
+              : 'Upload failed',
+          request.status,
+          undefined,
+          payload,
+          typeof payload?.reason === 'string' ? payload.reason : undefined,
+        ),
+      )
+    }
+
+    request.send(form)
+  })
+}
 
 export const xrayAssetApi = {
   /**
    * `uploadIds` is passed in rather than minted here so the caller can hand the
    * same ids to the board: the id under which a film is drawn locally has to be
    * the id the server files it under, or the board that comes back points at
-   * assets nothing on screen recognises.
+   * assets nothing on screen recognises. Resending one is also what makes Retry
+   * safe — the endpoint hands back the asset it already has rather than storing
+   * the film twice (SRS-245).
    *
    * Throws before sending on a bad pairing, and on any transport or status
    * error — `toUploadFailure` turns whichever one it was into something to say.
@@ -142,13 +216,15 @@ export const xrayAssetApi = {
     visitId: string,
     files: File[],
     uploadIds: string[],
+    onProgress?: (percent: number) => void,
   ): Promise<XrayUploadOutcome> {
     const body = buildXrayUploadForm(files, uploadIds)
-    const response = await apiRequest<XrayUploadResponse>(
+    const payload = await postWithProgress<XrayUploadResponse>(
       `/visits/${encodeURIComponent(visitId)}/xray-assets`,
-      { method: 'POST', body, auth: true },
+      body,
+      onProgress,
     )
-    return mapUploadOutcome(response.data)
+    return mapUploadOutcome(payload)
   },
 }
 
