@@ -13,7 +13,7 @@ import {
   NOTE_FONT,
   XRAY_PREF_KEYS,
 } from '@/domain/xray/xray.constants'
-import { boardBounds, clamp, findSlotAt, fitIntoSlot } from '@/domain/xray/xray.geometry'
+import { boardBounds, clamp, findSlotAt, fitIntoSlot, slotCodeOf } from '@/domain/xray/xray.geometry'
 import type { Viewport, XrayImageObject, XrayNoteObject, XrayObject } from '@/domain/xray/xray.types'
 import { xrayBoardStorage, type BoardImage } from '@/services/storage/xray-board.storage'
 import { useNotificationStore } from './notification'
@@ -100,17 +100,24 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     () => objects.value.find(object => object.id === selectedId.value) ?? null,
   )
   const selectedNote = computed(() =>
-    selectedObject.value?.type === 'note' ? selectedObject.value : null,
+    selectedObject.value?.objectType === 'note' ? selectedObject.value : null,
   )
   /** A never-saved board is editable; a saved one until Edit is pressed is not. */
   const editable = computed(() => !saved.value || editMode.value)
   const canUndo = computed(() => historyIndex.value > 0)
   const canRedo = computed(() => historyIndex.value < history.value.length - 1)
   const isEmpty = computed(() => objects.value.length === 0)
+  /**
+   * Paint order (SRS-167). Sorted here rather than by reordering `objects`, so
+   * loading never has to touch the stored zIndex values — SRS-169.
+   */
+  const sortedObjects = computed(() =>
+    [...objects.value].sort((a, b) => a.zIndex - b.zIndex),
+  )
   const filledSlots = computed(() => {
-    const taken = new Set<number>()
+    const taken = new Set<string>()
     for (const object of objects.value) {
-      if (object.type === 'image' && object.slot) taken.add(object.slot)
+      if (object.objectType === 'image' && object.slotCode) taken.add(object.slotCode)
     }
     return taken
   })
@@ -121,6 +128,15 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   function snapshot() {
     return JSON.stringify({ objects: objects.value, layout: layout.value })
+  }
+
+  /** Next free slot on top of the stack. An empty board starts at 0. */
+  function topZIndex() {
+    return objects.value.length ? Math.max(...objects.value.map(o => o.zIndex)) : -1
+  }
+
+  function bottomZIndex() {
+    return objects.value.length ? Math.min(...objects.value.map(o => o.zIndex)) : 0
   }
 
   // --- history --------------------------------------------------------------
@@ -255,27 +271,28 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       const url = URL.createObjectURL(file)
       try {
         const { width, height } = await readImageSize(url)
-        const imageId = uid()
-        imageBlobs.set(imageId, file)
-        imageUrls.value[imageId] = url
+        const assetId = uid()
+        imageBlobs.set(assetId, file)
+        imageUrls.value[assetId] = url
 
         // Cascade multi-file drops so they don't land exactly on top of each other.
         const longSide = Math.max(width, height)
         const scale = longSide > IMAGE_MAX_LONG_SIDE ? IMAGE_MAX_LONG_SIDE / longSide : 1
-        const w = Math.round(width * scale)
-        const h = Math.round(height * scale)
+        const boardWidth = Math.round(width * scale)
+        const boardHeight = Math.round(height * scale)
         const object: XrayImageObject = {
           id: uid(),
-          type: 'image',
-          imageId,
-          natW: width,
-          natH: height,
-          x: Math.round(worldX + index * 28 - w / 2),
-          y: Math.round(worldY + index * 28 - h / 2),
-          w,
-          h,
-          rot: 0,
-          slot: null,
+          zIndex: topZIndex() + 1,
+          objectType: 'image',
+          assetId,
+          naturalWidth: width,
+          naturalHeight: height,
+          posX: Math.round(worldX + index * 28 - boardWidth / 2),
+          posY: Math.round(worldY + index * 28 - boardHeight / 2),
+          width: boardWidth,
+          height: boardHeight,
+          rotation: 0,
+          slotCode: null,
         }
         objects.value.push(object)
         selectedId.value = object.id
@@ -293,15 +310,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {
     const note: XrayNoteObject = {
       id: uid(),
-      type: 'note',
-      text: preset?.text ?? '',
-      color: preset?.color ?? NOTE_DEFAULT_COLOR,
-      fontSize: preset?.fontSize ?? NOTE_FONT.default,
-      x: Math.round(worldX - NOTE_DEFAULT_SIZE.w / 2),
-      y: Math.round(worldY - NOTE_DEFAULT_SIZE.h / 2),
-      w: NOTE_DEFAULT_SIZE.w,
-      h: NOTE_DEFAULT_SIZE.h,
-      rot: 0,
+      zIndex: topZIndex() + 1,
+      objectType: 'note',
+      noteText: preset?.noteText ?? '',
+      noteColor: preset?.noteColor ?? NOTE_DEFAULT_COLOR,
+      noteFontSize: preset?.noteFontSize ?? NOTE_FONT.default,
+      posX: Math.round(worldX - NOTE_DEFAULT_SIZE.w / 2),
+      posY: Math.round(worldY - NOTE_DEFAULT_SIZE.h / 2),
+      width: NOTE_DEFAULT_SIZE.w,
+      height: NOTE_DEFAULT_SIZE.h,
+      rotation: 0,
     }
     objects.value.push(note)
     selectedId.value = note.id
@@ -312,14 +330,14 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   function setNoteText(id: string, text: string) {
     const note = objects.value.find(object => object.id === id)
-    if (note?.type !== 'note') return
-    note.text = text
+    if (note?.objectType !== 'note') return
+    note.noteText = text
   }
 
   function setNoteColor(color: string) {
     const note = selectedNote.value
     if (!note) return
-    note.color = color
+    note.noteColor = color
     pushHistory()
   }
 
@@ -335,9 +353,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function changeNoteFontSize(delta: number) {
     const note = selectedNote.value
     if (!note) return
-    const next = clamp(note.fontSize + delta, NOTE_FONT.min, NOTE_FONT.max)
-    if (next === note.fontSize) return
-    note.fontSize = next
+    const next = clamp(note.noteFontSize + delta, NOTE_FONT.min, NOTE_FONT.max)
+    if (next === note.noteFontSize) return
+    note.noteFontSize = next
     pushHistory()
   }
 
@@ -353,8 +371,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function reorder(direction: 'front' | 'back') {
     const object = selectedObject.value
     if (!object) return
-    const rest = objects.value.filter(candidate => candidate.id !== object.id)
-    objects.value = direction === 'front' ? [...rest, object] : [object, ...rest]
+    // Only the moved object changes — everything else keeps the zIndex it was
+    // saved with, so restacking one film can't shuffle the rest of the board.
+    object.zIndex = direction === 'front' ? topZIndex() + 1 : bottomZIndex() - 1
     pushHistory()
   }
 
@@ -370,19 +389,22 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    */
   function snapToSlot(id: string): 'ok' | 'occupied' | 'none' {
     const object = objects.value.find(candidate => candidate.id === id)
-    if (!object || object.type !== 'image') return 'none'
+    if (!object || object.objectType !== 'image') return 'none'
 
-    const slot = findSlotAt(object.x + object.w / 2, object.y + object.h / 2)
+    const slot = findSlotAt(object.posX + object.width / 2, object.posY + object.height / 2)
     if (!slot) {
-      object.slot = null
+      object.slotCode = null
       return 'none'
     }
+    const code = slotCodeOf(slot)
     const taken = objects.value.some(
       candidate =>
-        candidate.id !== object.id && candidate.type === 'image' && candidate.slot === slot.id,
+        candidate.id !== object.id &&
+        candidate.objectType === 'image' &&
+        candidate.slotCode === code,
     )
     if (taken) {
-      object.slot = null
+      object.slotCode = null
       return 'occupied'
     }
     Object.assign(object, fitIntoSlot(object, slot))
@@ -471,9 +493,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     const plainObjects = JSON.parse(JSON.stringify(objects.value)) as XrayObject[]
     const images: BoardImage[] = []
     for (const object of plainObjects) {
-      if (object.type !== 'image') continue
-      const blob = imageBlobs.get(object.imageId)
-      if (blob) images.push({ id: object.imageId, blob })
+      if (object.objectType !== 'image') continue
+      const blob = imageBlobs.get(object.assetId)
+      if (blob) images.push({ id: object.assetId, blob })
     }
 
     await xrayBoardStorage.saveBoard(
@@ -565,6 +587,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     canUndo,
     canRedo,
     isEmpty,
+    sortedObjects,
     isDirty,
     filledSlots,
     noteColors,
