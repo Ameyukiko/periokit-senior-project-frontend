@@ -33,6 +33,7 @@ const {
   filledSlots,
   isEmpty,
   failedAssets,
+  loadFailed,
 } = storeToRefs(board)
 
 /** A missing URL never fires `error`, so the placeholder can't rely on it. */
@@ -608,9 +609,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Layout mode already shows the slots, so the drop hint is redundant there -->
+    <!-- Layout mode already shows the slots, so the drop hint is redundant there.
+         Hidden after a failed load too: an empty board we could not read must
+         not invite the doctor to fill it in (SRS-193). -->
     <div
-      v-if="isEmpty && !layout"
+      v-if="isEmpty && !layout && !loadFailed"
       class="pointer-events-none absolute inset-0 grid place-items-center text-center"
       :style="{ color: 'var(--xray-empty-text)' }"
     >

@@ -66,7 +66,17 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const savedSnapshot = ref<string | null>(null)
   const editMode = ref(false)
   const isSaving = ref(false)
-  const isLoading = ref(false)
+
+  /**
+   * "no board for this visit" and "we could not find out" are different answers
+   * (SRS-193). Collapsing them shows an empty Draft over a board that really
+   * has films, and the next save wipes it — the one way Phase 1 can lose a
+   * patient's data for good.
+   */
+  const loadState = ref<'loading' | 'loaded' | 'error'>('loading')
+  const isRetrying = ref(false)
+  /** A retry has come back empty-handed — worth saying so, in plain words. */
+  const retryFailed = ref(false)
 
   // --- viewport -------------------------------------------------------------
   const viewport = ref<Viewport>({ x: 0, y: 0, scale: 1 })
@@ -111,8 +121,15 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const selectedNote = computed(() =>
     selectedObject.value?.objectType === 'note' ? selectedObject.value : null,
   )
-  /** A never-saved board is editable; a saved one until Edit is pressed is not. */
-  const editable = computed(() => !saved.value || editMode.value)
+  const isLoading = computed(() => loadState.value === 'loading')
+  const loadFailed = computed(() => loadState.value === 'error')
+  /**
+   * A never-saved board is editable; a saved one until Edit is pressed is not.
+   * A board we have not read is nobody's to edit — we don't know what it holds.
+   */
+  const editable = computed(
+    () => loadState.value === 'loaded' && (!saved.value || editMode.value),
+  )
   const canUndo = computed(() => historyIndex.value > 0)
   const canRedo = computed(() => historyIndex.value < history.value.length - 1)
   const isEmpty = computed(() => objects.value.length === 0)
@@ -134,6 +151,14 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     savedSnapshot.value === null ? objects.value.length > 0 : snapshot() !== savedSnapshot.value,
   )
   const noteColors = computed(() => [...NOTE_COLORS, ...customNoteColors.value])
+  /**
+   * Saving is only safe once we know what is already on the board (SRS-195) —
+   * a save rewrites the whole record, so writing from a board we failed to read
+   * would drop every film we never saw.
+   */
+  const canSave = computed(
+    () => loadState.value === 'loaded' && editable.value && objects.value.length > 0,
+  )
 
   function snapshot() {
     return JSON.stringify({ objects: objects.value, layout: layout.value })
@@ -492,15 +517,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     historyIndex.value = -1
   }
 
-  async function loadBoard(key: string) {
-    if (boardKey.value === key) return
-
-    boardKey.value = key
-    clearBoardState()
-    // Nothing points at the old films any more, so drop them here rather than
-    // mid-load — a failed read would otherwise strand them.
-    releaseImages()
-    isLoading.value = true
+  async function fetchBoard(key: string) {
+    loadState.value = 'loading'
 
     try {
       const record = await xrayBoardStorage.getBoard(key)
@@ -509,6 +527,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       if (record) {
         const stored = await xrayBoardStorage.getImages(key)
         if (boardKey.value !== key) return
+        // Held until the read succeeds: a retry that fails must leave the films
+        // already on screen exactly where they are (SRS-194).
+        releaseImages()
         for (const image of stored) {
           imageBlobs.set(image.id, image.blob)
           imageUrls.value[image.id] = URL.createObjectURL(image.blob)
@@ -529,12 +550,17 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         savedAt.value = new Date(record.savedAt)
         savedSnapshot.value = snapshot()
       }
+      loadState.value = 'loaded'
     } catch (error) {
-      console.error('Failed to open X-ray board:', error)
-      notifications.error('Could not open the saved X-ray board')
+      if (boardKey.value !== key) return
+      // Only the flag moves: the objects on screen stay put (SRS-194) and a
+      // board that was Saved is still Saved — a failed read is not a downgrade
+      // to Draft (SRS-198).
+      loadState.value = 'error'
+      // Message only, never the board key: it carries the patient id (SRS-199).
+      console.error('Failed to open X-ray board:', (error as Error)?.message ?? error)
     } finally {
       if (boardKey.value === key) {
-        isLoading.value = false
         resetHistory()
         pendingFit = true
         fit()
@@ -542,7 +568,39 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
   }
 
+  async function loadBoard(key: string) {
+    if (boardKey.value === key) return
+
+    boardKey.value = key
+    // A different visit's films must never linger on screen, so this board is
+    // cleared up front — there is nothing here worth preserving on failure.
+    clearBoardState()
+    releaseImages()
+    retryFailed.value = false
+    await fetchBoard(key)
+  }
+
+  /** The Try again button. Keeps the current board if the read fails again. */
+  async function retryLoad() {
+    const key = boardKey.value
+    if (!key || isRetrying.value) return
+    isRetrying.value = true
+    try {
+      await fetchBoard(key)
+      retryFailed.value = loadState.value === 'error'
+    } finally {
+      isRetrying.value = false
+    }
+  }
+
   function validateBeforeSave() {
+    if (loadFailed.value) {
+      notifications.error(
+        'Saving is off until the board loads',
+        'We could not read what is already on it, so saving now could overwrite it.',
+      )
+      return false
+    }
     if (!objects.value.length) {
       notifications.error('Add at least one X-ray before saving')
       return false
@@ -572,7 +630,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    */
   async function rekeyBoard(nextKey: string) {
     const previousKey = boardKey.value
-    if (!previousKey || previousKey === nextKey || !objects.value.length) return
+    // Also a write that drops the old record, so it needs the same guard as
+    // saveBoard — never move a board we could not read in full.
+    if (!previousKey || previousKey === nextKey || !objects.value.length || loadFailed.value) {
+      return
+    }
     boardKey.value = nextKey
     if (!saved.value) return
     try {
@@ -585,7 +647,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   async function saveBoard() {
     const key = boardKey.value
-    if (isSaving.value || !key) return
+    // Checked again here, not just on the button: this is the only call that
+    // rewrites the stored record, so it is the one place that must hold.
+    if (isSaving.value || !key || loadFailed.value) return
     isSaving.value = true
     try {
       await persist(key)
@@ -621,6 +685,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function closeBoard() {
     releaseImages()
     clearBoardState()
+    loadState.value = 'loading'
+    retryFailed.value = false
     boardKey.value = null
     viewport.value = { x: 0, y: 0, scale: 1 }
   }
@@ -636,7 +702,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     savedAt,
     editMode,
     isSaving,
-    isLoading,
+    loadState,
+    isRetrying,
+    retryFailed,
     viewport,
     stageSize,
     imageUrls,
@@ -646,7 +714,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // derived
     selectedObject,
     selectedNote,
+    isLoading,
+    loadFailed,
     editable,
+    canSave,
     canUndo,
     canRedo,
     isEmpty,
@@ -688,6 +759,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     toggleToolbar,
     // lifecycle
     loadBoard,
+    retryLoad,
     rekeyBoard,
     validateBeforeSave,
     saveBoard,
