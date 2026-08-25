@@ -402,8 +402,15 @@ watch(editingNoteId, async id => {
 })
 
 /* ---------------- drop / paste ---------------- */
-function rejectReadOnly() {
-  notifications.warning('Board is read-only', 'Click Edit first to change it')
+// `editable` is false for three different reasons; saying "click Edit first"
+// when the board never loaded just sends the user after a button that is not
+// there.
+function rejectChange() {
+  if (loadFailed.value) {
+    notifications.warning('The board could not be loaded', 'Try loading it again first')
+  } else {
+    notifications.warning('Board is read-only', 'Click Edit first to change it')
+  }
 }
 
 function onDragEnter(event: DragEvent) {
@@ -430,7 +437,7 @@ function onDrop(event: DragEvent) {
   dropDepth = 0
   isDropping.value = false
   if (!editable.value) {
-    rejectReadOnly()
+    rejectChange()
     return
   }
   const files = event.dataTransfer?.files
@@ -449,7 +456,7 @@ function onPaste(event: ClipboardEvent) {
   if (!files.length) return
   event.preventDefault()
   if (!editable.value) {
-    rejectReadOnly()
+    rejectChange()
     return
   }
   const center = board.viewCenter()
