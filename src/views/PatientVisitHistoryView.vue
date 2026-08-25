@@ -7,7 +7,7 @@ import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
 import type { FilterConfig } from '../components/common/FilterPanel.vue'
-import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User, ArrowLeft } from 'lucide-vue-next'
+import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User, ArrowLeft, Image as ImageIcon } from 'lucide-vue-next'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import Skeleton from '../components/common/Skeleton.vue'
@@ -96,6 +96,15 @@ const openChart = (visitId: string) => {
   router.push({
     name: 'chart',
     query: { patientId, visitId }
+  })
+}
+
+// Always the id of the row that was clicked — never the visit that happens to be
+// active in the store, which may belong to a patient opened earlier (SRS-153, 156).
+const openXrayBoard = (visitId: string) => {
+  router.push({
+    name: 'chart',
+    query: { patientId, visitId, tab: 'xray' }
   })
 }
 
@@ -412,6 +421,14 @@ onUnmounted(() => {
                 class="px-5 py-2 bg-[#0052ff] text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors"
               >
                 Chart
+              </button>
+
+              <button
+                @click="openXrayBoard(visit.id)"
+                class="flex items-center gap-1.5 px-5 py-2 bg-white text-[#0052ff] border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
+              >
+                <ImageIcon class="w-4 h-4" />
+                X-ray
               </button>
 
               <div class="relative group flex">
