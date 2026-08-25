@@ -22,6 +22,7 @@ const board = useXrayBoardStore()
 const notifications = useNotificationStore()
 const {
   objects,
+  sortedObjects,
   layout,
   selectedId,
   editingNoteId,
@@ -82,14 +83,17 @@ const worldStyle = computed<Record<string, string>>(() => ({
   '--inv': String(1 / viewport.value.scale),
 }))
 
+// The CSS layer comes from the position in the sorted list, not from
+// `object.zIndex` itself — a stored zIndex may be negative, which would drop the
+// object behind the board background.
 function objectStyle(object: XrayObject, index: number): Record<string, string> {
   const style: Record<string, string> = {
-    width: `${object.w}px`,
-    height: `${object.h}px`,
-    transform: `translate(${object.x}px, ${object.y}px) rotate(${object.rot}deg)`,
+    width: `${object.width}px`,
+    height: `${object.height}px`,
+    transform: `translate(${object.posX}px, ${object.posY}px) rotate(${object.rotation}deg)`,
     zIndex: String(index + 1),
   }
-  if (object.type === 'note') style.background = object.color
+  if (object.objectType === 'note') style.background = object.noteColor
   return style
 }
 
@@ -218,8 +222,8 @@ function onPointerDown(event: PointerEvent) {
   drag = {
     mode: 'move',
     id: object.id,
-    offsetX: point.x - object.x,
-    offsetY: point.y - object.y,
+    offsetX: point.x - object.posX,
+    offsetY: point.y - object.posY,
     moved: false,
   }
   capture(event)
@@ -227,19 +231,19 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function startHandleDrag(event: PointerEvent, object: XrayObject, handle: string) {
-  const centerX = object.x + object.w / 2
-  const centerY = object.y + object.h / 2
+  const centerX = object.posX + object.width / 2
+  const centerY = object.posY + object.height / 2
 
   if (handle === 'rot') {
     drag = { mode: 'rotate', id: object.id, centerX, centerY, moved: false }
   } else {
     const direction = RESIZE_DIRECTIONS[handle as keyof typeof RESIZE_DIRECTIONS]
     if (!direction) return
-    const angle = toRad(object.rot)
+    const angle = toRad(object.rotation)
     // Resizing keeps the opposite corner pinned.
     const anchor = rotateVec(
-      (-direction[0] * object.w) / 2,
-      (-direction[1] * object.h) / 2,
+      (-direction[0] * object.width) / 2,
+      (-direction[1] * object.height) / 2,
       angle,
     )
     drag = {
@@ -248,8 +252,8 @@ function startHandleDrag(event: PointerEvent, object: XrayObject, handle: string
       dirX: direction[0],
       dirY: direction[1],
       angle,
-      startW: object.w,
-      startH: object.h,
+      startW: object.width,
+      startH: object.height,
       anchorX: centerX + anchor.x,
       anchorY: centerY + anchor.y,
       moved: false,
@@ -284,8 +288,8 @@ function onPointerMove(event: PointerEvent) {
   const point = worldPoint(event)
 
   if (current.mode === 'move') {
-    object.x = Math.round(point.x - current.offsetX)
-    object.y = Math.round(point.y - current.offsetY)
+    object.posX = Math.round(point.x - current.offsetX)
+    object.posY = Math.round(point.y - current.offsetY)
     current.moved = true
     return
   }
@@ -301,10 +305,10 @@ function onPointerMove(event: PointerEvent) {
     const width = current.startW * scale
     const height = current.startH * scale
     const center = rotateVec((current.dirX * width) / 2, (current.dirY * height) / 2, current.angle)
-    object.w = width
-    object.h = height
-    object.x = current.anchorX + center.x - width / 2
-    object.y = current.anchorY + center.y - height / 2
+    object.width = width
+    object.height = height
+    object.posX = current.anchorX + center.x - width / 2
+    object.posY = current.anchorY + center.y - height / 2
     current.moved = true
     return
   }
@@ -312,7 +316,8 @@ function onPointerMove(event: PointerEvent) {
   let angle =
     (Math.atan2(point.y - current.centerY, point.x - current.centerX) * 180) / Math.PI + 90
   if (event.shiftKey) angle = Math.round(angle / 15) * 15
-  object.rot = ((angle % 360) + 360) % 360
+  // Normalised into [0, 360) to match the xray_object_rotation_valid CHECK (PER-231).
+  object.rotation = ((angle % 360) + 360) % 360
   current.moved = true
 }
 
@@ -374,7 +379,7 @@ function onDoubleClick(event: MouseEvent) {
   if (!editable.value) return
   const objectEl = (event.target as HTMLElement).closest<HTMLElement>('[data-object-id]')
   const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
-  if (object?.type !== 'note') return
+  if (object?.objectType !== 'note') return
   board.select(object.id)
   board.editingNoteId = object.id
 }
@@ -529,7 +534,7 @@ onBeforeUnmount(() => {
           v-for="slot in FMX_SLOTS"
           :key="slot.id"
           class="xray-slot"
-          :class="{ 'is-filled': filledSlots.has(slot.id) }"
+          :class="{ 'is-filled': filledSlots.has(String(slot.id)) }"
           :style="slotStyle(slot)"
         >
           <span>{{ slot.label }}</span>
@@ -537,19 +542,19 @@ onBeforeUnmount(() => {
       </div>
 
       <div
-        v-for="(object, index) in objects"
+        v-for="(object, index) in sortedObjects"
         :key="object.id"
         :data-object-id="object.id"
         class="xray-object"
         :class="[
-          object.type === 'image' ? 'xray-image' : 'xray-note',
+          object.objectType === 'image' ? 'xray-image' : 'xray-note',
           { 'is-selected': object.id === selectedId },
         ]"
         :style="objectStyle(object, index)"
       >
         <img
-          v-if="object.type === 'image'"
-          :src="imageUrls[object.imageId]"
+          v-if="object.objectType === 'image'"
+          :src="imageUrls[object.assetId]"
           class="block h-full w-full rounded bg-black"
           draggable="false"
           alt="Radiograph"
@@ -559,8 +564,8 @@ onBeforeUnmount(() => {
           :ref="el => setNoteRef(object.id, el)"
           class="xray-note-text"
           :class="{ 'is-editing': editingNoteId === object.id }"
-          :style="{ fontSize: `${object.fontSize}px` }"
-          :value="object.text"
+          :style="{ fontSize: `${object.noteFontSize}px` }"
+          :value="object.noteText"
           :readonly="editingNoteId !== object.id"
           placeholder="Type a note…"
           @input="board.setNoteText(object.id, ($event.target as HTMLTextAreaElement).value)"
