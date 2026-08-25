@@ -33,6 +33,7 @@ import type {
   XrayImageObject,
   XrayNoteObject,
   XrayObject,
+  XrayRejectReason,
   XrayUploadFailure,
   XrayUploadItem,
 } from '@/domain/xray/xray.types'
@@ -149,11 +150,20 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   // takes the report of what failed with it.
   const uploadQueue = ref<XrayUploadItem[]>([])
   /**
-   * The file behind each row and where its film should land. Held outside the
-   * reactive list because a File has nothing worth tracking, and kept at all so
-   * a Retry can resend the same bytes to the same spot on the board.
+   * The file behind each row. Held outside the reactive list because a File has
+   * nothing worth tracking, and kept at all so a Retry can resend the same
+   * bytes — including for a file the checks here refused, which is an appeal to
+   * the server rather than a repeat of the same question.
    */
-  const queued = new Map<string, { file: File; x: number; y: number }>()
+  const queued = new Map<string, File>()
+  /**
+   * Where this batch was dropped, and how many of its films have landed. The
+   * cascade is counted at the moment a film lands rather than when it was
+   * picked, so refused files leave no gap in the fan and one that only makes it
+   * on the second try still gets the next place in line (SRS-232).
+   */
+  let batchOrigin = { x: 0, y: 0 }
+  let landed = 0
   let queueRunning = false
 
   const history = ref<string[]>([])
@@ -406,6 +416,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // now, and leaving them would bury this batch's failures among them.
     clearUploadQueue()
 
+    batchOrigin = { x: worldX, y: worldY }
+
     // Minted for everything picked, one per file and all different: the id a
     // film is drawn under here is the id it is filed under server-side
     // (PER-260 §4), and the id a retry resends (SRS-245). Files that never
@@ -417,46 +429,42 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     // and the two PDFs among them are named right where they were chosen, so
     // there is one report to read instead of a message about some of the batch
     // and a list about the rest.
-    let landing = 0
+    let sending = 0
     picked.forEach((file, index) => {
       const uploadId = uploadIds[index]
+      queued.set(uploadId, file)
       const reason = checkXrayFile(file)
 
-      if (reason) {
-        // Sending the same PDF or the same 40 MB again answers the same way, so
-        // this row gets its reason and no button (SRS-238, SRS-239).
-        uploadQueue.value.push({
-          uploadId,
-          fileName: file.name,
-          status: 'failed',
-          progress: 0,
-          error: reasonText(reason),
-          canRetry: false,
-        })
-        return
-      }
-
-      queued.set(uploadId, {
-        file,
-        // The cascade counts the films that will land rather than the files
-        // that were picked, so two refused PDFs in the middle of a batch don't
-        // leave a gap in the fan (SRS-232).
-        x: worldX + landing * IMAGE_CASCADE_OFFSET,
-        y: worldY + landing * IMAGE_CASCADE_OFFSET,
-      })
       uploadQueue.value.push({
         uploadId,
         fileName: file.name,
-        status: 'pending',
+        status: reason ? 'failed' : 'pending',
         progress: 0,
-        canRetry: false,
+        error: reason ? reasonText(reason) : undefined,
+        canRetry: reason !== null && canAppeal(reason),
       })
-      landing += 1
+
+      if (!reason) sending += 1
     })
 
     // Every file was refused: the rows are the whole report, and there is
     // nothing to send.
-    if (landing > 0) await runUploadQueue()
+    if (sending > 0) await runUploadQueue()
+  }
+
+  /**
+   * Whether a Retry on a file this browser refused is worth offering. The
+   * checks here run on `file.type`, which is the operating system's guess from
+   * the extension and is wrong often enough to matter — the server reads the
+   * actual bytes. So Retry on an `unsupported_type` means "send it up anyway
+   * and let the server decide", and a film the browser mislabelled gets on the
+   * board (SRS-208, SRS-211).
+   *
+   * Size is left out: both sides use the same 10 MB limit and a byte count is
+   * not a guess, so that Retry would only be a long upload with a known ending.
+   */
+  function canAppeal(reason: XrayRejectReason) {
+    return reason === 'unsupported_type' && canUpload.value
   }
 
   function failItem(item: XrayUploadItem, error: string, canRetry: boolean) {
@@ -528,12 +536,12 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    */
   async function placeFilm(
     item: XrayUploadItem,
-    entry: { file: File; x: number; y: number },
+    file: File,
     naturalSize: { width: number; height: number } | null,
   ): Promise<boolean> {
     const assetId = item.assetId ?? item.uploadId
     const key = boardKey.value
-    const url = URL.createObjectURL(entry.file)
+    const url = URL.createObjectURL(file)
     try {
       // The server read the film's size with sharp on the way in, so there is
       // nothing to decode twice (SRS-223). Without a server there is no other
@@ -547,7 +555,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       }
       const { width: boardWidth, height: boardHeight } = initialImageSize(width, height)
 
-      imageBlobs.set(assetId, entry.file)
+      imageBlobs.set(assetId, file)
       // URLs live in this map and never on the object itself (SRS-234).
       imageUrls.value[assetId] = url
 
@@ -558,8 +566,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         assetId,
         naturalWidth: width,
         naturalHeight: height,
-        posX: Math.round(entry.x - boardWidth / 2),
-        posY: Math.round(entry.y - boardHeight / 2),
+        posX: Math.round(batchOrigin.x + landed * IMAGE_CASCADE_OFFSET - boardWidth / 2),
+        posY: Math.round(batchOrigin.y + landed * IMAGE_CASCADE_OFFSET - boardHeight / 2),
         width: boardWidth,
         height: boardHeight,
         rotation: 0,
@@ -567,6 +575,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       }
       objects.value.push(object)
       selectedId.value = object.id
+      landed += 1
 
       item.status = 'done'
       item.progress = 100
@@ -606,8 +615,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         // were picked for a board that is no longer open.
         if (boardKey.value !== key) break
 
-        const entry = queued.get(item.uploadId)
-        if (!entry) {
+        const file = queued.get(item.uploadId)
+        if (!file) {
           failItem(item, 'The file is no longer open', false)
           continue
         }
@@ -618,7 +627,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
         let naturalSize: { width: number; height: number } | null = null
         if (canUpload.value) {
-          const step = await uploadOne(item, entry.file)
+          // No second look at `file.type` here: a row only reaches this loop
+          // because it passed the checks, or because the doctor asked for it to
+          // go up in spite of them. Running the same check again would answer
+          // the appeal with the opinion it was appealing against.
+          const step = await uploadOne(item, file)
           if (step.outcome === 'halted') {
             haltQueue(step.failure)
             break
@@ -627,7 +640,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           naturalSize = step.size
         }
 
-        if (await placeFilm(item, entry, naturalSize)) added += 1
+        if (await placeFilm(item, file, naturalSize)) added += 1
       }
     } finally {
       queueRunning = false
@@ -693,6 +706,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   function resetUploadQueue() {
     uploadQueue.value = []
     queued.clear()
+    landed = 0
   }
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {

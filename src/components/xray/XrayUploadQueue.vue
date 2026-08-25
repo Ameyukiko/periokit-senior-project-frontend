@@ -69,7 +69,7 @@ watch(
         <button
           v-if="retryable.length > 1 && !isAddingFiles"
           class="xray-queue-btn"
-          :title="`Send the ${retryable.length} films that failed again`"
+          :title="`Try the ${retryable.length} files that failed again`"
           @click="board.retryFailedUploads()"
         >
           <RotateCw class="h-[13px] w-[13px]" />
@@ -128,7 +128,7 @@ watch(
           v-else-if="item.status === 'failed' && item.canRetry"
           class="xray-queue-btn shrink-0 px-1.5"
           :disabled="isAddingFiles"
-          title="Send this film again"
+          title="Try this file again"
           @click="board.retryUpload(item.uploadId)"
         >
           <RotateCw class="h-[13px] w-[13px]" />

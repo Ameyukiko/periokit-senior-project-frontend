@@ -205,7 +205,12 @@ export interface XrayUploadItem {
   error?: string
   /** The asset the server accepted. Set once the upload comes back. */
   assetId?: string
-  /** Whether sending this one film again could end differently (SRS-244). */
+  /**
+   * Whether trying this one film again could end differently (SRS-244). True
+   * for a trip that failed, and for a file this browser refused on its own
+   * guess at the type — that Retry sends it up for the server to judge on the
+   * bytes. False once the server itself has said no.
+   */
   canRetry: boolean
 }
 
