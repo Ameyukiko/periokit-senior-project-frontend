@@ -1,30 +1,40 @@
 
+// Field names follow the XrayBoardObject / XrayAsset contract in PER-233 so the
+// board maps 1:1 onto the API response once the backend lands — SRS-169 forbids
+// touching geometry on load, and a rename is a transformation.
+
 export interface XrayObjectBase {
   id: string
-  x: number
-  y: number
-  w: number
-  h: number
-  /** Rotation in degrees, around the object's centre. */
-  rot: number
+  /**
+   * Stacking order, low to high. Carried as data rather than derived from the
+   * array position so a saved board comes back stacked exactly as it was left.
+   * May go negative — "send to back" just keeps counting down.
+   */
+  zIndex: number
+  posX: number
+  posY: number
+  width: number
+  height: number
+  /** Rotation in degrees, around the object's centre. Kept in [0, 360). */
+  rotation: number
 }
 
 export interface XrayImageObject extends XrayObjectBase {
-  type: 'image'
+  objectType: 'image'
   /** Key of the image blob in the board storage. */
-  imageId: string
+  assetId: string
   /** Natural pixel size — needed to keep the aspect ratio when fitting a slot. */
-  natW: number
-  natH: number
+  naturalWidth: number
+  naturalHeight: number
   /** FMX slot this film is mounted in (layout mode only), null when free. */
-  slot: number | null
+  slotCode: string | null
 }
 
 export interface XrayNoteObject extends XrayObjectBase {
-  type: 'note'
-  text: string
-  color: string
-  fontSize: number
+  objectType: 'note'
+  noteText: string
+  noteColor: string
+  noteFontSize: number
 }
 
 export type XrayObject = XrayImageObject | XrayNoteObject
