@@ -71,3 +71,72 @@ export interface XrayBoardRecord {
   layout: boolean
   savedAt: string
 }
+
+// --- API shapes (PER-233) --------------------------------------------------
+// Mirrors the GraphQL schema field for field, including the parts the schema
+// leaves nullable. Nothing is narrowed or renamed here: the mapper into
+// XrayObject is where the union is recovered, and SRS-169 forbids that mapper
+// from touching any value it passes through.
+
+export interface XrayAssetResponse {
+  id: string
+  fileName: string
+  mimeType: string
+  fileSize: number
+  naturalWidth: number
+  naturalHeight: number
+  /** pending | active | orphaned | cleanup_failed */
+  status: string
+  /** Minted per request — never stored, on the server or here (SRS-185, SRS-187). */
+  signedUrl: string
+  urlExpiresAt: string
+}
+
+export interface XrayBoardObjectResponse {
+  id: string
+  /** image | note */
+  objectType: string
+  zIndex: number
+  posX: number
+  posY: number
+  width: number
+  height: number
+  rotation: number
+  assetId: string | null
+  slotCode: string | null
+  noteText: string | null
+  noteColor: string | null
+  noteFontSize: number | null
+}
+
+export interface XrayBoardResponse {
+  id: string
+  visitId: string
+  /** draft | saved */
+  status: string
+  savedAt: string | null
+  objects: XrayBoardObjectResponse[]
+  /** Every asset on the visit, including any no object points at yet. */
+  assets: XrayAssetResponse[]
+}
+
+/** No `id`: a save is replace-all, so the server has no old rows to match. */
+export interface XrayBoardObjectInput {
+  objectType: string
+  zIndex: number
+  posX: number
+  posY: number
+  width: number
+  height: number
+  rotation?: number
+  assetId?: string | null
+  slotCode?: string | null
+  noteText?: string | null
+  noteColor?: string | null
+  noteFontSize?: number | null
+}
+
+export interface SaveXrayBoardInput {
+  visitId: string
+  objects: XrayBoardObjectInput[]
+}
