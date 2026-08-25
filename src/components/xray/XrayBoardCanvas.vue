@@ -50,8 +50,20 @@ const RESIZE_DIRECTIONS = {
   se: [1, 1],
 } as const
 
+/** How far the pointer may travel and still count as a click, not a drag. */
+const CLICK_SLOP = 4
+
 type Drag =
-  | { mode: 'pan'; startX: number; startY: number; originX: number; originY: number }
+  | {
+      mode: 'pan'
+      startX: number
+      startY: number
+      originX: number
+      originY: number
+      moved: boolean
+      /** This pan started on empty board — a click here clears the selection. */
+      deselect: boolean
+    }
   | { mode: 'move'; id: string; offsetX: number; offsetY: number; moved: boolean }
   | {
       mode: 'resize'
@@ -167,13 +179,15 @@ function capture(event: PointerEvent) {
   }
 }
 
-function startPan(event: PointerEvent) {
+function startPan(event: PointerEvent, deselect: boolean) {
   drag = {
     mode: 'pan',
     startX: event.clientX,
     startY: event.clientY,
     originX: viewport.value.x,
     originY: viewport.value.y,
+    moved: false,
+    deselect,
   }
   isPanning.value = true
   capture(event)
@@ -197,25 +211,27 @@ function onPointerDown(event: PointerEvent) {
     if (touches.size > 2) return
   }
 
-  // Read-only board: pan and zoom only.
-  if (!editable.value) {
-    blurEditingNote()
-    startPan(event)
-    return
-  }
-
   const target = event.target as HTMLElement
   const handleEl = target.closest<HTMLElement>('[data-handle]')
   const objectEl = target.closest<HTMLElement>('[data-object-id]')
+  const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
 
-  if (event.button === 1 || spaceDown.value || (!objectEl && !handleEl)) {
+  // Read-only board: nothing may move, but picking a film is still allowed
+  // (SRS-257) — clicking the one you are reading is how a doctor keeps their
+  // place, and it changes nothing on the board.
+  if (!editable.value) {
     blurEditingNote()
-    if (!objectEl) board.select(null)
-    startPan(event)
+    if (object) board.select(object.id)
+    startPan(event, !object)
     return
   }
 
-  const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
+  if (event.button === 1 || spaceDown.value || (!objectEl && !handleEl)) {
+    blurEditingNote()
+    startPan(event, !objectEl)
+    return
+  }
+
   if (!object) return
 
   if (handleEl) {
@@ -285,10 +301,10 @@ function onPointerMove(event: PointerEvent) {
   if (!current) return
 
   if (current.mode === 'pan') {
-    board.setViewportOrigin(
-      current.originX + (event.clientX - current.startX),
-      current.originY + (event.clientY - current.startY),
-    )
+    const dx = event.clientX - current.startX
+    const dy = event.clientY - current.startY
+    if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) current.moved = true
+    board.setViewportOrigin(current.originX + dx, current.originY + dy)
     return
   }
 
@@ -334,7 +350,17 @@ function endDrag() {
   const current = drag
   drag = null
   isPanning.value = false
-  if (!current || current.mode === 'pan' || !current.moved) return
+  if (!current) return
+
+  // Only a pan that stayed put is a click on empty board (SRS-254). Judging it
+  // on release rather than on press is what keeps a film selected through a pan
+  // — the doctor is dragging the board, not throwing their choice away.
+  if (current.mode === 'pan') {
+    if (!current.moved && current.deselect) board.select(null)
+    return
+  }
+
+  if (!current.moved) return
 
   if (layout.value && current.mode === 'move') {
     if (board.snapToSlot(current.id) === 'occupied') {
