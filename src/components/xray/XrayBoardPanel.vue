@@ -8,6 +8,7 @@ import XrayBoardToolbar from './XrayBoardToolbar.vue'
 import XrayNotePanel from './XrayNotePanel.vue'
 import XrayShortcutsCard from './XrayShortcutsCard.vue'
 import XrayZoomBar from './XrayZoomBar.vue'
+import { UPLOAD_ACCEPT_ATTR } from '@/domain/xray/xray.constants'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
 
@@ -117,6 +118,10 @@ const canvasVars = computed<Record<string, string>>(() =>
 )
 
 function openFilePicker() {
+  if (isSaving.value) {
+    notifications.warning('The board is saving', 'Wait for it to finish, then add the films')
+    return
+  }
   if (contentsUnknown.value) {
     notifications.warning('The board could not be loaded', 'Try loading it again first')
     return
@@ -281,7 +286,7 @@ function confirmCancelEdit() {
     <input
       ref="fileInput"
       type="file"
-      accept="image/*"
+      :accept="UPLOAD_ACCEPT_ATTR"
       multiple
       class="hidden"
       @change="onFilesPicked"

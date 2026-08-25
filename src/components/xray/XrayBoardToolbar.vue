@@ -19,7 +19,7 @@ const undoLabel = `Undo (${shortcutLabel('Z')})`
 const redoLabel = `Redo (${shortcutLabel('Z', { shift: true })})`
 
 const board = useXrayBoardStore()
-const { editable, selectedId, canUndo, canRedo, toolbarCollapsed } = storeToRefs(board)
+const { editable, selectedId, canUndo, canRedo, toolbarCollapsed, isSaving } = storeToRefs(board)
 
 function addNote() {
   const center = board.viewCenter()
@@ -32,7 +32,14 @@ function addNote() {
     class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_8px_26px_rgba(15,23,42,0.28)] backdrop-blur-md"
   >
     <div v-if="!toolbarCollapsed" class="flex items-center gap-1">
-      <button class="xray-tool" :disabled="!editable" title="Add image" @click="emit('upload')">
+      <!-- Off during a save: the payload is built when Save is pressed, so a
+           film added now would be on screen but not in it. -->
+      <button
+        class="xray-tool"
+        :disabled="!editable || isSaving"
+        title="Add image"
+        @click="emit('upload')"
+      >
         <Upload class="h-4 w-4" />
         Add image
       </button>

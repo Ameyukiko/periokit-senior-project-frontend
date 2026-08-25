@@ -11,6 +11,9 @@ import {
   NOTE_DEFAULT_COLOR,
   NOTE_DEFAULT_SIZE,
   NOTE_FONT,
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MAX_MB,
   XRAY_PREF_KEYS,
 } from '@/domain/xray/xray.constants'
 import { boardBounds, clamp, findSlotAt, fitIntoSlot, slotCodeOf } from '@/domain/xray/xray.geometry'
@@ -292,11 +295,34 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   }
 
   async function addImageFiles(files: FileList | File[], worldX: number, worldY: number) {
-    const all = Array.from(files)
-    const images = all.filter(file => file.type.startsWith('image/'))
-    const skipped = all.length - images.length
-    if (skipped > 0) {
-      notifications.warning(`Skipped ${skipped} non-image file${skipped > 1 ? 's' : ''}`)
+    // A save serialises the board the moment the button is pressed. A film added
+    // while that is in flight shows on screen but is missing from what gets
+    // written, and the next save drops it for good.
+    if (isSaving.value) {
+      notifications.warning('The board is saving', 'Wait for it to finish, then add the films')
+      return
+    }
+
+    const images: File[] = []
+    const rejected: string[] = []
+    for (const file of Array.from(files)) {
+      if (!UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
+        rejected.push(`${file.name} — only JPEG, PNG or WebP`)
+      } else if (file.size > UPLOAD_MAX_BYTES) {
+        rejected.push(`${file.name} — larger than ${UPLOAD_MAX_MB} MB`)
+      } else {
+        images.push(file)
+      }
+    }
+
+    if (rejected.length) {
+      // Every name, every time. "Some files failed" tells a doctor who picked
+      // 18 films nothing at all (SRS-213).
+      notifications.warning(
+        rejected.length === 1 ? 'One file was not added' : `${rejected.length} files were not added`,
+        rejected.join('\n'),
+        8000,
+      )
     }
     if (!images.length) return
 

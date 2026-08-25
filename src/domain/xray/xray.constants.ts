@@ -14,6 +14,17 @@ export const HISTORY_MAX = 30
 /** Longest side an added image gets on the board, before the user resizes it. */
 export const IMAGE_MAX_LONG_SIDE = 420
 
+/**
+ * What an upload may be. Checked here to spare the user a long upload that ends
+ * in a rejection — it does not stand in for the server's own check, which is
+ * the one that counts (SRS-208, SRS-211).
+ */
+export const UPLOAD_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+export const UPLOAD_MAX_MB = 10
+export const UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024
+/** Same list, in the form the file picker wants. */
+export const UPLOAD_ACCEPT_ATTR = UPLOAD_ACCEPTED_TYPES.join(',')
+
 /** How far outside a slot a film may be dropped and still snap in. */
 export const SLOT_SNAP_TOLERANCE = 24
 /** Breathing room left around a film once it is mounted in a slot. */

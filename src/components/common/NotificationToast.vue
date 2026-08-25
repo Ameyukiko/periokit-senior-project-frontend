@@ -61,7 +61,8 @@ const getContainerClass = (type: string) => {
           <p class="text-[15px] font-semibold text-gray-900 leading-tight" :class="{'mb-1': notification.description}">
             {{ notification.message }}
           </p>
-          <p v-if="notification.description" class="text-[14px] text-gray-500 leading-relaxed pr-2">
+          <!-- pre-line so a description can list one rejected file per line -->
+          <p v-if="notification.description" class="text-[14px] text-gray-500 leading-relaxed pr-2 whitespace-pre-line">
             {{ notification.description }}
           </p>
           
