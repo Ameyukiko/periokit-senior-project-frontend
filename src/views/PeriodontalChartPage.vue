@@ -243,8 +243,12 @@ const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
 const showCancelEditConfirmModal = ref(false)
 
+const showXrayLeaveWarningModal = ref(false)
+
 // ID of the visit tab the user is trying to close (pending confirmation)
 let pendingCloseVisitId: string | null = null
+// What to run once the doctor agrees to leave unsaved X-ray work behind
+let pendingXrayNavigation: (() => void | Promise<void>) | null = null
 
 // Auto-fit scale toggle
 const enableAutoFit = ref(false)
@@ -254,10 +258,35 @@ onMounted(() => {
   isTouchDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
 })
 
-// Switch to a different visit (tab click)
-const handleSwitchVisit = async (visitId: string) => {
-  if (visitId === activeVisitId.value) return
+// The X-ray board is only in memory until it is saved, and opening another
+// visit reloads it from storage on top of whatever was there — so anything that
+// changes which visit is open asks first (SRS-363). Moving between the Chart
+// and X-ray sub-tabs is safe: the board reloads only when its visit changes.
+const guardUnsavedXray = (proceed: () => void | Promise<void>) => {
+  if (!xrayStore.isDirty) return proceed()
+  pendingXrayNavigation = proceed
+  showXrayLeaveWarningModal.value = true
+}
 
+const confirmLeaveXray = async () => {
+  showXrayLeaveWarningModal.value = false
+  const proceed = pendingXrayNavigation
+  pendingXrayNavigation = null
+  await proceed?.()
+}
+
+const cancelLeaveXray = () => {
+  showXrayLeaveWarningModal.value = false
+  pendingXrayNavigation = null
+}
+
+// Switch to a different visit (tab click)
+const handleSwitchVisit = (visitId: string) => {
+  if (visitId === activeVisitId.value) return
+  guardUnsavedXray(() => doSwitchVisit(visitId))
+}
+
+const doSwitchVisit = async (visitId: string) => {
   visitStore.setActiveVisit(visitId)
 
   router.replace({
@@ -278,6 +307,16 @@ const handleSwitchVisit = async (visitId: string) => {
 // Close a visit tab. If the visit has unsaved changes, show a warning first.
 const handleCloseVisit = async (visitId: string) => {
   if (visits.value.length <= 1) return
+  // Closing the open tab takes its X-ray board with it, so that gets asked
+  // about before the chart's own warning.
+  if (visitId === activeVisitId.value) {
+    guardUnsavedXray(() => closeVisitTab(visitId))
+    return
+  }
+  await closeVisitTab(visitId)
+}
+
+const closeVisitTab = async (visitId: string) => {
   // Only warn for the draft (id='new') or a visit with dirty unsaved edits
   const isDirtyTab = visitId === 'new' && chartStore.isDirty
   if (isDirtyTab && visitId === activeVisitId.value) {
@@ -743,6 +782,18 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             type="danger"
             @confirm="confirmCloseTab"
             @cancel="showCloseTabWarningModal = false"
+          />
+
+          <!-- Unsaved X-ray Board Warning -->
+          <ConfirmModal
+            :show="showXrayLeaveWarningModal"
+            title="Unsaved X-ray Board"
+            message="<span class='text-slate-800 font-bold text-lg block mb-1'>The X-ray board for this visit has not been saved.</span><span class='text-slate-500 font-normal'>Opening another visit reloads the board, and these changes will be lost.</span>"
+            confirm-text="Leave Anyway"
+            cancel-text="Stay Here"
+            type="danger"
+            @confirm="confirmLeaveXray"
+            @cancel="cancelLeaveXray"
           />
 
           <!-- Draft Recovery Modal -->
