@@ -37,6 +37,7 @@ const {
   retryFailed,
   isEmpty,
   isDirty,
+  canUpload,
   lightCanvas,
 } = storeToRefs(board)
 
@@ -129,6 +130,7 @@ const dialogOpen = computed(
 // A greyed-out button with no reason reads as a broken one.
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
+  if (!canUpload.value) return 'Save the visit first — the films go up with it'
   if (isEmpty.value) return 'Add at least one X-ray first'
   return 'Save this board'
 })

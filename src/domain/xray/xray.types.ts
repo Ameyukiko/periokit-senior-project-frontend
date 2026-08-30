@@ -64,14 +64,6 @@ export interface Bounds {
   maxY: number
 }
 
-/** What gets written to storage when the board is saved. */
-export interface XrayBoardRecord {
-  key: string
-  objects: XrayObject[]
-  layout: boolean
-  savedAt: string
-}
-
 // --- API shapes (PER-233) --------------------------------------------------
 // Mirrors the GraphQL schema field for field, including the parts the schema
 // leaves nullable. Nothing is narrowed or renamed here: the mapper into

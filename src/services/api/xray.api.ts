@@ -17,13 +17,10 @@ import type {
   XrayUploadResponse,
 } from '@/domain/xray/xray.types'
 
-// Written against the schema in PER-233. The queries below now have resolvers
-// behind them, but nothing calls them yet: `saveXrayBoard` is still a stub
-// server-side (PER-254), so the board would have somewhere to read from and
-// nowhere to write to. It keeps reading and writing through
-// `services/storage/xray-board.storage.ts` (IndexedDB) until that lands.
-//
-// The upload at the bottom of this file is the part that is live.
+// Written against the schema in PER-233, and live end to end: PER-234 (read),
+// PER-254 (write) and PER-255 (orphan cleanup) all have resolvers behind them,
+// and the board calls all three. The browser no longer keeps a copy — a visit's
+// board is whatever the server says it is.
 
 const BOARD_FIELDS = gql`
   fragment XrayBoardFields on XrayBoard {
@@ -121,6 +118,65 @@ export const xrayApi = {
       mutation: SAVE_XRAY_BOARD,
       variables: { input },
     }),
+}
+
+/**
+ * What to tell the doctor when a board read or write did not go through. Same
+ * shape of answer as the upload's: plain words, never a code (SRS-197), plus
+ * whether pressing the button again could end differently.
+ */
+export interface XrayBoardFailure {
+  title: string
+  detail: string
+  canRetry: boolean
+}
+
+/** The code the resolver put on the error — null when no server answered. */
+function graphqlCode(error: unknown): string | null {
+  const errors = (error as { graphQLErrors?: { extensions?: { code?: unknown } }[] })
+    ?.graphQLErrors
+  const code = errors?.[0]?.extensions?.code
+  return typeof code === 'string' ? code : null
+}
+
+export function toBoardFailure(error: unknown): XrayBoardFailure {
+  switch (graphqlCode(error)) {
+    case 'UNAUTHENTICATED':
+      return {
+        title: 'You have been signed out',
+        detail: 'Sign in again, then open this board. Nothing on it was lost.',
+        canRetry: false,
+      }
+    case 'NOT_FOUND':
+      return {
+        title: 'This visit is no longer there',
+        detail: 'It may have been removed in another tab. Close it and open the visit again.',
+        canRetry: false,
+      }
+    // The board points at a film this visit does not own — the only way to get
+    // here is an asset that was cleaned up, or a board left open across a visit
+    // change. Re-reading is what fixes it, so the message says so.
+    case 'FORBIDDEN':
+      return {
+        title: 'One of the films no longer belongs to this visit',
+        detail: 'Load the board again to see what is really on it. Nothing has been saved.',
+        canRetry: false,
+      }
+    case 'BAD_USER_INPUT':
+      return {
+        title: 'The board could not be saved',
+        detail: 'Something on it is outside what the server accepts. Nothing has been changed.',
+        canRetry: false,
+      }
+    // No code at all means no server answered: a dropped connection or a
+    // timeout, and those are the ones worth pressing again.
+    default:
+      return {
+        title: 'Could not reach the server',
+        detail: 'Nothing on the board was lost. Check your connection and try again.',
+        canRetry: true,
+      }
+  }
 }
 
 // --- upload (PER-260, PER-245) ----------------------------------------------
