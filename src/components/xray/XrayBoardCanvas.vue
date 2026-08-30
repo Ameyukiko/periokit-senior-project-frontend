@@ -643,6 +643,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <!-- A read-only board draws no ring (PER-257 §1). Picking a film is still
+           allowed and still remembered — it is how a doctor keeps their place
+           (SRS-257) — but a board nothing can be done to should look like one,
+           and the ring only means anything next to the handles it normally
+           comes with. -->
       <div
         v-for="(object, index) in sortedObjects"
         :key="object.id"
@@ -650,7 +655,7 @@ onBeforeUnmount(() => {
         class="xray-object"
         :class="[
           object.objectType === 'image' ? 'xray-image' : 'xray-note',
-          { 'is-selected': object.id === selectedId },
+          { 'is-selected': object.id === selectedId && editable },
         ]"
         :style="objectStyle(object, index)"
       >

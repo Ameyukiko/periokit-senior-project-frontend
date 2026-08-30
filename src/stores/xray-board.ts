@@ -72,7 +72,11 @@ function readImageSize(url: string): Promise<{ width: number; height: number }> 
  */
 function normalizeZIndex(boardObjects: XrayObject[]): XrayObject[] {
   return [...boardObjects]
-    .sort((a, b) => a.zIndex - b.zIndex)
+    // The id breaks a tie so the order is the board's and not the array's:
+    // without it, two objects sharing a zIndex would be flattened in whatever
+    // order they happen to sit in, and moving one of them within the array
+    // would read as an edit to a board that looks identical.
+    .sort((a, b) => a.zIndex - b.zIndex || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     .map((object, index) => ({ ...object, zIndex: index }))
 }
 
@@ -147,6 +151,27 @@ function toSaveInput(object: XrayObject): XrayBoardObjectInput {
       }
 }
 
+/**
+ * The board reduced to what a save would actually write down (PER-257 §3).
+ * Built from `toSaveInput` on purpose: the dirty check then compares the exact
+ * payload the mutation would send, and a field added to one is a field added to
+ * the other. Everything else is left out by construction — the id, the natural
+ * size, and above all the signed URL, which lives in `imageUrls` and would
+ * otherwise turn the board dirty every time it was refreshed.
+ *
+ * Rotation is the one saved number that is not an integer: it comes out of an
+ * `atan2` during a drag, so it is rounded here to keep 45 and 45.00000001 from
+ * reading as different boards. The value on the board is left alone.
+ */
+function fingerprint(boardObjects: XrayObject[]): string {
+  return JSON.stringify(
+    normalizeZIndex(boardObjects).map(object => ({
+      ...toSaveInput(object),
+      rotation: Math.round(object.rotation * 100) / 100,
+    })),
+  )
+}
+
 function readPref(key: string): string | null {
   try {
     return localStorage.getItem(key)
@@ -182,7 +207,14 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   // --- save state (Draft -> Saved -> Edit -> Saved) --------------------------
   const saved = ref(false)
   const savedAt = ref<Date | null>(null)
+  /**
+   * The board as it was last written down, in full — this is what Cancel puts
+   * back and what tells a saved object from one added since, so it keeps every
+   * field rather than only the saved ones.
+   */
   const savedSnapshot = ref<string | null>(null)
+  /** The same moment, reduced to what a save would write (PER-257 §3). */
+  const savedFingerprint = ref<string | null>(null)
   const editMode = ref(false)
   const isSaving = ref(false)
 
@@ -298,8 +330,19 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
     return taken
   })
+  /**
+   * Whether a save would write anything different from what is already there.
+   *
+   * PER-257 §3 returns false outside edit mode; here a board that has never been
+   * written down at all counts its films instead. A Draft with films on it has
+   * unsaved work by definition, and it is what the route guard reads — a doctor
+   * closing the tab on films that were never saved has to be asked, and there is
+   * no edit mode to be in yet.
+   */
   const isDirty = computed(() =>
-    savedSnapshot.value === null ? objects.value.length > 0 : snapshot() !== savedSnapshot.value,
+    savedFingerprint.value === null
+      ? objects.value.length > 0
+      : fingerprint(objects.value) !== savedFingerprint.value,
   )
   const noteColors = computed(() => [...NOTE_COLORS, ...customNoteColors.value])
   const isAddingFiles = computed(() =>
@@ -330,23 +373,34 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   )
 
   /**
-   * What "the board" means to a dirty check and to undo: the objects, and
-   * nothing else. The viewport is deliberately absent — pan and zoom are ways of
-   * looking, not edits, and counting them would ask the doctor to save a board
-   * they only scrolled past (SRS-300, SRS-301).
+   * A board this store can put back: what undo steps through, and what Cancel
+   * restores. Every field is kept, including the ones a save never sends — the
+   * id an object is selected by, and the natural size a slot is fitted from —
+   * because this is a restore point, not a comparison. `fingerprint` is the one
+   * that decides whether anything changed.
    *
-   * The layout toggle is absent for the same reason. `xray_board_objects` has a
-   * `slot_code` column, so which film sits in which FMX slot is saved; the board
-   * has no column for which mode you are currently looking through, and asking
-   * the doctor to save a board because they pressed Layout to check something
-   * would be asking them to save nothing at all.
+   * The viewport is deliberately absent: pan and zoom are ways of looking, not
+   * edits, and stepping back through them would undo nothing the doctor did
+   * (SRS-300, SRS-301). The layout toggle is absent for the same reason — which
+   * film sits in which FMX slot travels in `slot_code`, but which mode you
+   * happen to be looking through is not part of the board.
    *
-   * zIndex is normalised into the comparison so a stack that ends up back in the
-   * order it was saved in reads as unchanged, the same way a film dragged out
-   * and back does.
+   * zIndex is normalised so a stack that ends up back in the order it was saved
+   * in reads as unchanged, the same way a film dragged out and back does.
    */
   function snapshot() {
     return JSON.stringify({ objects: normalizeZIndex(objects.value) })
+  }
+
+  /**
+   * Pins the board as it stands now. PER-257 §5 allows exactly three callers —
+   * a board that has just been read, a board that has just been saved, and the
+   * moment Edit is pressed — and nothing else may move these, or Cancel would
+   * put back a board the doctor never agreed to.
+   */
+  function markSaved() {
+    savedSnapshot.value = snapshot()
+    savedFingerprint.value = fingerprint(objects.value)
   }
 
   /** Next free slot on top of the stack. An empty board starts at 0. */
@@ -1016,6 +1070,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     saved.value = false
     savedAt.value = null
     savedSnapshot.value = null
+    savedFingerprint.value = null
     editMode.value = false
     history.value = []
     historyIndex.value = -1
@@ -1074,7 +1129,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       const board = data?.xrayBoardByVisit ?? null
       if (board) {
         applyBoard(board)
-        savedSnapshot.value = snapshot()
+        markSaved()
       }
       loadState.value = 'loaded'
     } catch (error) {
@@ -1261,7 +1316,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       editingNoteId.value = null
       // Taken after the payload lands, or the dirty check would be comparing
       // against a board built from ids the server never issued.
-      savedSnapshot.value = snapshot()
+      markSaved()
       // PER-255 deletes the assets no saved object points at any more, so the
       // states before this one are gone for good — an undo back into them would
       // put frames on the board with nothing behind them.
@@ -1278,7 +1333,18 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
   }
 
+  /**
+   * Nothing but a flag on this side of the wire (PER-257 §2). No request goes
+   * out and `xray_boards.status` stays `saved` — a board that turned back into a
+   * draft the moment someone opened it to look would be marked unfinished by a
+   * doctor who changed nothing and closed the tab.
+   *
+   * The snapshot is re-pinned even though view mode cannot have moved anything,
+   * so that what Cancel restores is always the board Edit was pressed on rather
+   * than something taken further back.
+   */
   function startEdit() {
+    markSaved()
     editMode.value = true
   }
 
