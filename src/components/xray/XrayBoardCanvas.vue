@@ -99,6 +99,15 @@ const spaceDown = ref(false)
 const isDropping = ref(false)
 
 let drag: Drag | null = null
+/**
+ * The object the pointer last went down on, remembered because `dblclick`
+ * cannot say. Taking pointer capture to drag retargets the compatibility mouse
+ * events to the stage, so a double-click on a note arrives with the board as
+ * its target and the note nowhere in it — which is why reopening a note for
+ * editing quietly stopped working. `pointerdown` is dispatched before capture
+ * is taken and still names the real object.
+ */
+let lastPointerDownId: string | null = null
 let dropDepth = 0
 let resizeObserver: ResizeObserver | null = null
 
@@ -210,6 +219,10 @@ function startPan(event: PointerEvent, deselect: boolean, refused = false) {
 }
 
 function onPointerDown(event: PointerEvent) {
+  // Cleared first: every way out of this function that is not "went down on an
+  // object" has to leave nothing behind for a following double-click to reuse.
+  lastPointerDownId = null
+
   if (event.button === 2) return
 
   // Controls drawn on top of the canvas keep their own click: panning captures
@@ -230,6 +243,7 @@ function onPointerDown(event: PointerEvent) {
   const handleEl = target.closest<HTMLElement>('[data-handle]')
   const objectEl = target.closest<HTMLElement>('[data-object-id]')
   const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
+  lastPointerDownId = object?.id ?? null
 
   // Read-only board: nothing may move, but picking a film is still allowed
   // (SRS-257) — clicking the one you are reading is how a doctor keeps their
@@ -461,10 +475,10 @@ function onNoteBlur() {
   board.pushHistory()
 }
 
-function onDoubleClick(event: MouseEvent) {
+/** Reopens a note for editing. Asks `lastPointerDownId`, never `event.target`. */
+function onDoubleClick() {
   if (!editable.value) return
-  const objectEl = (event.target as HTMLElement).closest<HTMLElement>('[data-object-id]')
-  const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
+  const object = objects.value.find(candidate => candidate.id === lastPointerDownId)
   if (object?.objectType !== 'note') return
   board.select(object.id)
   board.editingNoteId = object.id
