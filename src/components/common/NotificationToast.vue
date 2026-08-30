@@ -66,10 +66,13 @@ const getContainerClass = (type: string) => {
             {{ notification.description }}
           </p>
           
+          <!-- A "Retry" used to sit beside Dismiss, wired to the same call:
+               it closed the toast and retried nothing. On a failed save that is
+               the worst place for it — the doctor presses it, the message goes
+               away, and the board looks saved when the save never happened.
+               Retrying belongs to whichever button started the work, and that
+               one is still there behind this. -->
           <div v-if="notification.type === 'error' && notification.description" class="flex items-center gap-4 mt-3">
-            <button @click.stop="notificationStore.remove(notification.id)" class="text-[14px] font-semibold text-[#4a72e8] hover:text-blue-700 transition-colors">
-              Retry
-            </button>
             <button @click.stop="notificationStore.remove(notification.id)" class="text-[14px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
               Dismiss
             </button>

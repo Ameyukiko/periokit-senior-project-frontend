@@ -1350,8 +1350,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       notifications.success('Board saved')
       return true
     } catch (error) {
+      // Nothing here touches the board (PER-259 §A.1–3). No refetch above all:
+      // pulling the stored version back over work the doctor has just arranged
+      // would be an error handler losing the data it exists to protect. The
+      // objects stay, the mode stays, and `savedSnapshot` still describes the
+      // last save that really happened — so the board reads as dirty and Save
+      // is live again for another go.
       console.error('Failed to save X-ray board:', error)
       const failure = toBoardFailure(error)
+      // Longer than the usual toast (§A.5): this is the one message a doctor
+      // must not miss the second half of.
       notifications.error(failure.title, failure.detail, 8000)
       return false
     } finally {

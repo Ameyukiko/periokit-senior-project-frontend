@@ -200,13 +200,16 @@ function handleSaveClick() {
 }
 
 /**
- * The dialog stays up for the whole request and closes on success only. Closing
- * it first would take the one place the doctor could press Save again with it,
- * and leave a failed save reported by a toast alone.
+ * The dialog stays up for the whole request — both its buttons locked — and
+ * comes down either way (PER-259 §A.4). A failure leaves the board untouched
+ * and still dirty, so Save on the toolbar is live again behind it: the retry is
+ * one click away, and it is not hidden under a dialog reporting on a request
+ * that has already finished.
  */
 async function confirmSave() {
   if (isSaving.value) return
-  if (await board.saveBoard()) showSaveConfirm.value = false
+  await board.saveBoard()
+  showSaveConfirm.value = false
 }
 
 function handleCancelEditClick() {

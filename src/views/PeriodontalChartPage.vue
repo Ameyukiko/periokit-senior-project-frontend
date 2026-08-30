@@ -564,9 +564,14 @@ const confirmCancelEdit = async () => {
 }
 
 // --- beforeunload guard (crash/accidental tab close protection) ---
+// The wording of this one belongs to the browser; there is no way to set it.
+// Removed again in onUnmounted below, or it would go on stopping people from
+// leaving pages that have nothing to lose.
 const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
   if (chartStore.isDirty || xrayStore.isDirty) {
     e.preventDefault()
+    // Ignored by current browsers, still required by older Chrome.
+    e.returnValue = ''
   }
 }
 onMounted(() => { window.addEventListener('beforeunload', beforeUnloadHandler) })
@@ -841,10 +846,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <!-- Unsaved X-ray Board Warning -->
           <ConfirmModal
             :show="showXrayLeaveWarningModal"
-            title="Unsaved X-ray Board"
-            message="<span class='text-slate-800 font-bold text-lg block mb-1'>The X-ray board for this visit has not been saved.</span><span class='text-slate-500 font-normal'>Leave, and these changes are gone as soon as another visit is opened.</span>"
-            confirm-text="Leave Anyway"
-            cancel-text="Stay Here"
+            title="Leave without saving?"
+            message="<span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
+            confirm-text="Leave"
+            cancel-text="Stay"
             type="danger"
             @confirm="confirmLeaveXray"
             @cancel="cancelLeaveXray"

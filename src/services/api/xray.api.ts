@@ -121,14 +121,18 @@ export const xrayApi = {
 }
 
 /**
- * What to tell the doctor when a board read or write did not go through. Same
- * shape of answer as the upload's: plain words, never a code (SRS-197), plus
- * whether pressing the button again could end differently.
+ * What to tell the doctor when a board write did not go through (PER-259 §A.5).
+ * Plain words, never a code (SRS-197), and the wording is the card's to the
+ * letter — split across the toast's two lines so the sentence that matters most
+ * is the one left on screen.
+ *
+ * "Nothing on the board was lost" carries more weight than the failure itself:
+ * someone who reads "save failed" and assumes the work is gone closes the tab,
+ * which is what actually loses it.
  */
 export interface XrayBoardFailure {
   title: string
   detail: string
-  canRetry: boolean
 }
 
 /** The code the resolver put on the error — null when no server answered. */
@@ -140,43 +144,20 @@ function graphqlCode(error: unknown): string | null {
 }
 
 export function toBoardFailure(error: unknown): XrayBoardFailure {
-  switch (graphqlCode(error)) {
-    case 'UNAUTHENTICATED':
-      return {
-        title: 'You have been signed out',
-        detail: 'Sign in again, then open this board. Nothing on it was lost.',
-        canRetry: false,
-      }
-    case 'NOT_FOUND':
-      return {
-        title: 'This visit is no longer there',
-        detail: 'It may have been removed in another tab. Close it and open the visit again.',
-        canRetry: false,
-      }
-    // The board points at a film this visit does not own — the only way to get
-    // here is an asset that was cleaned up, or a board left open across a visit
-    // change. Re-reading is what fixes it, so the message says so.
-    case 'FORBIDDEN':
-      return {
-        title: 'One of the films no longer belongs to this visit',
-        detail: 'Load the board again to see what is really on it. Nothing has been saved.',
-        canRetry: false,
-      }
-    case 'BAD_USER_INPUT':
-      return {
-        title: 'The board could not be saved',
-        detail: 'Something on it is outside what the server accepts. Nothing has been changed.',
-        canRetry: false,
-      }
-    // No code at all means no server answered: a dropped connection or a
-    // timeout, and those are the ones worth pressing again.
-    default:
-      return {
-        title: 'Could not reach the server',
-        detail: 'Nothing on the board was lost. Check your connection and try again.',
-        canRetry: true,
-      }
+  // Said before anything about saving: signing in again is the only thing that
+  // will help, and the board stays exactly where it is while they do.
+  if (graphqlCode(error) === 'UNAUTHENTICATED') {
+    return { title: 'Your session expired. Please sign in again.', detail: '' }
   }
+  // Worth telling apart, because it is the one failure the doctor can fix
+  // without touching the board at all.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return {
+      title: 'Save failed — you appear to be offline.',
+      detail: 'Nothing on the board was lost.',
+    }
+  }
+  return { title: 'Save failed — please try again.', detail: 'Nothing on the board was lost.' }
 }
 
 // --- upload (PER-260, PER-245) ----------------------------------------------
