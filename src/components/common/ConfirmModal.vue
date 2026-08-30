@@ -1,16 +1,47 @@
 <script setup lang="ts">
-import { LogOut, AlertCircle } from "lucide-vue-next";
+import { onBeforeUnmount, watch } from "vue";
+import { LogOut, AlertCircle, Loader2 } from "lucide-vue-next";
 
-defineProps<{
+const props = defineProps<{
   show: boolean;
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
   type?: "danger" | "info" | "warning";
+  /**
+   * The confirmed action is still running. Both buttons lock and the dialog
+   * refuses to close — closing it mid-request would leave the screen saying one
+   * thing while the request finishes saying another.
+   */
+  busy?: boolean;
+  busyText?: string;
 }>();
 
 const emit = defineEmits(["confirm", "cancel"]);
+
+/** Esc and the backdrop are the same answer as Cancel, and are refused alike. */
+function requestCancel() {
+  if (props.busy) return;
+  emit("cancel");
+}
+
+function onKeyDown(event: KeyboardEvent) {
+  if (event.key === "Escape") requestCancel();
+}
+
+// Only listened for while the dialog is up, so a closed one never swallows Esc
+// from the page behind it.
+watch(
+  () => props.show,
+  (open) => {
+    if (open) document.addEventListener("keydown", onKeyDown);
+    else document.removeEventListener("keydown", onKeyDown);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
@@ -22,7 +53,7 @@ const emit = defineEmits(["confirm", "cancel"]);
       <!-- Backdrop -->
       <div
         class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        @click="emit('cancel')"
+        @click="requestCancel"
       ></div>
 
       <!-- Modal Content -->
@@ -65,18 +96,31 @@ const emit = defineEmits(["confirm", "cancel"]);
             <div class="flex flex-col sm:flex-row gap-3">
               <button
                 @click="emit('confirm')"
+                :disabled="busy"
                 :class="[
-                  'flex-1 px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95',
+                  'flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all',
                   type === 'danger'
-                    ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-                    : 'bg-[#0052ff] hover:bg-[#0042cc] shadow-blue-500/20',
+                    ? 'bg-red-500 shadow-red-500/20'
+                    : 'bg-[#0052ff] shadow-blue-500/20',
+                  busy
+                    ? 'opacity-60 cursor-default'
+                    : type === 'danger'
+                      ? 'hover:bg-red-600 active:scale-95'
+                      : 'hover:bg-[#0042cc] active:scale-95',
                 ]"
               >
-                {{ confirmText || "Confirm" }}
+                <Loader2 v-if="busy" class="w-4 h-4 animate-spin" />
+                {{ busy ? busyText || "Working..." : confirmText || "Confirm" }}
               </button>
               <button
                 @click="emit('cancel')"
-                class="flex-1 px-6 py-3 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all active:scale-95"
+                :disabled="busy"
+                class="flex-1 px-6 py-3 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 transition-all"
+                :class="
+                  busy
+                    ? 'opacity-60 cursor-default'
+                    : 'hover:bg-gray-50 active:scale-95'
+                "
               >
                 {{ cancelText || "Cancel" }}
               </button>

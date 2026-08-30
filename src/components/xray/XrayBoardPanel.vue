@@ -21,6 +21,7 @@ const props = defineProps<{
 const board = useXrayBoardStore()
 const notifications = useNotificationStore()
 const {
+  objects,
   layout,
   saved,
   savedAt,
@@ -96,6 +97,35 @@ const errorDetail = computed(() => {
     : `${why} Nothing on the board has been changed.`
 })
 
+/**
+ * What the confirmation is about to write down, counted rather than described:
+ * a save replaces the whole board, so "3 images and 1 note" is the doctor's one
+ * chance to notice that the film they just added is not in the count (SRS-311).
+ */
+const saveSummary = computed(() => {
+  const images = objects.value.filter(object => object.objectType === 'image').length
+  const notes = objects.value.length - images
+  const parts: string[] = []
+  if (images) parts.push(`${images} ${images === 1 ? 'image' : 'images'}`)
+  if (notes) parts.push(`${notes} ${notes === 1 ? 'note' : 'notes'}`)
+  return `${parts.join(' and ')} will be saved to this visit.`
+})
+
+const saveMessage = computed(
+  () =>
+    `<span class='text-slate-800 font-bold text-lg block mb-1'>${saveSummary.value}</span>` +
+    `<span class='text-slate-500 font-normal'>Once saved, you can still click Edit to modify it later.</span>`,
+)
+
+/**
+ * A dialog is up. The canvas listens for keys on the document, so without this
+ * ⌘Z, Delete or a paste would still change the board behind the confirmation —
+ * and the count the doctor just agreed to would no longer be what gets saved.
+ */
+const dialogOpen = computed(
+  () => showSaveConfirm.value || showCancelEditConfirm.value || showDeleteConfirm.value,
+)
+
 // A greyed-out button with no reason reads as a broken one.
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
@@ -167,12 +197,18 @@ function handleSaveClick() {
   showSaveConfirm.value = true
 }
 
+/**
+ * The dialog stays up for the whole request and closes on success only. Closing
+ * it first would take the one place the doctor could press Save again with it,
+ * and leave a failed save reported by a toast alone.
+ */
 async function confirmSave() {
-  showSaveConfirm.value = false
-  await board.saveBoard()
+  if (isSaving.value) return
+  if (await board.saveBoard()) showSaveConfirm.value = false
 }
 
 function handleCancelEditClick() {
+  if (isSaving.value) return
   if (isDirty.value) showCancelEditConfirm.value = true
   else board.cancelEdit()
 }
@@ -215,7 +251,7 @@ function confirmCancelEdit() {
         <button
           class="xray-chip"
           :class="{ 'is-on': layout }"
-          :disabled="!editable"
+          :disabled="!editable || isSaving"
           title="Switch free canvas ↔ layout (18-film FMX)"
           @click="board.toggleLayout()"
         >
@@ -223,9 +259,12 @@ function confirmCancelEdit() {
           Layout
         </button>
 
+        <!-- Locked while a save is in flight, like Save itself: the board is
+             being written down, and both of these would change what it holds. -->
         <button
           v-if="saved && !editMode"
           class="xray-chip"
+          :disabled="isSaving"
           title="Edit this board"
           @click="board.startEdit()"
         >
@@ -236,6 +275,7 @@ function confirmCancelEdit() {
         <button
           v-if="saved && editMode"
           class="xray-chip"
+          :disabled="isSaving"
           title="Discard unsaved changes"
           @click="handleCancelEditClick"
         >
@@ -285,7 +325,11 @@ function confirmCancelEdit() {
       class="relative mx-[18px] mb-[18px] min-h-0 flex-1 overflow-hidden rounded-[14px] border border-slate-200 shadow-sm"
       :style="canvasVars"
     >
-      <XrayBoardCanvas @request-upload="openFilePicker" @request-delete="requestDelete" />
+      <XrayBoardCanvas
+        :dialog-open="dialogOpen"
+        @request-upload="openFilePicker"
+        @request-delete="requestDelete"
+      />
 
       <XrayBoardToolbar
         class="absolute top-3.5 left-1/2 z-50 -translate-x-1/2"
@@ -316,10 +360,12 @@ function confirmCancelEdit() {
 
     <ConfirmModal
       :show="showSaveConfirm"
-      title="Save Board"
-      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Do you want to save this board?</span><span class='text-slate-500 font-normal'>Once saved, you can still click Edit to modify it later.</span>"
+      title="Save X-ray board?"
+      :message="saveMessage"
       confirm-text="Save"
       cancel-text="Cancel"
+      :busy="isSaving"
+      busy-text="Saving..."
       @confirm="confirmSave"
       @cancel="showSaveConfirm = false"
     />

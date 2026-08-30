@@ -1051,11 +1051,16 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
   }
 
-  async function saveBoard() {
+  /**
+   * Writes the board down. Reports whether it landed so the caller can keep the
+   * confirmation up on failure — a dialog that closes on a save that did not
+   * happen leaves the doctor with a toast and nothing to press.
+   */
+  async function saveBoard(): Promise<boolean> {
     const key = boardKey.value
     // Checked again here, not just on the button: this is the only call that
     // rewrites the stored record, so it is the one place that must hold.
-    if (isSaving.value || !key || loadFailed.value) return
+    if (isSaving.value || !key || loadFailed.value) return false
     isSaving.value = true
     try {
       await persist(key)
@@ -1067,9 +1072,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       savedAt.value = new Date()
       savedSnapshot.value = snapshot()
       notifications.success('Board saved')
+      return true
     } catch (error) {
       console.error('Failed to save X-ray board:', error)
       notifications.error('Save failed — please try again', 'Nothing on the board was lost.')
+      return false
     } finally {
       isSaving.value = false
     }
