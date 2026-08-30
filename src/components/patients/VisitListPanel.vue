@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
@@ -151,22 +156,39 @@ watch(() => props.open, async (newVal) => {
   }
 })
 
-const switchPatient = (patient: Patient) => {
-  emit('update:open', false)
-  router.push({ name: 'patient-visits', params: { patientId: patient.id } })
+/**
+ * The chart page asks before leaving a board with unsaved films, and "Stay"
+ * aborts the navigation. Closing this list on the way out would take it away
+ * from someone who has just said they want to stay in it — so the drawer waits
+ * to hear that the move actually happened.
+ *
+ * Only an *aborted* navigation counts as staying: clicking the visit already
+ * open comes back as `duplicated`, and closing is the right answer there.
+ */
+const closeUnlessAborted = (failure: unknown) => {
+  if (!isNavigationFailure(failure, NavigationFailureType.aborted)) {
+    emit('update:open', false)
+  }
+}
+
+const switchPatient = async (patient: Patient) => {
+  const failure = await router.push({
+    name: 'patient-visits',
+    params: { patientId: patient.id },
+  })
+  closeUnlessAborted(failure)
 }
 
 const viewChart = async (visitId: string) => {
-  emit('update:open', false)
-
   // Update query params; the chart page's watcher on `visitId` handles
   // setActiveVisit + loadFromBackend, so we don't load here (avoids double-load).
   const patientId = route.query.patientId || patientVisits.value.find(v => v.id === visitId)?.patientId
-  await router.replace({
+  const failure = await router.replace({
     query: patientId
       ? { ...route.query, visitId, patientId }
       : { ...route.query, visitId },
   })
+  closeUnlessAborted(failure)
 }
 
 const handleCompareClick = (visit: Visit) => {

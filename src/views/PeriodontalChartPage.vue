@@ -58,9 +58,11 @@ onMounted(async () => {
   const patientId = route.query.patientId as string | undefined
   // Read before the branches below: they can resetChart() (which forces the tab
   // back to 'chart') and router.replace() away the query we are reading from.
-  const wantsXrayTab = route.query.tab === 'xray'
-  // Carried through the redirects below so a reload keeps the X-ray board open.
-  const xrayTabQuery = wantsXrayTab ? { tab: 'xray' } : {}
+  const requestedTab = route.query.tab
+  const wantsTab =
+    requestedTab === 'xray' || requestedTab === 'export' ? requestedTab : null
+  // Carried through the redirects below so a reload keeps the same tab open.
+  const tabQuery = wantsTab ? { tab: wantsTab } : {}
 
   // Capture persisted state before any mutations so we can detect a page reload
   // where the user had an unsaved draft for this patient.
@@ -114,13 +116,13 @@ onMounted(async () => {
       if (fetchedVisits.length === 0) {
         visitStore.visits = []
         await enterNewVisitState()
-        navigate({ name: 'chart', query: { patientId, visitId: 'new', ...xrayTabQuery } })
+        navigate({ name: 'chart', query: { patientId, visitId: 'new', ...tabQuery } })
       } else {
         // Redirect to the latest visit's chart (sorted by visitNumber)
         const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
         const latest = sorted[sorted.length - 1]
         visitStore.visits = [latest]
-        navigate({ name: 'chart', query: { patientId, visitId: latest.id, ...xrayTabQuery } })
+        navigate({ name: 'chart', query: { patientId, visitId: latest.id, ...tabQuery } })
       }
     } catch (error) {
       console.error('Failed to load patient:', error)
@@ -151,9 +153,32 @@ onMounted(async () => {
     await enterNewVisitState()
   }
 
-  // Deep link from the Visit History list — open straight on the X-ray board.
-  if (wantsXrayTab) chartStore.activeSubNav = 'xray'
+  // Deep link from the Visit History list, or a reload of the tab the user was
+  // already on — either way the query is the only thing that survived.
+  if (wantsTab) chartStore.activeSubNav = wantsTab
 })
+
+/**
+ * Keeps `?tab=` alongside the open sub-tab, so reloading the X-ray board comes
+ * back to the X-ray board instead of dropping the doctor on the chart.
+ *
+ * Watched rather than wired to the tab buttons: `resetChart()` sets the tab back
+ * to 'chart' on its own, and the deep link sets it during mount, so the button
+ * is not the only thing that moves it. Replaces rather than pushes — switching
+ * tabs is not a place in history to come back to — and goes through `navigate`
+ * so the unsaved-board guard treats it as this page's own doing.
+ */
+watch(
+  () => chartStore.activeSubNav,
+  tab => {
+    const current = (route.query.tab as string | undefined) ?? 'chart'
+    if (current === tab) return
+    const query = { ...route.query }
+    if (tab === 'chart') delete query.tab
+    else query.tab = tab
+    navigate({ name: 'chart', query })
+  },
+)
 
 // Watch for visitId changes (when user navigates to different visit)
 watch(() => route.query.visitId, async (newVisitId) => {
@@ -263,8 +288,26 @@ onMounted(() => {
 // visit reloads it from storage on top of whatever was there — so anything that
 // changes which visit is open asks first (SRS-363). Moving between the Chart
 // and X-ray sub-tabs is safe: the board reloads only when its visit changes.
+/**
+ * Is there anything to ask about? PER-259 §B1 gates the question on being in
+ * edit mode as well as dirty. `editable` is this board's version of that: a
+ * saved board is read-only until Edit is pressed, and a board that failed to
+ * load is nobody's to change either.
+ *
+ * It is `editable` rather than `editMode` because the card's two modes assume
+ * every board has already been saved once. A Draft has never been written down,
+ * so `editMode` is false while the doctor is free to arrange films on it — and
+ * that is exactly the board whose work has nowhere else to survive.
+ */
+const hasUnsavedBoard = () => xrayStore.editable && xrayStore.isDirty
+
 const guardUnsavedXray = (proceed: () => void | Promise<void>) => {
-  if (!xrayStore.isDirty) return proceed()
+  if (!hasUnsavedBoard()) return proceed()
+  // A question about one way out is already on screen. Whatever arrives behind
+  // it is dropped rather than queued: replacing the pending answer would send
+  // the doctor somewhere they were never asked about, and the second route is
+  // cancelled by its own guard either way.
+  if (showXrayLeaveWarningModal.value) return
   pendingXrayNavigation = proceed
   showXrayLeaveWarningModal.value = true
 }
@@ -306,12 +349,77 @@ const navigate = (to: RouteLocationRaw, mode: 'push' | 'replace' = 'replace') =>
  * but opening any other visit does, and by then the question would be on the
  * wrong page with the films already gone. This is the last moment to ask.
  */
-const askBeforeLeaving = (to: RouteLocationNormalized) => {
-  guardUnsavedXray(async () => {
-    await navigate(to.fullPath, 'push')
+/**
+ * Whether the navigation being asked about is the browser going backwards.
+ * vue-router does not say, and it changes what "Leave" has to do: cancelling a
+ * Back makes the router put the current page back, so pushing the destination
+ * afterwards would stack it in front of the page the doctor was returning to,
+ * and Back would bring them straight here again.
+ *
+ * Read from the history entry rather than from a `popstate` listener. The
+ * browser moves the entry before it fires the event, so by the time a guard
+ * runs, `history.state.position` is already the destination's — while a push or
+ * replace has not touched history yet and still reads as where we are. A flag
+ * set by the listener would also survive a Back that was never asked about and
+ * send the *next* navigation backwards instead.
+ *
+ * `position` is vue-router's own bookkeeping; if it ever stops being there,
+ * every navigation reads as forward, which is what the code did before.
+ */
+const historyPosition = () => {
+  const position = (window.history.state as { position?: unknown } | null)?.position
+  return typeof position === 'number' ? position : null
+}
+
+let currentPosition = historyPosition()
+const stopTrackingPosition = router.afterEach(() => {
+  currentPosition = historyPosition()
+})
+onUnmounted(stopTrackingPosition)
+
+const isGoingBack = () => {
+  const target = historyPosition()
+  return target !== null && currentPosition !== null && target < currentPosition
+}
+
+/** Goes where the cancelled navigation was heading, the way it was heading. */
+const resumeLeaving = (to: RouteLocationNormalized, wasBack: boolean) => {
+  if (!wasBack) return navigate(to.fullPath, 'push')
+
+  // `history.go` hands back no promise to close the gate with, so it is closed
+  // by the navigation that follows and by a timer behind it. A gate stuck open
+  // means the next unsaved board leaves without a word, which is far worse than
+  // the spare history entry this avoids.
+  bypassRouteGuard = true
+  const failsafe = window.setTimeout(() => {
+    bypassRouteGuard = false
+  }, 2000)
+  const stopWatching = router.afterEach(() => {
+    window.clearTimeout(failsafe)
+    bypassRouteGuard = false
+    stopWatching()
   })
+  router.go(-1)
+}
+
+/**
+ * Nothing outside this page knows the X-ray board exists: the visit drawer, the
+ * sidebar links and the browser's own Back button all go straight through the
+ * router (SRS-363). Asking here rather than at each call site is what covers
+ * the ones nobody has written yet.
+ *
+ * Leaving does not throw the board away by itself — it survives in the store —
+ * but opening any other visit does, and by then the question would be on the
+ * wrong page with the films already gone. This is the last moment to ask.
+ */
+const askBeforeLeaving = (to: RouteLocationNormalized) => {
+  // Read now, not when the doctor answers: by then the router has already put
+  // the URL back and the history position no longer says where they were going.
+  const wasBack = isGoingBack()
+  guardUnsavedXray(() => resumeLeaving(to, wasBack))
   return false
 }
+
 
 onBeforeRouteUpdate((to, from) => {
   // Only a change of visit or patient reloads the board over what is on screen.
@@ -319,12 +427,12 @@ onBeforeRouteUpdate((to, from) => {
   // and that one must never ask (SRS-365).
   const sameBoard =
     to.query.visitId === from.query.visitId && to.query.patientId === from.query.patientId
-  if (bypassRouteGuard || sameBoard || !xrayStore.isDirty) return true
+  if (bypassRouteGuard || sameBoard || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
 
 onBeforeRouteLeave(to => {
-  if (bypassRouteGuard || !xrayStore.isDirty) return true
+  if (bypassRouteGuard || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
 
@@ -568,7 +676,7 @@ const confirmCancelEdit = async () => {
 // Removed again in onUnmounted below, or it would go on stopping people from
 // leaving pages that have nothing to lose.
 const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
-  if (chartStore.isDirty || xrayStore.isDirty) {
+  if (chartStore.isDirty || hasUnsavedBoard()) {
     e.preventDefault()
     // Ignored by current browsers, still required by older Chrome.
     e.returnValue = ''
