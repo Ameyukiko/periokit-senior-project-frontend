@@ -208,10 +208,23 @@ function postWithProgress<T>(
   path: string,
   form: FormData,
   onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
+    // Already called off before this film's turn came round.
+    if (signal?.aborted) {
+      reject(new Error('The upload was cancelled'))
+      return
+    }
+
     const request = new XMLHttpRequest()
     request.open('POST', `${API_URL}${path}`)
+
+    const stopOnAbort = () => request.abort()
+    signal?.addEventListener('abort', stopOnAbort, { once: true })
+    // Fires on load, error and abort alike, so the listener never outlives the
+    // request it belongs to.
+    request.onloadend = () => signal?.removeEventListener('abort', stopOnAbort)
     for (const [name, value] of Object.entries(getAuthHeaders())) {
       request.setRequestHeader(name, value)
     }
@@ -267,18 +280,24 @@ export const xrayAssetApi = {
    *
    * Throws before sending on a bad pairing, and on any transport or status
    * error — `toUploadFailure` turns whichever one it was into something to say.
+   *
+   * `signal` cuts a film's trip short: discarding an edit throws away the films
+   * it was adding, and an upload nobody is waiting for is bandwidth spent on a
+   * result that will be dropped the moment it arrives (PER-258 §4).
    */
   async upload(
     visitId: string,
     files: File[],
     uploadIds: string[],
     onProgress?: (percent: number) => void,
+    signal?: AbortSignal,
   ): Promise<XrayUploadOutcome> {
     const body = buildXrayUploadForm(files, uploadIds)
     const payload = await postWithProgress<XrayUploadResponse>(
       `/visits/${encodeURIComponent(visitId)}/xray-assets`,
       body,
       onProgress,
+      signal,
     )
     return mapUploadOutcome(payload)
   },

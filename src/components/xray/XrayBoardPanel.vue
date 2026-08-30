@@ -385,10 +385,10 @@ function confirmCancelEdit() {
 
     <ConfirmModal
       :show="showCancelEditConfirm"
-      title="Cancel Editing"
-      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Are you sure you want to cancel?</span><span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
-      confirm-text="Discard Changes"
-      cancel-text="Continue Editing"
+      title="Discard changes?"
+      message="<span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
+      confirm-text="Discard"
+      cancel-text="Keep editing"
       type="danger"
       @confirm="confirmCancelEdit"
       @cancel="showCancelEditConfirm = false"

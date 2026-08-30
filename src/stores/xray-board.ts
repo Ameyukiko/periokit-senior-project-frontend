@@ -269,6 +269,12 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   let batchOrigin = { x: 0, y: 0 }
   let landed = 0
   let queueRunning = false
+  /**
+   * Calls off the film currently on its way up. Discarding an edit throws away
+   * the films it was adding, so the request in flight is one whose answer will
+   * be dropped the moment it lands (PER-258 §4).
+   */
+  let uploadAbort: AbortController | null = null
 
   const history = ref<string[]>([])
   const historyIndex = ref(-1)
@@ -618,7 +624,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     | { outcome: 'refused' }
     | { outcome: 'halted'; failure: XrayUploadFailure }
 
-  async function uploadOne(item: XrayUploadItem, file: File): Promise<UploadStep> {
+  async function uploadOne(
+    item: XrayUploadItem,
+    file: File,
+    signal: AbortSignal,
+  ): Promise<UploadStep> {
     try {
       const outcome = await xrayAssetApi.upload(
         visitId.value as string,
@@ -627,6 +637,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         percent => {
           item.progress = percent
         },
+        signal,
       )
 
       const rejection = outcome.rejected[0]
@@ -655,6 +666,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           : null
       return { outcome: 'uploaded', size }
     } catch (error) {
+      // Called off rather than failed. The row is about to be cleared with the
+      // rest of the discarded edit, and a message about a film nobody is
+      // waiting for would be the only trace left of a choice the doctor made.
+      if (signal.aborted) return { outcome: 'refused' }
       const failure = toUploadFailure(error)
       failItem(item, failure.title, failure.canRetry)
       return failure.stopsBatch ? { outcome: 'halted', failure } : { outcome: 'refused' }
@@ -739,14 +754,17 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     if (queueRunning) return
     queueRunning = true
     const key = boardKey.value
+    const abort = new AbortController()
+    uploadAbort = abort
     let added = 0
 
     try {
       for (const item of uploadQueue.value) {
         if (item.status !== 'pending') continue
         // Switching visits mid-batch abandons the rest: the films left in it
-        // were picked for a board that is no longer open.
-        if (boardKey.value !== key) break
+        // were picked for a board that is no longer open. Cancelling the edit
+        // abandons them for the same reason — nowhere left to land.
+        if (boardKey.value !== key || abort.signal.aborted) break
 
         const file = queued.get(item.uploadId)
         if (!file) {
@@ -764,7 +782,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           // because it passed the checks, or because the doctor asked for it to
           // go up in spite of them. Running the same check again would answer
           // the appeal with the opinion it was appealing against.
-          const step = await uploadOne(item, file)
+          const step = await uploadOne(item, file, abort.signal)
           if (step.outcome === 'halted') {
             haltQueue(step.failure)
             break
@@ -772,6 +790,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
           if (step.outcome === 'refused') continue
           naturalSize = step.size
         }
+
+        // Called off while this film was on its way. It has nowhere to go: the
+        // board it belonged to has already been put back.
+        if (abort.signal.aborted) break
 
         // A film handed over from the draft board is already on screen: this
         // trip was to give it a real asset id, not to put a second copy down.
@@ -791,9 +813,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       }
     } finally {
       queueRunning = false
+      if (uploadAbort === abort) uploadAbort = null
     }
 
-    if (added > 0 && boardKey.value === key) pushHistory()
+    if (added > 0 && boardKey.value === key && !abort.signal.aborted) pushHistory()
   }
 
   /**
@@ -847,10 +870,13 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   /**
    * The same, without the question: closing or swapping a board takes its films
-   * with it, so whatever the run was still holding has nowhere to go. Safe
-   * mid-flight because the run checks the board key between films.
+   * with it, and so does discarding the edit that was adding them, so whatever
+   * the run was still holding has nowhere to go. The film on its way up is
+   * called off rather than left to finish into a board that will not have it.
    */
   function resetUploadQueue() {
+    uploadAbort?.abort()
+    uploadAbort = null
     uploadQueue.value = []
     queued.clear()
     landed = 0
@@ -1348,21 +1374,37 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     editMode.value = true
   }
 
+  /**
+   * Throws the edit away and puts back the board Edit was pressed on. Purely
+   * local (PER-258 §3.6): nothing since then reached the server, so there is
+   * nothing to undo there — and the films that did go up are deliberately left
+   * alone, rows and files both. They sit as `pending` until the next save
+   * orphans them and PER-255 collects them; deleting from here risks taking a
+   * film another object still points at.
+   *
+   * The viewport is untouched (§3.7). The board coming back where the doctor
+   * left it is easier to read than one that jumps to a new fit.
+   */
   function cancelEdit() {
+    if (isSaving.value) return
     editMode.value = false
     selectedId.value = null
-    if (savedSnapshot.value) {
-      restore(savedSnapshot.value)
-      resetHistory()
-      // The films the report was about are off the board with the edit, so a
-      // list still offering to retry them has nothing left to add them to.
-      clearUploadQueue()
-      // The films added during the edit are off the board and out of the undo
-      // history with it, so their blobs belong to nobody now (SRS-353). A
-      // full-mouth series discarded and re-added a few times is a lot of memory
-      // to leave behind for the life of the tab.
-      releaseUnreferencedImages()
-    }
+
+    // A board with nothing written down behind it discards back to empty —
+    // there is no earlier version of it to return to.
+    if (savedSnapshot.value) restore(savedSnapshot.value)
+    else objects.value = []
+
+    resetHistory()
+    // The films the report was about are off the board with the edit, so a list
+    // still offering to retry them has nothing left to add them to — and one
+    // still on its way up is called off on the way out (§4).
+    resetUploadQueue()
+    // The films added during the edit are off the board and out of the undo
+    // history with it, so their blobs belong to nobody now (SRS-353). A
+    // full-mouth series discarded and re-added a few times is a lot of memory
+    // to leave behind for the life of the tab.
+    releaseUnreferencedImages()
   }
 
   function closeBoard() {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from "vue";
+import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { LogOut, AlertCircle, Loader2 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -30,13 +30,24 @@ function onKeyDown(event: KeyboardEvent) {
   if (event.key === "Escape") requestCancel();
 }
 
+const confirmButton = ref<HTMLButtonElement | null>(null);
+const cancelButton = ref<HTMLButtonElement | null>(null);
+
 // Only listened for while the dialog is up, so a closed one never swallows Esc
 // from the page behind it.
 watch(
   () => props.show,
-  (open) => {
-    if (open) document.addEventListener("keydown", onKeyDown);
-    else document.removeEventListener("keydown", onKeyDown);
+  async (open) => {
+    if (!open) {
+      document.removeEventListener("keydown", onKeyDown);
+      return;
+    }
+    document.addEventListener("keydown", onKeyDown);
+    await nextTick();
+    // A dialog that can destroy something opens with the safe answer under the
+    // cursor, so Return keeps what is there instead of throwing it away. Every
+    // other dialog is asking the user to go ahead, and focuses that.
+    (props.type === "danger" ? cancelButton : confirmButton).value?.focus();
   },
   { immediate: true },
 );
@@ -95,6 +106,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
             <!-- Actions -->
             <div class="flex flex-col sm:flex-row gap-3">
               <button
+                ref="confirmButton"
                 @click="emit('confirm')"
                 :disabled="busy"
                 :class="[
@@ -113,6 +125,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
                 {{ busy ? busyText || "Working..." : confirmText || "Confirm" }}
               </button>
               <button
+                ref="cancelButton"
                 @click="emit('cancel')"
                 :disabled="busy"
                 class="flex-1 px-6 py-3 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 transition-all"
