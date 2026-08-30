@@ -218,7 +218,7 @@ function handleCancelEditClick() {
 function confirmCancelEdit() {
   showCancelEditConfirm.value = false
   board.cancelEdit()
-  notifications.info('Edits discarded')
+  notifications.success('Edits discarded')
 }
 </script>
 
