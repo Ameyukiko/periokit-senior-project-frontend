@@ -163,7 +163,7 @@ const rowHeaderClass =
   <div class="overflow-x-auto rounded-2xl border border-slate-200">
     <table class="w-full min-w-[900px] border-collapse text-left text-[11px]">
       <thead>
-        <tr class="bg-[#7c3aed] text-white">
+        <tr class="bg-purple-500 text-white">
           <th colspan="3" class="px-3 py-2.5 align-top w-72">
             <span class="block text-[12px] font-bold">Periodontitis Grade</span>
             <span class="block text-[10px] font-normal text-white/70">

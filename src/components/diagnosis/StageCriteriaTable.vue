@@ -114,7 +114,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
   <div class="overflow-x-auto rounded-2xl border border-slate-200">
     <table class="w-full min-w-[900px] border-collapse text-left text-[11px]">
       <thead>
-        <tr class="bg-[#0052ff] text-white">
+        <tr class="bg-blue-500 text-white">
           <th colspan="2" class="px-3 py-2.5 align-top w-56">
             <span class="block text-[12px] font-bold">Periodontitis Stage</span>
             <span class="block text-[10px] font-normal text-white/70">AAP / EFP 2017</span>
