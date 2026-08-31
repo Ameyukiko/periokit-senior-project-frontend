@@ -273,8 +273,10 @@ const showXrayLeaveWarningModal = ref(false)
 
 // ID of the visit tab the user is trying to close (pending confirmation)
 let pendingCloseVisitId: string | null = null
-// What to run once the doctor agrees to leave unsaved X-ray work behind
-let pendingXrayNavigation: (() => void | Promise<void>) | null = null
+// What to run once the doctor agrees to leave unsaved X-ray work behind.
+// Its result is never read — router.push hands back a NavigationFailure that
+// the guard has no use for — so the action is free to return anything.
+let pendingXrayNavigation: (() => unknown) | null = null
 
 // Auto-fit scale toggle
 const enableAutoFit = ref(false)
@@ -301,7 +303,7 @@ onMounted(() => {
  */
 const hasUnsavedBoard = () => xrayStore.editable && xrayStore.isDirty
 
-const guardUnsavedXray = (proceed: () => void | Promise<void>) => {
+const guardUnsavedXray = (proceed: () => unknown) => {
   if (!hasUnsavedBoard()) return proceed()
   // A question about one way out is already on screen. Whatever arrives behind
   // it is dropped rather than queued: replacing the pending answer would send
@@ -543,6 +545,22 @@ const handleNewVisit = async () => {
   })
 }
 
+// Open the AAP/EFP staging and grading worksheet for the visit on screen.
+// Pushed through the router rather than `navigate`, so an unsaved X-ray board
+// gets the same question here as it does for every other way off this page.
+const handleOpenDiagnosis = () => {
+  const patientId = currentPatientId.value || (route.query.patientId as string | undefined)
+  const visitId = activeVisitId.value || (route.query.visitId as string | undefined)
+
+  router.push({
+    name: 'diagnosis',
+    query: {
+      ...(patientId ? { patientId } : {}),
+      ...(visitId ? { visitId } : {}),
+    },
+  })
+}
+
 const isSaving = ref(false)
 
 const validateBeforeSave = () => {
@@ -768,7 +786,10 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           </button>
 
           <div class="flex flex-wrap items-center gap-2 xl:mr-50">
-            <button class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors">
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors"
+              @click="handleOpenDiagnosis"
+            >
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
             </button>
             <button 
