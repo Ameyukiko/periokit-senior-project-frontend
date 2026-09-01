@@ -388,6 +388,7 @@ const hasChart = computed(() => chartStore.hasChartData)
           >
             <DiagnosisField
               label="Interdental CAL"
+              tooltip="Highest interdental clinical attachment loss (CAL) from chart, or click to override"
               :missing="diagnosisStore.interdentalCal === null"
               :overridden="inputs.interdentalCalMm !== null"
               @reset="inputs.interdentalCalMm = null"
@@ -408,6 +409,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             <DiagnosisField
               label="Max probing depth"
               class="xl:pl-6"
+              tooltip="Maximum probing depth recorded from chart, or click to override"
               :missing="diagnosisStore.probingDepth === null"
               :overridden="inputs.probingDepthMm !== null"
               @reset="inputs.probingDepthMm = null"
@@ -430,6 +432,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             <DiagnosisField
               label="Furcation / mobility"
               class="xl:pl-6"
+              tooltip="Maximum furcation involvement or tooth mobility recorded from chart"
               :overridden="inputs.furcationGrade !== null || inputs.mobilityGrade !== null"
               @reset="
                 inputs.furcationGrade = null;
@@ -451,7 +454,7 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
               <select
                 :value="diagnosisStore.mobility ?? ''"
-                :class="`${QUIET} w-16`"
+                :class="`${QUIET} w-20`"
                 @change="setGradeCount('mobilityGrade', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">No mob</option>
@@ -464,6 +467,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             <DiagnosisField
               label="Radiographic bone loss"
               class="xl:pl-6"
+              tooltip="Estimate the highest % bone loss from radiographs (worst site) and enter here to calculate Stage & Grade"
               :hint="boneLossBand"
               :missing="inputs.boneLossPercent === null"
             >
@@ -472,12 +476,15 @@ const hasChart = computed(() => chartStore.hasChartData)
                 min="0"
                 max="100"
                 step="1"
-                placeholder="Add from X-ray →"
+                placeholder="Add from X-ray"
                 :value="inputs.boneLossPercent ?? ''"
-                :class="`${QUIET_PROMPT} w-28`"
+                :class="[
+                  QUIET_PROMPT,
+                  inputs.boneLossPercent === null ? 'w-32' : 'w-10'
+                ]"
                 @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
               />
-              <span v-if="inputs.boneLossPercent !== null" class="text-[12px] text-slate-500">
+              <span v-if="inputs.boneLossPercent !== null" class="text-[12px] text-slate-500 whitespace-nowrap">
                 % at worst site
               </span>
             </DiagnosisField>
@@ -485,25 +492,21 @@ const hasChart = computed(() => chartStore.hasChartData)
             <DiagnosisField
               label="Tooth loss cause"
               class="xl:pl-6"
-              :hint="
-                findings.missingTeeth.length
-                  ? `Chart records ${findings.missingTeeth.length} missing teeth`
-                  : 'Chart records no missing teeth'
-              "
-              :missing="inputs.teethLostToPerio === null"
+              tooltip="Number of teeth lost specifically due to periodontitis (defaults to missing teeth recorded from chart, or click to edit)"
+              :overridden="inputs.teethLostToPerio !== null"
+              @reset="inputs.teethLostToPerio = null"
             >
               <input
                 type="number"
                 min="0"
                 max="32"
                 step="1"
-                :placeholder="`Confirm ${findings.missingTeeth.length} teeth →`"
-                :value="inputs.teethLostToPerio ?? ''"
-                :class="`${QUIET_PROMPT} w-28`"
+                :value="diagnosisStore.teethLost"
+                :class="`${QUIET} w-10`"
                 @input="setNumber('teethLostToPerio', ($event.target as HTMLInputElement).value)"
               />
-              <span v-if="inputs.teethLostToPerio !== null" class="text-[12px] text-slate-500">
-                due to periodontitis
+              <span class="text-[12px] text-slate-500 whitespace-nowrap">
+                teeth lost to perio
               </span>
             </DiagnosisField>
           </div>
@@ -514,7 +517,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             :cal="diagnosisStore.interdentalCal"
             :cal-site="calSite"
             :bone-loss-percent="inputs.boneLossPercent"
-            :teeth-lost="inputs.teethLostToPerio"
+            :teeth-lost="diagnosisStore.teethLost"
             :complexity="diagnosisStore.complexity"
             @select="selectStage"
             @mark="markStageRow"
@@ -662,25 +665,25 @@ const hasChart = computed(() => chartStore.hasChartData)
             </p>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 p-4 flex flex-col gap-3.5">
+          <div class="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4 flex flex-col gap-3.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex flex-wrap items-baseline gap-2">
                 <span class="text-[12px] font-bold text-slate-700">
                   Complexity and risk-factor input
                 </span>
                 <span class="text-[11px] text-slate-400">
-                  Not in the periodontal chart — fill these in and the grade updates
+                  Not in the periodontal chart — fill these in and the grade updates.
                 </span>
               </div>
               <div
                 v-if="diagnosisStore.grade.ratio !== null"
-                class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200"
+                class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm"
               >
-                <span class="text-[10px] text-slate-400">% bone loss ÷ age</span>
-                <span class="text-[12px] font-black text-slate-700">
+                <span class="text-[11px] text-slate-400">% bone loss ÷ age</span>
+                <span class="text-[13px] font-bold text-slate-800">
                   {{ diagnosisStore.grade.ratio }}
                 </span>
-                <span class="px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-bold">
+                <span class="px-2 py-0.5 rounded-[4px] bg-[#ffce44] text-slate-900 text-[11px] font-bold">
                   Grade {{ diagnosisStore.grade.ratioGrade }} band
                 </span>
               </div>

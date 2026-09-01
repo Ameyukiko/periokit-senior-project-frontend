@@ -16,7 +16,7 @@ const createInputs = (): DiagnosisInputs => ({
   probingDepthMm: null,
   furcationGrade: null,
   mobilityGrade: null,
-  boneLossPercent: null,
+  boneLossPercent: 0,
   teethLostToPerio: null,
   extent: null,
   stageMarks: { cal: null, boneLoss: null, toothLoss: null, complexity: null },
@@ -56,6 +56,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   const furcation = computed(() => inputs.furcationGrade ?? findings.value.furcation?.grade ?? null)
   const mobility = computed(() => inputs.mobilityGrade ?? findings.value.mobility?.grade ?? null)
   const age = computed(() => inputs.ageYears ?? chartStore.patientInfo.age ?? null)
+  const teethLost = computed(() => inputs.teethLostToPerio ?? findings.value.missingTeeth.length)
 
   const complexity = computed(() =>
     complexityFindings(
@@ -72,7 +73,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     stageSummary(
       interdentalCal.value,
       inputs.boneLossPercent,
-      inputs.teethLostToPerio,
+      teethLost.value,
       complexity.value,
     ),
   )
@@ -148,6 +149,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     furcation,
     mobility,
     age,
+    teethLost,
     complexity,
     stageReasons,
     stage,
