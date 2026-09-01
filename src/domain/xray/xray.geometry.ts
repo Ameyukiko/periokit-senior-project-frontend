@@ -1,0 +1,104 @@
+import {
+  FMX_SLOTS,
+  IMAGE_MAX_LONG_SIDE,
+  SLOT_PADDING,
+  SLOT_SNAP_TOLERANCE,
+} from './xray.constants'
+import type { Bounds, FmxSlot, XrayImageObject, XrayObject } from './xray.types'
+
+export const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+export const toRad = (degrees: number) => (degrees * Math.PI) / 180
+
+/** Rotate a vector by `angle` radians. */
+export const rotateVec = (x: number, y: number, angle: number) => ({
+  x: x * Math.cos(angle) - y * Math.sin(angle),
+  y: x * Math.sin(angle) + y * Math.cos(angle),
+})
+
+/**
+ * Axis-aligned bounding box of everything on the board, used by "Fit".
+ * Rotated objects contribute their rotated corners, so nothing is clipped.
+ */
+export function boardBounds(objects: XrayObject[], includeSlots: boolean): Bounds | null {
+  if (!objects.length && !includeSlots) return null
+
+  const bounds: Bounds = {
+    minX: Infinity,
+    minY: Infinity,
+    maxX: -Infinity,
+    maxY: -Infinity,
+  }
+
+  if (includeSlots) {
+    for (const slot of FMX_SLOTS) {
+      bounds.minX = Math.min(bounds.minX, slot.x - slot.w / 2)
+      bounds.minY = Math.min(bounds.minY, slot.y - slot.h / 2)
+      bounds.maxX = Math.max(bounds.maxX, slot.x + slot.w / 2)
+      bounds.maxY = Math.max(bounds.maxY, slot.y + slot.h / 2)
+    }
+  }
+
+  for (const object of objects) {
+    const cx = object.posX + object.width / 2
+    const cy = object.posY + object.height / 2
+    const angle = toRad(object.rotation)
+    for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const corner = rotateVec((dx * object.width) / 2, (dy * object.height) / 2, angle)
+      bounds.minX = Math.min(bounds.minX, cx + corner.x)
+      bounds.minY = Math.min(bounds.minY, cy + corner.y)
+      bounds.maxX = Math.max(bounds.maxX, cx + corner.x)
+      bounds.maxY = Math.max(bounds.maxY, cy + corner.y)
+    }
+  }
+
+  return bounds
+}
+
+/** The FMX slot a film dropped at (cx, cy) should snap into, if any. */
+export function findSlotAt(cx: number, cy: number): FmxSlot | undefined {
+  return FMX_SLOTS.find(
+    slot =>
+      Math.abs(cx - slot.x) <= slot.w / 2 + SLOT_SNAP_TOLERANCE &&
+      Math.abs(cy - slot.y) <= slot.h / 2 + SLOT_SNAP_TOLERANCE,
+  )
+}
+
+/**
+ * The persisted identity of an FMX slot. `FmxSlot.label` is display text and may
+ * be reworded, so the stable numeric id is what a saved board points at.
+ */
+export const slotCodeOf = (slot: FmxSlot) => String(slot.id)
+
+/**
+ * On-board size a film gets the moment it is added (SRS-223, SRS-224). A sensor
+ * writes films thousands of pixels wide, so the long side is capped — both sides
+ * by the same factor, or the film comes out stretched.
+ */
+export function initialImageSize(naturalWidth: number, naturalHeight: number) {
+  const longSide = Math.max(naturalWidth, naturalHeight)
+  const scale = longSide > IMAGE_MAX_LONG_SIDE ? IMAGE_MAX_LONG_SIDE / longSide : 1
+  return {
+    width: Math.round(naturalWidth * scale),
+    height: Math.round(naturalHeight * scale),
+  }
+}
+
+/** Geometry a film takes once mounted in a slot — centred, upright, aspect kept. */
+export function fitIntoSlot(image: XrayImageObject, slot: FmxSlot) {
+  const scale = Math.min(
+    (slot.w - SLOT_PADDING) / image.naturalWidth,
+    (slot.h - SLOT_PADDING) / image.naturalHeight,
+  )
+  const width = Math.round(image.naturalWidth * scale)
+  const height = Math.round(image.naturalHeight * scale)
+  return {
+    width,
+    height,
+    posX: Math.round(slot.x - width / 2),
+    posY: Math.round(slot.y - height / 2),
+    rotation: 0,
+    slotCode: slotCodeOf(slot),
+  }
+}

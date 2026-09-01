@@ -1,13 +1,19 @@
 // src/main.ts
-import { createApp } from 'vue'
-import { DefaultApolloClient } from '@vue/apollo-composable'
-import App from './App.vue'
-import { apolloClient } from '../apollo-client'
-import './style.css' // (ถ้ามี)
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
+import { DefaultApolloClient } from "@vue/apollo-composable";
+import App from "./App.vue";
+import { apolloClient } from "./services/apollo-client";
+import router from "./router";
+import "./assets/style.css";
 
-const app = createApp(App)
+const app = createApp(App);
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate);
 
-// Provide Apollo Client ให้กับโปรเจกต์ Vue
-app.provide(DefaultApolloClient, apolloClient)
+app.use(pinia);
+app.provide(DefaultApolloClient, apolloClient);
+app.use(router);
 
-app.mount('#app')
+app.mount("#app");

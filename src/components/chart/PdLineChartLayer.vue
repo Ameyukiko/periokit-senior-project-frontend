@@ -1,0 +1,208 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { getToothColumnWidth, getToothSitePositions } from '@/domain/chart/chart.image'
+import { isUpperTooth } from '@/domain/chart/chart.rules'
+import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
+
+const props = defineProps<{
+  arch: number[][]
+  chartData: ChartData
+  surface: Surface
+  groupGapClass: string
+  baselineY?: number
+}>()
+
+const toNumber = (value: string) => Number.parseInt(value, 10) || 0
+
+// Determine PD graph direction based on surface and arch
+// Upper BUCCAL = points DOWN (+1)
+// Upper PALATAL (lingual for upper) = points UP (-1)
+// Lower LINGUAL = points DOWN (+1)
+// Lower BUCCAL = points UP (-1)
+const getPdDirection = (toothId: ToothId, surface: Surface): 1 | -1 => {
+  const isUpper = isUpperTooth(toothId)
+  // Upper BUCCAL and Lower LINGUAL have grids extending UP (baselineY = 99)
+  // Upper PALATAL and Lower BUCCAL have grids extending DOWN (baselineY = 62)
+  if ((isUpper && surface === 'buccal') || (!isUpper && surface === 'lingual')) {
+    return -1 // Points UP (apical, towards the roots)
+  }
+  return 1 // Points DOWN (apical, towards the roots)
+}
+
+interface BaselinePoint {
+  x: number
+  y: number
+}
+
+// Get gap width in pixels based on Tailwind class
+const getGapWidth = (gapClass: string): number => {
+  if (gapClass === 'w-4') return 16
+  if (gapClass === 'w-6') return 24
+  return 16
+}
+
+// GM Points (Gingival Margin) - For drawing the red line
+// GM = CEJ + REC (REC+ = Recession, REC- = Swelling)
+const gmPoints = computed(() => {
+  const points: BaselinePoint[] = []
+  let currentX = 0
+  const gapWidth = getGapWidth(props.groupGapClass)
+  const cejY = props.baselineY ?? 60
+
+  for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
+    const group = props.arch[gIdx]
+    for (const toothId of group) {
+      const toothWidth = getToothColumnWidth(toothId)
+      const tooth = props.chartData[toothId]
+
+      const direction = getPdDirection(toothId, props.surface)
+      const sitePositions = getToothSitePositions(toothId, props.surface)
+
+      for (const site of [0, 1, 2] as const) {
+        // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
+        const recValue = (tooth && !tooth.extracted) ? toNumber(tooth[props.surface].rec[site]) : 0
+        const y = cejY + (recValue * 6 * direction)
+        const x = currentX + toothWidth * sitePositions[site]
+        points.push({ x, y })
+      }
+
+      currentX += toothWidth
+    }
+    if (gIdx < props.arch.length - 1) {
+      currentX += gapWidth
+    }
+  }
+
+  if (points.length > 0) {
+    points.unshift({ x: 0, y: points[0].y })
+    points.push({ x: svgWidth.value, y: points[points.length - 1].y })
+  }
+
+  return points
+})
+
+// CAL Points (Clinical Attachment Level) - For drawing the blue line (bone level)
+// CAL = PD + REC, distance from CEJ
+const calPoints = computed(() => {
+  const points: BaselinePoint[] = []
+  let currentX = 0
+  const gapWidth = getGapWidth(props.groupGapClass)
+  const cejY = props.baselineY ?? 60
+
+  for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
+    const group = props.arch[gIdx]
+    for (const toothId of group) {
+      const toothWidth = getToothColumnWidth(toothId)
+      const tooth = props.chartData[toothId]
+
+      const direction = getPdDirection(toothId, props.surface)
+      const sitePositions = getToothSitePositions(toothId, props.surface)
+
+      for (const site of [0, 1, 2] as const) {
+        // Even if tooth is extracted, we treat its values as 0 to keep the graph continuous at baseline
+        const calValue = (tooth && !tooth.extracted) ? toNumber(tooth[props.surface].cal[site]) : 0
+        const y = cejY + (calValue * 6 * direction)
+        const x = currentX + toothWidth * sitePositions[site]
+        points.push({ x, y })
+      }
+
+      currentX += toothWidth
+    }
+    if (gIdx < props.arch.length - 1) {
+      currentX += gapWidth
+    }
+  }
+
+  if (points.length > 0) {
+    points.unshift({ x: 0, y: points[0].y })
+    points.push({ x: svgWidth.value, y: points[points.length - 1].y })
+  }
+
+  return points
+})
+
+// Generate polyline strings for GM and CAL
+const gmPolylinePoints = computed(() => gmPoints.value.map(p => `${p.x},${p.y}`).join(' '))
+const calPolylinePoints = computed(() => calPoints.value.map(p => `${p.x},${p.y}`).join(' '))
+
+// PD Area (Probing Depth) - Purple area between GM and CAL
+const pdAreaPoints = computed(() => {
+  if (gmPoints.value.length === 0 || calPoints.value.length === 0) return ''
+  if (gmPoints.value.length !== calPoints.value.length) return ''
+
+  // GM points (top) -> CAL points (bottom, reversed order)
+  const forward = gmPoints.value.map(p => `${p.x},${p.y}`)
+  const backward = [...calPoints.value].reverse().map(p => `${p.x},${p.y}`)
+  return [...forward, ...backward].join(' ')
+})
+
+// Calculate total width for SVG viewBox
+const svgWidth = computed(() => {
+  let width = 0
+  const gapWidth = getGapWidth(props.groupGapClass)
+
+  for (let gIdx = 0; gIdx < props.arch.length; gIdx++) {
+    const group = props.arch[gIdx]
+    for (const toothId of group) {
+      width += getToothColumnWidth(toothId)
+    }
+    if (gIdx < props.arch.length - 1) {
+      width += gapWidth
+    }
+  }
+  return width
+})
+</script>
+
+<template>
+  <div 
+    class="pd-line-chart-layer absolute top-0 left-0 pointer-events-none z-20"
+    :style="{ width: `${svgWidth}px` }"
+  >
+    <svg
+      :viewBox="`0 0 ${svgWidth} 150`"
+      class="w-full h-full"
+      preserveAspectRatio="xMidYMin meet"
+    >
+      <!-- PD Area (Probing Depth) - Purple area - Area between GM and CAL -->
+      <polygon
+        v-if="pdAreaPoints"
+        :points="pdAreaPoints"
+        fill="#a855f7"
+        fill-opacity="0.3"
+        stroke="none"
+      />
+      <!-- CAL Line (Bone Level) - Blue line - Bone level -->
+      <polyline
+        v-if="calPoints.length > 1"
+        :points="calPolylinePoints"
+        fill="none"
+        stroke="#3b82f6"
+        stroke-width="2"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+      <!-- GM Line (Gingival Margin) - Red line - Gingival margin -->
+      <polyline
+        v-if="gmPoints.length > 1"
+        :points="gmPolylinePoints"
+        fill="none"
+        stroke="#ef4444"
+        stroke-width="2"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+    </svg>
+  </div>
+</template>
+
+<style scoped>
+.pd-line-chart-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+}
+</style>

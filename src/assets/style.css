@@ -1,0 +1,171 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* Global Styles */
+:root {
+  font-family: "Inter", sans-serif;
+}
+
+button,
+[role="button"],
+a,
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+label {
+  cursor: pointer;
+}
+
+.font-sans {
+  font-family: "Inter", sans-serif;
+}
+
+input::placeholder {
+  color: #9ca3af;
+}
+
+/* Notification Toast Styles */
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.notification-enter-active,
+.notification-leave-active {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.notification-enter-from {
+  opacity: 0;
+  transform: translateX(50px) scale(0.9);
+}
+
+.notification-leave-to {
+  opacity: 0;
+  transform: translateX(20px) scale(0.95);
+}
+
+.notification-move {
+  transition: transform 0.4s ease;
+}
+
+/* Confirm Modal Styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Sidebar Focus Transition */
+.sidebar-focus-enter-active {
+  transition:
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s ease-out;
+}
+.sidebar-focus-leave-active {
+  transition:
+    transform 0.4s cubic-bezier(0.7, 0, 0.84, 0),
+    opacity 0.3s ease-in;
+}
+.sidebar-focus-enter-from,
+.sidebar-focus-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.scale-enter-active,
+.scale-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.scale-enter-from,
+.scale-leave-to {
+  opacity: 0;
+  transform: scale(0.9) translateY(20px);
+}
+
+/* Periodontal Chart Styles */
+button,
+input {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.writing-vertical {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.clinical-grid-bg {
+  background-image: url("/images/teeth/chart-background-upper.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.clinical-grid-bg-inf {
+  background-image: url("/images/teeth/chart-background-lower.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Style horizontal and vertical borders of disabled/extracted periodontal chart cells */
+div[class*="bg-slate-800"],
+div[class*="bg-slate-900"] {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+div.border-b[class*="bg-slate-800"],
+div.border-b[class*="bg-slate-900"] {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+div.border-b:has(> [class*="bg-slate-800"]),
+div.border-b:has(> [class*="bg-slate-900"]) {
+  border-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Focus behavior for group elements in chart grid to raise z-index */
+.group:focus-within {
+  z-index: 20;
+}
+
+/* PD Line Chart Layer */
+.pd-line-chart-layer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Filter Panel */
+.filter-panel {
+  position: relative;
+}
