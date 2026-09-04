@@ -173,7 +173,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
           >
             Interdental CAL
             <span class="block text-[10px] font-normal text-slate-700">at site of greatest loss</span>
-            <span v-if="cal === null" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="cal === null && !marks.cal" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
@@ -198,7 +198,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Radiographic bone loss
-            <span v-if="boneLossPercent === null" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="boneLossPercent === null && !marks.boneLoss" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
@@ -223,7 +223,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Tooth loss due to periodontitis
-            <span v-if="teethLost === null" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="teethLost === null && !marks.toothLoss" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
