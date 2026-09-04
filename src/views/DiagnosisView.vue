@@ -618,29 +618,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             </p>
 
             <div class="mt-5 flex flex-wrap items-center gap-3.5">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[13px] text-slate-500 font-medium">Final stage — you decide</span>
-                <div class="relative group/info inline-flex items-center">
-                  <button
-                    type="button"
-                    class="text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none transition-colors"
-                    aria-label="About final stage selection"
-                  >
-                    <Info class="w-3.5 h-3.5" />
-                  </button>
-                  <div
-                    class="hidden group-hover/info:block group-focus-within/info:block absolute left-0 bottom-full mb-2 z-30 w-64 p-2.5 rounded-xl bg-slate-800 text-white shadow-xl text-left pointer-events-none"
-                  >
-                    <span class="block text-[11px] font-bold text-white">Clinical Judgment</span>
-                    <span class="block mt-1 text-[11px] font-normal text-white/85 leading-relaxed">
-                      Accept the system-calculated stage or select an override based on your clinical evaluation. Overrides require a brief clinical reason.
-                    </span>
-                    <div
-                      class="absolute top-full left-3 -mt-1 border-4 border-transparent border-t-slate-800"
-                    ></div>
-                  </div>
-                </div>
-              </div>
+              <span class="text-[13px] text-slate-400">Final stage — you decide</span>
 
               <div class="relative inline-flex items-center">
                 <select
@@ -663,36 +641,13 @@ const hasChart = computed(() => chartStore.hasChartData)
               <span v-if="!diagnosisStore.stageOverridden" class="text-[12px] text-slate-400">
                 Overriding asks for a short reason
               </span>
-              <div v-else class="relative flex-1 min-w-60 flex items-center">
-                <input
-                  v-model="inputs.stageReason"
-                  type="text"
-                  class="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-                  :placeholder="`Why does Stage ${inputs.stageOverride} fit this patient better?`"
-                  title="Please provide a clinical reason for overriding the calculated stage."
-                />
-                <div class="absolute right-2.5 flex items-center">
-                  <div class="relative group/tip flex items-center">
-                    <button
-                      type="button"
-                      tabindex="-1"
-                      class="text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
-                      :class="{ 'text-amber-500 hover:text-amber-600': !inputs.stageReason.trim() }"
-                      aria-label="Please provide a clinical reason for overriding the calculated stage."
-                    >
-                      <Info class="w-3.5 h-3.5" />
-                    </button>
-                    <div
-                      class="hidden group-hover/tip:block absolute bottom-full right-0 mb-2 z-30 px-2.5 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-normal shadow-lg whitespace-nowrap pointer-events-none leading-tight"
-                    >
-                      Please provide a clinical reason for overriding the calculated stage.
-                      <div
-                        class="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <input
+                v-else
+                v-model="inputs.stageReason"
+                type="text"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                :placeholder="`Why does Stage ${inputs.stageOverride} fit this patient better?`"
+              />
             </div>
           </div>
         </section>
@@ -884,29 +839,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             </p>
 
             <div class="mt-5 flex flex-wrap items-center gap-3.5">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[13px] text-slate-500 font-medium">Final grade — you decide</span>
-                <div class="relative group/info inline-flex items-center">
-                  <button
-                    type="button"
-                    class="text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none transition-colors"
-                    aria-label="About final grade selection"
-                  >
-                    <Info class="w-3.5 h-3.5" />
-                  </button>
-                  <div
-                    class="hidden group-hover/info:block group-focus-within/info:block absolute left-0 bottom-full mb-2 z-30 w-64 p-2.5 rounded-xl bg-slate-800 text-white shadow-xl text-left pointer-events-none"
-                  >
-                    <span class="block text-[11px] font-bold text-white">Clinical Judgment</span>
-                    <span class="block mt-1 text-[11px] font-normal text-white/85 leading-relaxed">
-                      Accept the system-calculated grade or select an override based on your clinical evaluation. Overrides require a brief clinical reason.
-                    </span>
-                    <div
-                      class="absolute top-full left-3 -mt-1 border-4 border-transparent border-t-slate-800"
-                    ></div>
-                  </div>
-                </div>
-              </div>
+              <span class="text-[13px] text-slate-400">Final grade — you decide</span>
 
               <div class="relative inline-flex items-center">
                 <select
@@ -929,36 +862,13 @@ const hasChart = computed(() => chartStore.hasChartData)
               <span v-if="!diagnosisStore.gradeOverridden" class="text-[12px] text-slate-400">
                 Overriding asks for a short reason
               </span>
-              <div v-else class="relative flex-1 min-w-60 flex items-center">
-                <input
-                  v-model="inputs.gradeReason"
-                  type="text"
-                  class="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-                  :placeholder="`Why does Grade ${inputs.gradeOverride} fit this patient better?`"
-                  title="Please provide a clinical reason for overriding the calculated grade."
-                />
-                <div class="absolute right-2.5 flex items-center">
-                  <div class="relative group/tip flex items-center">
-                    <button
-                      type="button"
-                      tabindex="-1"
-                      class="text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
-                      :class="{ 'text-amber-500 hover:text-amber-600': !inputs.gradeReason.trim() }"
-                      aria-label="Please provide a clinical reason for overriding the calculated grade."
-                    >
-                      <Info class="w-3.5 h-3.5" />
-                    </button>
-                    <div
-                      class="hidden group-hover/tip:block absolute bottom-full right-0 mb-2 z-30 px-2.5 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-normal shadow-lg whitespace-nowrap pointer-events-none leading-tight"
-                    >
-                      Please provide a clinical reason for overriding the calculated grade.
-                      <div
-                        class="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <input
+                v-else
+                v-model="inputs.gradeReason"
+                type="text"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                :placeholder="`Why does Grade ${inputs.gradeOverride} fit this patient better?`"
+              />
             </div>
           </div>
         </section>
