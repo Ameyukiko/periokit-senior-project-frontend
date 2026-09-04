@@ -590,7 +590,6 @@ const confirmSaveChart = async () => {
   showSaveConfirmModal.value = false
   if (isSaving.value) return
   isSaving.value = true
-  const wasNewPatient = isNewPatientMode.value
   try {
     await chartStore.saveToBackend(true)
 
@@ -603,11 +602,10 @@ const confirmSaveChart = async () => {
     // and with it the visit its films upload to.
     await xrayStore.rekeyBoard(xrayBoardKey(patientId, activeVisit), activeVisit)
 
-    if (wasNewPatient && patientId) {
-      navigate({ name: 'patient-visits', params: { patientId } }, 'push')
-      return
-    }
-
+    // Saving never leaves this page, not even for a brand-new patient (PER-261).
+    // The backend hands back the ids it just minted; writing them into the query
+    // is all it takes for the X-ray and Diagnosis tabs to be about the new visit,
+    // so the doctor can carry on with it instead of picking it out of a list.
     if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
       navigate({
         query: {
