@@ -638,11 +638,8 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </div>
               </div>
 
-              <span v-if="!diagnosisStore.stageOverridden" class="text-[12px] text-slate-400">
-                Overriding asks for a short reason
-              </span>
               <input
-                v-else
+                v-if="diagnosisStore.stageOverridden"
                 v-model="inputs.stageReason"
                 type="text"
                 class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
@@ -859,11 +856,8 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </div>
               </div>
 
-              <span v-if="!diagnosisStore.gradeOverridden" class="text-[12px] text-slate-400">
-                Overriding asks for a short reason
-              </span>
               <input
-                v-else
+                v-if="diagnosisStore.gradeOverridden"
                 v-model="inputs.gradeReason"
                 type="text"
                 class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
