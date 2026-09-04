@@ -127,8 +127,27 @@ const setGradeCount = (key: 'furcationGrade' | 'mobilityGrade', raw: string) => 
 }
 
 const selectStage = (stage: StageId) => {
-  inputs.stageOverride = inputs.stageOverride === stage ? null : stage
+  if (inputs.stageOverride === stage || stage === diagnosisStore.stage.stage) {
+    inputs.stageOverride = null
+  } else {
+    inputs.stageOverride = stage
+  }
   if (!diagnosisStore.stageOverridden) inputs.stageReason = ''
+}
+
+const handleStageSelect = (raw: string) => {
+  if (!raw) {
+    inputs.stageOverride = null
+    inputs.stageReason = ''
+    return
+  }
+  const stage = raw as StageId
+  if (diagnosisStore.stage.stage && stage === diagnosisStore.stage.stage) {
+    inputs.stageOverride = null
+    inputs.stageReason = ''
+  } else {
+    inputs.stageOverride = stage
+  }
 }
 
 // Ticking a band on one row of the staging table. Rows are independent — the
@@ -138,8 +157,27 @@ const markStageRow = (row: StageRow, stage: StageId) => {
 }
 
 const selectGrade = (grade: GradeId) => {
-  inputs.gradeOverride = inputs.gradeOverride === grade ? null : grade
+  if (inputs.gradeOverride === grade || grade === diagnosisStore.grade.grade) {
+    inputs.gradeOverride = null
+  } else {
+    inputs.gradeOverride = grade
+  }
   if (!diagnosisStore.gradeOverridden) inputs.gradeReason = ''
+}
+
+const handleGradeSelect = (raw: string) => {
+  if (!raw) {
+    inputs.gradeOverride = null
+    inputs.gradeReason = ''
+    return
+  }
+  const grade = raw as GradeId
+  if (diagnosisStore.grade.grade && grade === diagnosisStore.grade.grade) {
+    inputs.gradeOverride = null
+    inputs.gradeReason = ''
+  } else {
+    inputs.gradeOverride = grade
+  }
 }
 
 // Every clickable row of the grading table stands for one of the inputs above
@@ -553,59 +591,61 @@ const hasChart = computed(() => chartStore.hasChartData)
             </div>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] text-slate-400">System result</span>
-              <span class="text-[16px] font-bold text-slate-800">
-                {{ diagnosisStore.stage.stage ? `Stage ${diagnosisStore.stage.stage}` : 'Nothing ticked yet' }}
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:p-6 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[13px] text-slate-500 font-normal">System result</span>
+              <span class="text-[18px] font-bold text-slate-900">
+                {{ diagnosisStore.stage.stage ? `Stage ${diagnosisStore.stage.stage}` : 'Not enough data' }}
               </span>
               <span
-                v-if="diagnosisStore.missingStageInputs.length"
-                class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-bold"
+                v-if="diagnosisStore.stage.missing.length"
+                class="px-3 py-0.5 rounded-full bg-[#FECE44] text-slate-900 text-[12px] font-semibold tracking-normal"
               >
-                {{ diagnosisStore.missingStageInputs.length }}
-                {{ diagnosisStore.missingStageInputs.length === 1 ? 'criterion' : 'criteria' }}
+                {{ diagnosisStore.stage.missing.length }}
+                {{ diagnosisStore.stage.missing.length === 1 ? 'criterion' : 'criteria' }}
                 still missing
               </span>
-              <span v-else class="text-[11px] text-slate-400">All criteria ticked</span>
+              <span
+                v-else
+                class="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold tracking-normal"
+              >
+                All criteria recorded
+              </span>
             </div>
 
-            <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
+            <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
               Why: {{ diagnosisStore.stage.reasons.join(' ') }}
             </p>
 
-            <p
-              v-if="diagnosisStore.stageReasons.length"
-              class="mt-1.5 text-[11px] text-slate-400 leading-relaxed"
-            >
-              Your measurements: {{ diagnosisStore.stageReasons.join(' ') }}
-            </p>
+            <div class="mt-5 flex flex-wrap items-center gap-3.5">
+              <span class="text-[13px] text-slate-400">Final stage — you decide</span>
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <span class="text-[11px] text-slate-400">Final stage — you decide</span>
-              <select
-                v-model="inputs.stageOverride"
-                class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option :value="null">
-                  {{
-                    diagnosisStore.stage.stage
-                      ? `Keep Stage ${diagnosisStore.stage.stage}`
-                      : 'Not selected'
-                  }}
-                </option>
-                <option v-for="stage in STAGE_IDS" :key="stage" :value="stage">
-                  Stage {{ stage }}
-                </option>
-              </select>
-              <span v-if="!diagnosisStore.stageOverridden" class="text-[11px] text-slate-400">
+              <div class="relative inline-flex items-center">
+                <select
+                  :value="diagnosisStore.finalStage ?? ''"
+                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
+                  @change="handleStageSelect(($event.target as HTMLSelectElement).value)"
+                >
+                  <option v-if="!diagnosisStore.finalStage" value="">Not selected</option>
+                  <option v-for="stage in STAGE_IDS" :key="stage" :value="stage">
+                    Stage {{ stage }}
+                  </option>
+                </select>
+                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <span v-if="!diagnosisStore.stageOverridden" class="text-[12px] text-slate-400">
                 Overriding asks for a short reason
               </span>
               <input
                 v-else
                 v-model="inputs.stageReason"
                 type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
                 :placeholder="`Why does Stage ${inputs.stageOverride} fit this patient better?`"
               />
             </div>
@@ -624,7 +664,7 @@ const hasChart = computed(() => chartStore.hasChartData)
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span
-                class="w-5 h-5 rounded-full bg-[#7c3aed] text-white text-[10px] font-bold grid place-items-center"
+                class="w-5 h-5 rounded-full bg-[#0052ff] text-white text-[10px] font-bold grid place-items-center"
               >
                 2
               </span>
@@ -774,10 +814,10 @@ const hasChart = computed(() => chartStore.hasChartData)
             @choose="applyGradeChoice"
           />
 
-          <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] text-slate-400">System result</span>
-              <span class="text-[16px] font-bold text-slate-800">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:p-6 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[13px] text-slate-500 font-normal">System result</span>
+              <span class="text-[18px] font-bold text-slate-900">
                 {{
                   diagnosisStore.grade.grade
                     ? `Grade ${diagnosisStore.grade.grade}`
@@ -786,45 +826,54 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
               <span
                 v-if="diagnosisStore.grade.missing.length"
-                class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-bold"
+                class="px-3 py-0.5 rounded-full bg-[#FECE44] text-slate-900 text-[12px] font-semibold tracking-normal"
               >
                 Still needs {{ diagnosisStore.grade.missing.join(', ') }}
               </span>
-              <span v-else class="text-[11px] text-slate-400">All required input provided</span>
+              <span
+                v-else
+                class="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold tracking-normal"
+              >
+                All required input provided
+              </span>
             </div>
 
             <p
               v-if="diagnosisStore.grade.reasons.length"
-              class="mt-2 text-[11px] text-slate-500 leading-relaxed"
+              class="mt-3 text-[13px] text-slate-600 leading-relaxed"
             >
               Why: {{ diagnosisStore.grade.reasons.join(' ') }}
             </p>
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <span class="text-[11px] text-slate-400">Final grade — you decide</span>
-              <select
-                v-model="inputs.gradeOverride"
-                class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option :value="null">
-                  {{
-                    diagnosisStore.grade.grade
-                      ? `Keep Grade ${diagnosisStore.grade.grade}`
-                      : 'Not selected'
-                  }}
-                </option>
-                <option v-for="grade in GRADE_IDS" :key="grade" :value="grade">
-                  Grade {{ grade }}
-                </option>
-              </select>
-              <span v-if="!diagnosisStore.gradeOverridden" class="text-[11px] text-slate-400">
+            <div class="mt-5 flex flex-wrap items-center gap-3.5">
+              <span class="text-[13px] text-slate-400">Final grade — you decide</span>
+
+              <div class="relative inline-flex items-center">
+                <select
+                  :value="diagnosisStore.finalGrade ?? ''"
+                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
+                  @change="handleGradeSelect(($event.target as HTMLSelectElement).value)"
+                >
+                  <option v-if="!diagnosisStore.finalGrade" value="">Not selected</option>
+                  <option v-for="grade in GRADE_IDS" :key="grade" :value="grade">
+                    Grade {{ grade }}
+                  </option>
+                </select>
+                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <span v-if="!diagnosisStore.gradeOverridden" class="text-[12px] text-slate-400">
                 Overriding asks for a short reason
               </span>
               <input
                 v-else
                 v-model="inputs.gradeReason"
                 type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
                 :placeholder="`Why does Grade ${inputs.gradeOverride} fit this patient better?`"
               />
             </div>
