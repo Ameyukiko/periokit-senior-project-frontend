@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -48,7 +47,6 @@ const visitStore = useVisitStore()
 const notifStore = useNotificationStore()
 const diagnosisStore = useDiagnosisStore()
 
-const { patientInfo } = storeToRefs(chartStore)
 // Stable object — resetInputs() assigns into it rather than replacing it.
 const inputs = diagnosisStore.inputs
 
@@ -190,15 +188,6 @@ const confirmSave = () => {
   )
 }
 
-const visitDate = computed(() => {
-  if (!patientInfo.value.date) return '—'
-  return new Date(patientInfo.value.date).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-})
-
 const EXTENT_OPTIONS: ExtentId[] = ['localized', 'generalized', 'molar-incisor']
 const DIRECT_OPTIONS: DirectEvidence[] = ['no-loss', 'lt-2mm', 'gte-2mm']
 const PHENOTYPE_OPTIONS: Phenotype[] = ['heavy-biofilm', 'commensurate', 'exceeds']
@@ -324,23 +313,6 @@ const hasChart = computed(() => chartStore.hasChartData)
               <h1 class="text-2xl xl:text-[28px] font-bold text-slate-800 tracking-tight">
                 {{ diagnosisStore.diagnosisTitle }}
               </h1>
-              <div
-                class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[12px] text-slate-500"
-              >
-                <span>{{ patientInfo.patientName || 'Unnamed patient' }}</span>
-                <span>· HN {{ patientInfo.hn || '—' }}</span>
-                <span>· Visit {{ visitDate }}</span>
-                <span>· Stage from your input · grade from your input</span>
-                <span
-                  v-if="diagnosisStore.missingInputs.length"
-                  class="font-bold text-slate-700"
-                >
-                  · {{ diagnosisStore.missingInputs.length }} inputs still missing
-                </span>
-                <span v-else-if="diagnosisStore.isClassified" class="font-bold text-emerald-600">
-                  · Classification complete
-                </span>
-              </div>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
