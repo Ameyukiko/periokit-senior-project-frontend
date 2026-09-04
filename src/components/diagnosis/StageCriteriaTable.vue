@@ -11,6 +11,8 @@ import type { StageId, StageRow } from '@/domain/diagnosis/diagnosis.types'
 const props = defineProps<{
   selected: StageId | null
   marks: Record<StageRow, StageId | null>
+  /** The band each row settled on — the doctor's tick, or the one the numbers fall in. */
+  resolved: Record<StageRow, StageId | null>
   cal: number | null
   calSite: string | null
   boneLossPercent: number | null
@@ -99,16 +101,24 @@ const lossChip = computed(() => {
   return `Patient: ${props.teethLost} ${props.teethLost === 1 ? 'tooth' : 'teeth'}`
 })
 
-// One cell at a time, row by row — the way the printed table is ticked. The
-// column as a whole is never highlighted: the stage is a separate decision,
-// taken in the header or in the dropdown below the table.
+// One cell at a time, row by row — the way the printed table is ticked. A cell
+// the numbers landed on reads softer than one the doctor ticked by hand, so the
+// two are told apart at a glance, and a cell holding no answer is drawn dashed
+// to say it is open to be ticked. The column as a whole is never highlighted:
+// the stage is a separate decision, taken in the header or in the dropdown
+// below the table.
 const cellClass = (row: StageRow, stage: StageId) => [
   'px-3 py-2.5 align-top border border-slate-300 cursor-pointer transition-all duration-150',
+  props.marks[row] !== stage &&
+    props.resolved[row] !== stage &&
+    'border-dashed hover:border-solid hover:border-blue-300',
   props.marks[row] === stage
     ? 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
-    : props.selected === stage
-      ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
-      : 'text-black hover:bg-blue-100/70',
+    : props.resolved[row] === stage
+      ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400 hover:bg-[#FECE44]/75'
+      : props.selected === stage
+        ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
+        : 'text-black hover:bg-blue-100/70',
 ]
 </script>
 
@@ -120,6 +130,10 @@ const cellClass = (row: StageRow, stage: StageId) => [
           <th colspan="2" class="p-3 align-top w-56 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
             <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
             <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
+            <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
+              Shaded cells are where your numbers fall. Dashed cells are open — click one to tick
+              that band yourself.
+            </span>
           </th>
           <th
             v-for="column in COLUMNS"

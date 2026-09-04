@@ -98,11 +98,12 @@ onMounted(async () => {
   }
 })
 
-// Values read like text until they are clicked, the way the printed AAP table
-// reads — the box only shows up under the cursor.
+// Anything the doctor can change carries a faint box, so an editable value is
+// told apart from a printed one at a glance. The border firms up under the
+// cursor and turns blue on focus.
 const QUIET =
-  'bg-transparent border-0 rounded px-1 -mx-1 text-[13px] font-bold text-slate-800 outline-none hover:bg-slate-100 focus:bg-blue-50 focus:ring-2 focus:ring-blue-100 transition-colors'
-const QUIET_NUMBER = `${QUIET} w-14`
+  'bg-white border border-slate-200 rounded-md px-1.5 py-0.5 -mx-0.5 text-[13px] font-bold text-slate-800 outline-none hover:border-slate-300 hover:bg-slate-50 focus:border-[#0052ff] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-colors'
+const QUIET_NUMBER = `${QUIET} w-16`
 const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold`
 
 type NumericKey =
@@ -150,10 +151,22 @@ const handleStageSelect = (raw: string) => {
   }
 }
 
-// Ticking a band on one row of the staging table. Rows are independent — the
-// stage itself is a separate decision, so a mark never moves it on its own.
+// Ticking a band on one row of the staging table, which overrides the band that
+// row's measurement fell in. Clicking the same cell again hands the row back to
+// the numbers.
 const markStageRow = (row: StageRow, stage: StageId) => {
   inputs.stageMarks[row] = inputs.stageMarks[row] === stage ? null : stage
+}
+
+// Same shape as the stage and grade controls: picking what the chart already
+// counted hands the answer back to the chart, anything else overrides it.
+const selectExtent = (option: ExtentId) => {
+  inputs.extent = diagnosisStore.extent === option ? null : option
+}
+
+const selectPhenotype = (raw: string) => {
+  const value = (raw || null) as Phenotype | null
+  inputs.phenotype = value === diagnosisStore.suggestedPhenotype ? null : value
 }
 
 const selectGrade = (grade: GradeId) => {
@@ -188,7 +201,9 @@ const applyGradeChoice = (choice: GradeChoice) => {
       inputs.directEvidence = choice.value
       break
     case 'phenotype':
-      inputs.phenotype = choice.value
+      // Picking what the chart already reads hands the row back to the chart.
+      inputs.phenotype =
+        choice.value === diagnosisStore.suggestedPhenotype ? null : choice.value
       break
     case 'smoking':
       inputs.smoking = choice.value
@@ -370,9 +385,9 @@ const hasChart = computed(() => chartStore.hasChartData)
           </div>
 
           <p class="mt-2.5 text-[12px] text-slate-400">
-            The tables below show where your numbers fall. Tick the band that matches on each row
-            and the stage and grade follow from what you ticked — nothing is read straight out of
-            the chart.
+            The tables below show where your numbers fall, and the stage and grade follow from
+            them. Tick a band on any row to override what the numbers say, and the final call
+            stays yours.
           </p>
         </header>
 
@@ -386,7 +401,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 1
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Stage</h2>
-              <span class="text-[11px] text-slate-400">From the bands you tick</span>
+              <span class="text-[11px] text-slate-400">Calculated from the table</span>
             </div>
             <p class="text-[11px] text-slate-400">
               Severity uses the worst affected site. Complexity can raise the stage, never lower it.
@@ -409,7 +424,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 step="0.5"
                 placeholder="Add"
                 :value="diagnosisStore.interdentalCal ?? ''"
-                :class="`${QUIET_PROMPT} w-14`"
+                :class="`${QUIET_PROMPT} w-16`"
                 @input="setNumber('interdentalCalMm', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500">mm</span>
@@ -430,7 +445,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 step="1"
                 placeholder="Add"
                 :value="diagnosisStore.probingDepth ?? ''"
-                :class="`${QUIET_PROMPT} w-14`"
+                :class="`${QUIET_PROMPT} w-16`"
                 @input="setNumber('probingDepthMm', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500">mm</span>
@@ -451,7 +466,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             >
               <select
                 :value="diagnosisStore.furcation ?? ''"
-                :class="`${QUIET} w-20`"
+                :class="`${QUIET} w-24`"
                 @change="setGradeCount('furcationGrade', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">None</option>
@@ -464,7 +479,7 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
               <select
                 :value="diagnosisStore.mobility ?? ''"
-                :class="`${QUIET} w-20`"
+                :class="`${QUIET} w-24`"
                 @change="setGradeCount('mobilityGrade', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">No mob</option>
@@ -490,7 +505,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 :value="inputs.boneLossPercent ?? ''"
                 :class="[
                   QUIET_PROMPT,
-                  inputs.boneLossPercent === null ? 'w-32' : 'w-10'
+                  inputs.boneLossPercent === null ? 'w-36' : 'w-12'
                 ]"
                 @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
               />
@@ -512,7 +527,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 max="32"
                 step="1"
                 :value="diagnosisStore.teethLost"
-                :class="`${QUIET} w-10`"
+                :class="`${QUIET} w-12`"
                 @input="setNumber('teethLostToPerio', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500 whitespace-nowrap">
@@ -524,6 +539,7 @@ const hasChart = computed(() => chartStore.hasChartData)
           <StageCriteriaTable
             :selected="diagnosisStore.finalStage"
             :marks="inputs.stageMarks"
+            :resolved="diagnosisStore.stage.resolved"
             :cal="diagnosisStore.interdentalCal"
             :cal-site="calSite"
             :bone-loss-percent="inputs.boneLossPercent"
@@ -568,8 +584,12 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </span>
               </span>
               <span class="text-[11px] text-slate-400">
-                Suggested from chart: {{ findings.affectedTeeth }} of
+                Counted from chart: {{ findings.affectedTeeth }} of
                 {{ findings.remainingTeeth }} teeth affected ({{ findings.affectedPercentage }}%)
+                <template v-if="diagnosisStore.extentOverridden">
+                  — reads as {{ EXTENT_LABEL[diagnosisStore.suggestedExtent!].split(' (')[0] }},
+                  you chose otherwise
+                </template>
               </span>
             </div>
             <div class="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
@@ -579,12 +599,12 @@ const hasChart = computed(() => chartStore.hasChartData)
                 type="button"
                 class="px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors"
                 :class="
-                  inputs.extent === option
+                  diagnosisStore.extent === option
                     ? 'bg-[#0052ff] text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 "
-                :aria-pressed="inputs.extent === option"
-                @click="inputs.extent = inputs.extent === option ? null : option"
+                :aria-pressed="diagnosisStore.extent === option"
+                @click="selectExtent(option)"
               >
                 {{ EXTENT_LABEL[option] }}
               </button>
@@ -659,7 +679,9 @@ const hasChart = computed(() => chartStore.hasChartData)
                 2
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Grade</h2>
-              <span class="text-[11px] text-slate-400">Needs your input</span>
+              <span class="text-[11px] text-slate-400">
+                From the chart where it can be, from you where it cannot
+              </span>
             </div>
             <p class="text-[11px] text-slate-400">
               Every case starts at Grade B. Primary criteria move it to A or C; risk factors can
@@ -674,7 +696,8 @@ const hasChart = computed(() => chartStore.hasChartData)
                   Complexity and risk-factor input
                 </span>
                 <span class="text-[11px] text-slate-400">
-                  Not in the periodontal chart — fill these in and the grade updates.
+                  The chart cannot answer these — bone loss comes off the X-ray, the rest off the
+                  patient. Fill them in and the grade updates.
                 </span>
               </div>
               <div
@@ -750,11 +773,20 @@ const hasChart = computed(() => chartStore.hasChartData)
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span v-if="!inputs.phenotype" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span
+                    v-if="!diagnosisStore.phenotype"
+                    class="w-1.5 h-1.5 rounded-full bg-amber-400"
+                  ></span>
                   Case phenotype
                 </span>
-                <select v-model="inputs.phenotype" :class="`${QUIET} text-right`">
-                  <option :value="null">Not assessed</option>
+                <select
+                  :value="diagnosisStore.phenotype ?? ''"
+                  :class="`${QUIET} text-right`"
+                  @change="selectPhenotype(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">
+                    {{ diagnosisStore.suggestedPhenotype ? 'From chart' : 'Not assessed' }}
+                  </option>
                   <option v-for="option in PHENOTYPE_OPTIONS" :key="option" :value="option">
                     {{ PHENOTYPE_LABEL[option] }}
                   </option>
@@ -797,7 +829,9 @@ const hasChart = computed(() => chartStore.hasChartData)
             :age-years="diagnosisStore.age"
             :ratio="diagnosisStore.grade.ratio"
             :ratio-grade="diagnosisStore.grade.ratioGrade"
-            :phenotype="inputs.phenotype"
+            :phenotype="diagnosisStore.phenotype"
+            :phenotype-from-chart="diagnosisStore.phenotypeFromChart"
+            :plaque-percentage="findings.plaquePercentage"
             :smoking="inputs.smoking"
             :diabetes="inputs.diabetes"
             @select="selectGrade"

@@ -1,9 +1,9 @@
 import type { ToothId } from '@/domain/chart/chart.types'
 
 // AAP / EFP 2017 staging and grading of periodontitis.
-// Stage is never derived here: the doctor picks it. Everything in this file
-// either reads the chart or places a single criterion in its band — see
-// diagnosis.rules.ts for what the app is allowed to conclude on its own.
+// Everything in this file either reads the chart or places a single criterion
+// in its band — see diagnosis.rules.ts for what the app concludes from those
+// bands, and for the ticks and overrides that let the doctor say otherwise.
 
 export type StageId = 'I' | 'II' | 'III' | 'IV'
 export type GradeId = 'A' | 'B' | 'C'
@@ -36,7 +36,11 @@ export interface ChartFindings {
   missingTeeth: ToothId[]
   remainingTeeth: number
   affectedTeeth: number
+  /** Which teeth those are — the molar / incisor pattern is read off them. */
+  affectedToothIds: ToothId[]
   affectedPercentage: number
+  plaquePercentage: number
+  bopPercentage: number
 }
 
 /** The rows of the staging table the doctor can tick a band in. */
@@ -64,9 +68,9 @@ export interface DiagnosisInputs {
   boneLossPercent: number | null
   teethLostToPerio: number | null
   extent: ExtentId | null
-  // The band the doctor ticked on each row of the staging table — their reading
-  // of the criterion, kept apart from the numbers above, which are measurements.
-  // The stage is worked out from these.
+  // The band the doctor ticked on each row of the staging table. null means the
+  // row keeps the band its measurement falls in; a value overrides that reading
+  // for that row alone. The stage is worked out from the two together.
   stageMarks: Record<StageRow, StageId | null>
   // null = keep the stage the ticked bands arrive at; a value = the doctor's own call.
   stageOverride: StageId | null

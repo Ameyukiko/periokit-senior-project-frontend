@@ -31,6 +31,9 @@ const props = defineProps<{
   ratio: number | null
   ratioGrade: GradeId | null
   phenotype: Phenotype | null
+  /** True when the phenotype came off the chart instead of being answered. */
+  phenotypeFromChart: boolean
+  plaquePercentage: number
   smoking: Smoking | null
   diabetes: Diabetes | null
 }>()
@@ -112,9 +115,11 @@ const ratioChip = computed(() =>
     ? ''
     : `Patient: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`,
 )
-const phenotypeChip = computed(() =>
-  props.phenotype ? `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}` : '',
-)
+const phenotypeChip = computed(() => {
+  if (!props.phenotype) return ''
+  if (!props.phenotypeFromChart) return `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}`
+  return `From chart: ${PHENOTYPE_LABEL[props.phenotype]} (plaque ${props.plaquePercentage}%)`
+})
 const smokingChip = computed(() => (props.smoking ? `Patient: ${SMOKING_LABEL[props.smoking]}` : ''))
 const diabetesChip = computed(() =>
   props.diabetes ? `Patient: ${DIABETES_LABEL[props.diabetes]}` : '',
@@ -142,20 +147,29 @@ const chooseDiabetes = (grade: GradeId) =>
     value: diabetesGrade.value === grade ? null : DIABETES_VALUES[grade],
   })
 
-const cellClass = (answered: GradeId | null, grade: GradeId) => [
+// `soft` is for an answer the chart worked out rather than one the doctor gave,
+// which reads lighter — the same split the staging table makes. A cell holding
+// no answer is dashed, which is what tells these rows apart from the calculated
+// % bone loss ÷ age row below: dashed cells are the ones to fill in.
+const cellClass = (answered: GradeId | null, grade: GradeId, soft = false) => [
   'px-3 py-2.5 align-top border border-slate-300 cursor-pointer transition-all duration-150',
+  answered !== grade && 'border-dashed hover:border-solid hover:border-blue-300',
   answered === grade
-    ? 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
+    ? soft
+      ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400 hover:bg-[#FECE44]/75'
+      : 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
     : props.selected === grade
       ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
       : 'text-black hover:bg-blue-100/70',
 ]
 
-// % bone loss ÷ age comes out of two numbers, so its row is read-only.
+// % bone loss ÷ age comes out of two numbers, so its row is read-only — and it
+// takes the lighter shade for the same reason the phenotype does when the chart
+// answered it: nobody ticked this, the app worked it out.
 const ratioCellClass = (grade: GradeId) => [
   'px-3 py-2.5 align-top border border-slate-300 text-black transition-all duration-150',
   props.ratioGrade === grade
-    ? 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
+    ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400'
     : props.selected === grade
       ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44]'
       : '',
@@ -174,6 +188,10 @@ const rowHeaderClass =
             <span class="block text-[12px] font-bold text-black">Periodontitis Grade</span>
             <span class="block text-[10px] font-normal text-slate-700">
               AAP / EFP 2017 — rate of progression
+            </span>
+            <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
+              Dashed cells are open — click one to answer that row. % bone loss ÷ age is
+              calculated, so it has none.
             </span>
           </th>
           <th
@@ -290,7 +308,7 @@ const rowHeaderClass =
           <td
             v-for="column in COLUMNS"
             :key="column.id"
-            :class="cellClass(phenotypeGrade, column.id)"
+            :class="cellClass(phenotypeGrade, column.id, phenotypeFromChart)"
             @click="choosePhenotype(column.id)"
           >
             {{ PHENOTYPE_BANDS[column.id] }}
