@@ -225,9 +225,10 @@ const isMolar = (toothId: ToothId) => toothId % 10 >= 6
 const isIncisor = (toothId: ToothId) => toothId % 10 <= 2
 
 /**
- * The extent the affected teeth read as: a molar / incisor pattern when every
- * affected tooth is one of those and both are involved, and otherwise the
- * 30% split. Null when the chart has no affected tooth to count.
+ * The extent the affected teeth read as. TAP 2023 puts the pattern as "molars
+ * and/or incisors" — the affected teeth being confined to those, not both
+ * groups having to be involved — and otherwise splits on 30% of the teeth.
+ * Null when the chart has no affected tooth to count.
  */
 export const suggestExtent = (
   affectedToothIds: ToothId[],
@@ -235,11 +236,7 @@ export const suggestExtent = (
 ): ExtentId | null => {
   if (!affectedToothIds.length) return null
 
-  const molars = affectedToothIds.filter(isMolar)
-  const incisors = affectedToothIds.filter(isIncisor)
-  if (molars.length && incisors.length && molars.length + incisors.length === affectedToothIds.length) {
-    return 'molar-incisor'
-  }
+  if (affectedToothIds.every(id => isMolar(id) || isIncisor(id))) return 'molar-incisor'
 
   return affectedPercentage >= 30 ? 'generalized' : 'localized'
 }
@@ -306,36 +303,19 @@ const DIABETES_GRADE: Record<Diabetes, GradeId> = {
   'hba1c-gte-7': 'C',
 }
 
-// The plaque score the chart has to carry before "heavy biofilm" or "low
-// biofilm" is read into it. AAP/EFP give the phenotype in words only, with no
-// cut-off, so these two are this app's convention and the doctor overrides them
-// by answering the row themselves.
-export const HEAVY_BIOFILM_PERCENT = 40
-export const LOW_BIOFILM_PERCENT = 20
-
 /**
- * The case phenotype the chart reads as: destruction against the biofilm that
- * has to explain it. Severity is the stage the severity rows arrived at, before
- * complexity raised it, since complexity says nothing about rate.
+ * The one case phenotype the chart can settle on its own. TAP 2023 names the
+ * molar / incisor pattern in the Grade C cell itself, as a clinical pattern
+ * suggestive of rapid progression, and the extent already counts it off the
+ * chart.
  *
- * A chart with no plaque marked scores 0%, which is indistinguishable from a
- * mouth that is genuinely clean — so nothing is concluded there, and the doctor
- * answers the row.
+ * Nothing else is read here. The table gives the other two bands in words —
+ * "heavy biofilm deposit with low levels of destruction", "destruction
+ * commensurate with biofilm deposits" — and no plaque score to divide them at,
+ * so weighing destruction against biofilm stays a judgement the doctor makes.
  */
-export const suggestPhenotype = (
-  plaquePercentage: number,
-  severity: StageId | null,
-  extent: ExtentId | null,
-): Phenotype | null => {
-  // Molar / incisor pattern is a rapid-progression pattern in its own right.
-  if (extent === 'molar-incisor') return 'exceeds'
-  if (!severity || plaquePercentage <= 0) return null
-
-  const severe = severity === 'III' || severity === 'IV'
-  if (plaquePercentage >= HEAVY_BIOFILM_PERCENT && !severe) return 'heavy-biofilm'
-  if (plaquePercentage <= LOW_BIOFILM_PERCENT && severe) return 'exceeds'
-  return 'commensurate'
-}
+export const suggestPhenotype = (extent: ExtentId | null): Phenotype | null =>
+  extent === 'molar-incisor' ? 'exceeds' : null
 
 export const gradeForDirectEvidence = (value: DirectEvidence | null) =>
   value ? DIRECT_GRADE[value] : null
@@ -368,11 +348,11 @@ export interface GradeCriteria {
 }
 
 export interface GradeAssessment {
-  /** null while the inputs cannot decide between A, B and C. */
-  grade: GradeId | null
+  /** Never null: TAP 2023 starts every case at Grade B. */
+  grade: GradeId
   ratio: number | null
   ratioGrade: GradeId | null
-  primary: GradeId | null
+  primary: GradeId
   modifier: GradeId | null
   reasons: string[]
   missing: string[]
@@ -393,16 +373,20 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
   const reasons: string[] = []
   const missing: string[] = []
 
-  // Direct evidence wins whenever it exists — radiographs 5 years apart beat
-  // any estimate made from a single visit.
-  let primary: GradeId | null = null
+  // TAP 2023, the note under table 6: start every patient at Grade B, then move
+  // it down to A or up to C on the evidence in the table. Direct evidence wins
+  // whenever it exists — radiographs 5 years apart beat any estimate made from
+  // a single visit.
+  let primary: GradeId = 'B'
   if (directGrade) {
     primary = directGrade
     reasons.push(
       `Direct evidence over 5 years shows ${DIRECT_EVIDENCE_LABEL[directEvidence!].toLowerCase()}, which is the Grade ${directGrade} band.`,
     )
   } else {
-    primary = worse(ratioGrade, phenotypeGrade)
+    const indirect = worse(ratioGrade, phenotypeGrade)
+    if (indirect) primary = indirect
+
     if (ratioGrade) {
       reasons.push(
         `No radiographs 5 years apart, so the grade comes from indirect evidence — ${boneLossPercent}% bone loss ÷ ${ageYears} years = ${ratio}, in the Grade ${ratioGrade} band.`,
@@ -413,8 +397,11 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
         `The case phenotype ${phenotypeSource} (${PHENOTYPE_LABEL[phenotype!].toLowerCase()}) reads as Grade ${phenotypeGrade}.`,
       )
     }
-    if (!primary) {
+    if (!indirect) {
       missing.push('direct evidence, % bone loss ÷ age, or case phenotype')
+      reasons.push(
+        'No evidence of progression recorded yet, so the case sits at Grade B — the band every patient starts in until something moves it.',
+      )
     }
   }
 
@@ -442,9 +429,10 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
     missing.push('diabetes')
   }
 
-  // Modifiers raise the grade the primary criteria arrived at; they never
-  // pull it back down, which is why this is `worse` and not an average.
-  const grade = primary ? worse(primary, modifier) : null
+  // Modifiers raise the grade the primary criteria arrived at; they never pull
+  // it back down (TAP 2023: "หากผู้ป่วยมีปัจจัยเสี่ยงเพิ่มเติม … ให้สามารถปรับ
+  // เพิ่ม grade ได้"), which is why this is `worse` and not an average.
+  const grade = worse(primary, modifier) as GradeId
 
   return { grade, ratio, ratioGrade, primary, modifier, reasons, missing }
 }

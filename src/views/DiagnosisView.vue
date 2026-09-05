@@ -7,7 +7,8 @@ import {
   FileText,
   Image as ImageIcon,
   Info,
-  RotateCcw,
+  SquarePen,
+  TriangleAlert,
   Stethoscope,
 } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
@@ -39,6 +40,7 @@ import {
   type StageId,
   type StageRow,
 } from '@/domain/diagnosis/diagnosis.types'
+import type { ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,10 +61,29 @@ const showSaveConfirm = ref(false)
 const patientId = computed(() => (route.query.patientId as string) || null)
 const visitId = computed(() => (route.query.visitId as string) || null)
 
-const chartQuery = computed(() => ({
-  ...(patientId.value ? { patientId: patientId.value } : {}),
-  ...(visitId.value ? { visitId: visitId.value } : {}),
-}))
+/**
+ * The chart page shows "Please select a patient from the drawer" for exactly one
+ * combination: a visit in the query with no patient beside it. A visit that has
+ * no chart yet gives `loadFromBackend` nothing to read a patient off, so the URL
+ * is not always enough — the visit tab strip is asked as well, and a visit is
+ * only ever sent on once a patient can be sent with it.
+ */
+const resolvedPatientId = computed(
+  () =>
+    patientId.value ??
+    chartStore.currentPatientId ??
+    visitStore.visits.find(visit => visit.id === visitId.value)?.patientId ??
+    null,
+)
+
+const chartQuery = computed(() =>
+  resolvedPatientId.value
+    ? {
+        patientId: resolvedPatientId.value,
+        ...(visitId.value ? { visitId: visitId.value } : {}),
+      }
+    : {},
+)
 
 const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
   chartStore.activeSubNav = tab
@@ -70,6 +91,16 @@ const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
     name: 'chart',
     query: { ...chartQuery.value, ...(tab === 'chart' ? {} : { tab }) },
   })
+}
+
+/**
+ * A measurement shown here is only ever read. Correcting one means correcting
+ * the record, so this opens the chart on the tooth the reading came from, with
+ * its detail panel already showing.
+ */
+const openTooth = (toothId: ToothId) => {
+  chartStore.selectedToothId = toothId
+  openChartTab('chart')
 }
 
 /**
@@ -106,12 +137,13 @@ const QUIET =
 const QUIET_NUMBER = `${QUIET} w-16`
 const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold`
 
-type NumericKey =
-  | 'interdentalCalMm'
-  | 'probingDepthMm'
-  | 'boneLossPercent'
-  | 'teethLostToPerio'
-  | 'ageYears'
+// No box: what the chart recorded is printed, not offered for editing. The
+// tooth it was read at sits next to it as a link into the chart.
+const RECORDED = 'text-[13px] font-bold text-slate-800'
+const CHART_LINK =
+  'inline-flex items-center gap-1 ml-0.5 text-[12px] text-slate-400 hover:text-[#0052ff] rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-100 transition-colors'
+
+type NumericKey = 'boneLossPercent' | 'teethLostToPerio' | 'ageYears'
 
 const setNumber = (key: NumericKey, raw: string) => {
   const trimmed = raw.trim()
@@ -121,10 +153,6 @@ const setNumber = (key: NumericKey, raw: string) => {
   }
   const value = Number(trimmed)
   inputs[key] = Number.isNaN(value) ? null : value
-}
-
-const setGradeCount = (key: 'furcationGrade' | 'mobilityGrade', raw: string) => {
-  inputs[key] = raw === '' ? null : Number(raw)
 }
 
 const selectStage = (stage: StageId) => {
@@ -214,17 +242,6 @@ const applyGradeChoice = (choice: GradeChoice) => {
   }
 }
 
-// Drops the values typed over the chart, so the four clinical measurements come
-// from the chart again. The answers the chart cannot hold are left alone.
-const recalculate = () => {
-  inputs.interdentalCalMm = null
-  inputs.probingDepthMm = null
-  inputs.furcationGrade = null
-  inputs.mobilityGrade = null
-  inputs.ageYears = null
-  notifStore.info('Measurements re-read from the chart')
-}
-
 const confirmDiscard = () => {
   showDiscardConfirm.value = false
   diagnosisStore.resetInputs()
@@ -249,22 +266,26 @@ const DIABETES_OPTIONS: Diabetes[] = ['none', 'hba1c-lt-7', 'hba1c-gte-7']
 
 const findings = computed(() => diagnosisStore.findings)
 
-const calSite = computed(() => {
-  const found = findings.value.interdentalCal
-  return found ? `#${found.toothId} ${found.site}` : null
-})
-
-const probingDepthSite = computed(() => {
-  const found = findings.value.probingDepth
-  return found ? `#${found.toothId} ${found.site}` : null
+// Where the starting number came from, kept in view after it is edited: the
+// chart counts every gap in the arch, whatever put it there.
+const toothLossHint = computed(() => {
+  const missing = findings.value.missingTeeth.length
+  if (!missing) return 'No missing teeth on the chart'
+  return `Chart has ${missing} missing ${missing === 1 ? 'tooth' : 'teeth'} — perio only?`
 })
 
 const boneLossBand = computed(() => {
-  const percent = inputs.boneLossPercent
+  const percent = diagnosisStore.boneLoss
   if (percent === null) return 'Read from the X-ray, at the worst site'
-  if (percent < 15) return 'Coronal third (< 15%) — Stage I band'
-  if (percent <= 33) return 'Coronal third (15 – 33%) — Stage II band'
-  return 'Middle third and beyond — Stage III / IV band'
+
+  const band =
+    percent < 15
+      ? 'Coronal third (< 15%) — Stage I band'
+      : percent <= 33
+        ? 'Coronal third (15 – 33%) — Stage II band'
+        : 'Middle third and beyond — Stage III / IV band'
+
+  return diagnosisStore.boneLossEstimated ? `Estimated from CAL · ${band}` : band
 })
 
 const hasChart = computed(() => chartStore.hasChartData)
@@ -361,33 +382,31 @@ const hasChart = computed(() => chartStore.hasChartData)
             Periodontal diagnosis · AAP / EFP 2017
           </span>
 
-          <div class="flex flex-wrap items-start justify-between gap-3 mt-1.5">
-            <div class="min-w-0">
-              <h1 class="text-2xl xl:text-[28px] font-bold text-slate-800 tracking-tight">
-                {{ diagnosisStore.diagnosisTitle }}
-              </h1>
-            </div>
-
-            <div class="flex items-center gap-2 shrink-0">
-              <button
-                class="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[12px] shadow-sm hover:bg-slate-50 transition-colors"
-                @click="recalculate"
-              >
-                <RotateCcw class="w-3.5 h-3.5" /> Recalculate
-              </button>
-              <button
-                class="px-3.5 py-2 bg-[#0052ff] text-white rounded-lg font-bold text-[12px] shadow-md hover:bg-blue-700 transition-colors"
-                @click="showSaveConfirm = true"
-              >
-                Save to visit record
-              </button>
-            </div>
-          </div>
+          <!-- Saving lives at the foot of the page, once, below the decisions
+               it is meant to record. -->
+          <h1 class="mt-1.5 text-2xl xl:text-[28px] font-bold text-slate-800 tracking-tight">
+            {{ diagnosisStore.diagnosisTitle }}
+          </h1>
 
           <p class="mt-2.5 text-[12px] text-slate-400">
-            The tables below show where your numbers fall, and the stage and grade follow from
-            them. Tick a band on any row to override what the numbers say, and the final call
-            stays yours.
+            Measurements are read from the chart and corrected there. The tables below show where
+            they fall, and the stage and grade follow from that — tick a band on any row to say a
+            reading belongs elsewhere, and the final call stays yours.
+          </p>
+
+          <!-- TAP 2023 step 1. The readings alone can fail this and the patient
+               still have periodontitis, so it is said and not enforced. -->
+          <p
+            v-if="!findings.meetsCaseDefinition"
+            class="mt-2.5 flex items-start gap-2 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"
+          >
+            <TriangleAlert class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>
+              These readings do not meet the case definition of periodontitis on their own — it
+              asks for interdental CAL of 2 mm or more at two teeth that are not neighbours, or
+              buccal / oral CAL of 3 mm or more at two sites probing over 3 mm. The staging below
+              still follows what is recorded.
+            </span>
           </p>
         </header>
 
@@ -401,11 +420,23 @@ const hasChart = computed(() => chartStore.hasChartData)
                 1
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Stage</h2>
-              <span class="text-[11px] text-slate-400">Calculated from the table</span>
+              <span class="relative group inline-flex">
+                <button
+                  type="button"
+                  class="text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none"
+                  aria-label="Staging rule info"
+                >
+                  <Info class="w-3.5 h-3.5" />
+                </button>
+                <span
+                  class="hidden group-hover:block group-focus-within:block absolute left-1/2 -translate-x-6 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed"
+                >
+                  <span class="absolute -top-1 left-5 w-2 h-2 bg-slate-800 rotate-45"></span>
+                  <span class="block font-bold text-white mb-1">Staging Rule</span>
+                  Severity uses the worst affected site. Complexity can raise the stage, never lower it.
+                </span>
+              </span>
             </div>
-            <p class="text-[11px] text-slate-400">
-              Severity uses the worst affected site. Complexity can raise the stage, never lower it.
-            </p>
           </div>
 
           <div
@@ -413,88 +444,93 @@ const hasChart = computed(() => chartStore.hasChartData)
           >
             <DiagnosisField
               label="Interdental CAL"
-              tooltip="Highest interdental clinical attachment loss (CAL) from chart, or click to override"
+              tooltip="The highest interdental attachment loss recorded in the chart. To change this value, edit the chart."
               :missing="diagnosisStore.interdentalCal === null"
-              :overridden="inputs.interdentalCalMm !== null"
-              @reset="inputs.interdentalCalMm = null"
             >
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                placeholder="Add"
-                :value="diagnosisStore.interdentalCal ?? ''"
-                :class="`${QUIET_PROMPT} w-16`"
-                @input="setNumber('interdentalCalMm', ($event.target as HTMLInputElement).value)"
-              />
-              <span class="text-[12px] text-slate-500">mm</span>
-              <span v-if="calSite" class="text-[12px] text-slate-400">· {{ calSite }}</span>
+              <template v-if="findings.interdentalCal">
+                <span :class="RECORDED">{{ diagnosisStore.interdentalCal }}</span>
+                <span class="text-[12px] text-slate-500">mm</span>
+                <button
+                  type="button"
+                  :class="CHART_LINK"
+                  title="Open the tooth this was recorded at in the chart"
+                  @click="openTooth(findings.interdentalCal.toothId)"
+                >
+                  <SquarePen class="w-3 h-3" />
+                </button>
+              </template>
+              <button v-else type="button" :class="CHART_LINK" @click="openChartTab('chart')">
+                Record in the chart <SquarePen class="w-3 h-3" />
+              </button>
             </DiagnosisField>
 
             <DiagnosisField
               label="Max probing depth"
               class="xl:pl-6"
-              tooltip="Maximum probing depth recorded from chart, or click to override"
+              tooltip="The deepest probing depth recorded in the chart. To change this value, edit the chart."
               :missing="diagnosisStore.probingDepth === null"
-              :overridden="inputs.probingDepthMm !== null"
-              @reset="inputs.probingDepthMm = null"
             >
-              <input
-                type="number"
-                min="0"
-                step="1"
-                placeholder="Add"
-                :value="diagnosisStore.probingDepth ?? ''"
-                :class="`${QUIET_PROMPT} w-16`"
-                @input="setNumber('probingDepthMm', ($event.target as HTMLInputElement).value)"
-              />
-              <span class="text-[12px] text-slate-500">mm</span>
-              <span v-if="probingDepthSite" class="text-[12px] text-slate-400">
-                · {{ probingDepthSite }}
-              </span>
+              <template v-if="findings.probingDepth">
+                <span :class="RECORDED">{{ diagnosisStore.probingDepth }}</span>
+                <span class="text-[12px] text-slate-500">mm</span>
+                <button
+                  type="button"
+                  :class="CHART_LINK"
+                  title="Open the tooth this was recorded at in the chart"
+                  @click="openTooth(findings.probingDepth.toothId)"
+                >
+                  <SquarePen class="w-3 h-3" />
+                </button>
+              </template>
+              <button v-else type="button" :class="CHART_LINK" @click="openChartTab('chart')">
+                Record in the chart <SquarePen class="w-3 h-3" />
+              </button>
             </DiagnosisField>
 
             <DiagnosisField
               label="Furcation / mobility"
               class="xl:pl-6"
-              tooltip="Maximum furcation involvement or tooth mobility recorded from chart"
-              :overridden="inputs.furcationGrade !== null || inputs.mobilityGrade !== null"
-              @reset="
-                inputs.furcationGrade = null;
-                inputs.mobilityGrade = null
-              "
+              tooltip="The most severe furcation involvement and tooth mobility recorded in the chart. To change these values, edit the chart."
             >
-              <select
-                :value="diagnosisStore.furcation ?? ''"
-                :class="`${QUIET} w-24`"
-                @change="setGradeCount('furcationGrade', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">None</option>
-                <option v-for="(label, grade) in FURCATION_CLASS" :key="grade" :value="grade">
-                  {{ label }}
-                </option>
-              </select>
-              <span v-if="findings.furcation" class="text-[12px] text-slate-400">
-                #{{ findings.furcation.toothId }} ·
+              <template v-if="findings.furcation">
+                <span :class="RECORDED">{{ FURCATION_CLASS[findings.furcation.grade] }}</span>
+                <button
+                  type="button"
+                  :class="CHART_LINK"
+                  title="Open the tooth this was recorded at in the chart"
+                  @click="openTooth(findings.furcation.toothId)"
+                >
+                  <SquarePen class="w-3 h-3" />
+                </button>
+              </template>
+              <template v-if="findings.mobility">
+                <!-- Extra air when furcation sits to its left, so the two
+                     readings do not read as one run of text. -->
+                <span :class="[RECORDED, findings.furcation && 'ml-2']">
+                  Mob {{ findings.mobility.grade }}
+                </span>
+                <button
+                  type="button"
+                  :class="CHART_LINK"
+                  title="Open the tooth this was recorded at in the chart"
+                  @click="openTooth(findings.mobility.toothId)"
+                >
+                  <SquarePen class="w-3 h-3" />
+                </button>
+              </template>
+              <span v-if="!findings.furcation && !findings.mobility" :class="RECORDED">
+                None recorded
               </span>
-              <select
-                :value="diagnosisStore.mobility ?? ''"
-                :class="`${QUIET} w-24`"
-                @change="setGradeCount('mobilityGrade', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">No mob</option>
-                <option v-for="grade in [0, 1, 2, 3]" :key="grade" :value="grade">
-                  Mob {{ grade }}
-                </option>
-              </select>
             </DiagnosisField>
 
             <DiagnosisField
               label="Radiographic bone loss"
               class="xl:pl-6"
-              tooltip="Estimate the highest % bone loss from radiographs (worst site) and enter here to calculate Stage & Grade"
+              tooltip="Bone loss at the worst site, as a percentage of the root length. The application estimates it from the attachment loss in the chart, using an average root length. Enter the value measured on the radiograph to replace the estimate."
               :hint="boneLossBand"
-              :missing="inputs.boneLossPercent === null"
+              :missing="diagnosisStore.boneLoss === null"
+              :overridden="inputs.boneLossPercent !== null"
+              @reset="inputs.boneLossPercent = null"
             >
               <input
                 type="number"
@@ -502,14 +538,17 @@ const hasChart = computed(() => chartStore.hasChartData)
                 max="100"
                 step="1"
                 placeholder="Add from X-ray"
-                :value="inputs.boneLossPercent ?? ''"
+                :value="diagnosisStore.boneLoss ?? ''"
                 :class="[
                   QUIET_PROMPT,
-                  inputs.boneLossPercent === null ? 'w-36' : 'w-12'
+                  diagnosisStore.boneLoss === null ? 'w-36' : 'w-14'
                 ]"
                 @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
               />
-              <span v-if="inputs.boneLossPercent !== null" class="text-[12px] text-slate-500 whitespace-nowrap">
+              <span
+                v-if="diagnosisStore.boneLoss !== null"
+                class="text-[12px] text-slate-500 whitespace-nowrap"
+              >
                 % at worst site
               </span>
             </DiagnosisField>
@@ -517,20 +556,24 @@ const hasChart = computed(() => chartStore.hasChartData)
             <DiagnosisField
               label="Tooth loss cause"
               class="xl:pl-6"
-              tooltip="Number of teeth lost specifically due to periodontitis (defaults to missing teeth recorded from chart, or click to edit)"
-              :overridden="inputs.teethLostToPerio !== null"
-              @reset="inputs.teethLostToPerio = null"
+              tooltip="The number of teeth lost because of periodontitis. Tooth loss counts towards the stage only when periodontitis is known to be the cause, and the chart records which teeth are missing but not why, so enter this value yourself."
+              :hint="toothLossHint"
+              :missing="inputs.teethLostToPerio === null"
             >
               <input
                 type="number"
                 min="0"
                 max="32"
                 step="1"
-                :value="diagnosisStore.teethLost"
-                :class="`${QUIET} w-12`"
+                placeholder="Add"
+                :value="inputs.teethLostToPerio ?? ''"
+                :class="[QUIET_PROMPT, inputs.teethLostToPerio === null ? 'w-16' : 'w-12']"
                 @input="setNumber('teethLostToPerio', ($event.target as HTMLInputElement).value)"
               />
-              <span class="text-[12px] text-slate-500 whitespace-nowrap">
+              <span
+                v-if="inputs.teethLostToPerio !== null"
+                class="text-[12px] text-slate-500 whitespace-nowrap"
+              >
                 teeth lost to perio
               </span>
             </DiagnosisField>
@@ -541,8 +584,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             :marks="inputs.stageMarks"
             :resolved="diagnosisStore.stage.resolved"
             :cal="diagnosisStore.interdentalCal"
-            :cal-site="calSite"
-            :bone-loss-percent="inputs.boneLossPercent"
+            :bone-loss-percent="diagnosisStore.boneLoss"
             :teeth-lost="diagnosisStore.teethLost"
             :complexity="diagnosisStore.complexity"
             @select="selectStage"
@@ -571,11 +613,11 @@ const hasChart = computed(() => chartStore.hasChartData)
                       How much of the mouth is affected
                     </span>
                     <span class="block mt-1.5 text-[11px] font-normal text-white/80 leading-relaxed">
-                      Stage measures severity at the single worst site, so it cannot tell one
-                      affected tooth apart from a whole mouth. Extent adds that: localized under
-                      30% of teeth, generalized 30% or more, or a molar / incisor pattern. It
-                      completes the diagnosis line and drives whether treatment is site-specific or
-                      full-mouth.
+                      The stage is taken from the single worst site, so it cannot distinguish one
+                      affected tooth from a whole mouth. The extent records that: localized is
+                      under 30% of the teeth, generalized is 30% or more, and a molar / incisor
+                      pattern is where only molars and incisors are affected. It completes the
+                      diagnosis and determines whether treatment is site-specific or full-mouth.
                     </span>
                     <span class="block mt-1.5 text-[11px] font-normal text-amber-300">
                       Molar / incisor pattern also points toward Grade C.
@@ -679,27 +721,63 @@ const hasChart = computed(() => chartStore.hasChartData)
                 2
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Grade</h2>
-              <span class="text-[11px] text-slate-400">
-                From the chart where it can be, from you where it cannot
+              <span class="relative group inline-flex">
+                <button
+                  type="button"
+                  class="text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none"
+                  aria-label="Grading rule info"
+                >
+                  <Info class="w-3.5 h-3.5" />
+                </button>
+                <span
+                  class="hidden group-hover:block group-focus-within:block absolute left-1/2 -translate-x-6 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed"
+                >
+                  <span class="absolute -top-1 left-5 w-2 h-2 bg-slate-800 rotate-45"></span>
+                  <span class="block font-bold text-white mb-1">Grading Rule</span>
+                  Every case starts at Grade B. Primary criteria move it to A or C; risk factors can
+                  only shift it upward.
+                </span>
               </span>
             </div>
-            <p class="text-[11px] text-slate-400">
-              Every case starts at Grade B. Primary criteria move it to A or C; risk factors can
-              only shift it upward.
-            </p>
           </div>
 
           <div class="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4 flex flex-col gap-3.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex flex-wrap items-baseline gap-2">
-                <span class="text-[12px] font-bold text-slate-700">
-                  Complexity and risk-factor input
+              <span class="flex items-center gap-1 text-[12px] font-bold text-slate-700">
+                Complexity and risk-factor input
+                <span class="relative group inline-flex">
+                  <button
+                    type="button"
+                    class="text-slate-300 hover:text-slate-500 focus:text-slate-500 outline-none"
+                    aria-label="Where these answers come from"
+                  >
+                    <Info class="w-3 h-3" />
+                  </button>
+                  <span
+                    class="hidden group-hover:block group-focus-within:block absolute left-1/2 -translate-x-6 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl"
+                  >
+                    <span class="absolute -top-1 left-5 w-2 h-2 bg-slate-800 rotate-45"></span>
+                    <span class="block text-[11px] font-bold">Where these answers come from</span>
+                    <span class="block mt-1.5 text-[11px] font-normal text-white/80 leading-relaxed">
+                      <span class="block">
+                        · <span class="text-white">Bone loss</span> — estimated from the chart;
+                        replace it with the radiograph
+                      </span>
+                      <span class="block">
+                        · <span class="text-white">Direct evidence, smoking, diabetes</span> —
+                        taken from the patient
+                      </span>
+                      <span class="block">
+                        · <span class="text-white">Age</span> — taken from the patient record
+                      </span>
+                      <span class="block">
+                        · <span class="text-white">Case phenotype</span> — suggested only for a
+                        molar / incisor pattern; otherwise yours to assess
+                      </span>
+                    </span>
+                  </span>
                 </span>
-                <span class="text-[11px] text-slate-400">
-                  The chart cannot answer these — bone loss comes off the X-ray, the rest off the
-                  patient. Fill them in and the grade updates.
-                </span>
-              </div>
+              </span>
               <div
                 v-if="diagnosisStore.grade.ratio !== null"
                 class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm"
@@ -728,7 +806,7 @@ const hasChart = computed(() => chartStore.hasChartData)
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
                   <span
-                    v-if="inputs.boneLossPercent === null"
+                    v-if="diagnosisStore.boneLoss === null"
                     class="w-1.5 h-1.5 rounded-full bg-amber-400"
                   ></span>
                   Bone loss, worst site
@@ -740,7 +818,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                     max="100"
                     step="1"
                     placeholder="—"
-                    :value="inputs.boneLossPercent ?? ''"
+                    :value="diagnosisStore.boneLoss ?? ''"
                     :class="`${QUIET_NUMBER} text-right`"
                     @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
                   />
@@ -748,6 +826,9 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </span>
               </label>
 
+              <!-- Age is the one row here the record already answers, so it is
+                   read from the patient header and changed there. The input only
+                   appears for a record that carries no age at all. -->
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
                   <span
@@ -756,14 +837,26 @@ const hasChart = computed(() => chartStore.hasChartData)
                   ></span>
                   Patient age
                 </span>
-                <span class="flex items-center gap-1">
+                <span v-if="diagnosisStore.ageFromRecord" class="flex items-center gap-1.5">
+                  <span :class="RECORDED">{{ diagnosisStore.age }}</span>
+                  <span class="text-[12px] text-slate-500">years</span>
+                  <button
+                    type="button"
+                    :class="CHART_LINK"
+                    title="From the patient record — change it in the chart header"
+                    @click="openChartTab('chart')"
+                  >
+                    <SquarePen class="w-3 h-3" />
+                  </button>
+                </span>
+                <span v-else class="flex items-center gap-1">
                   <input
                     type="number"
                     min="0"
                     max="120"
                     step="1"
                     placeholder="—"
-                    :value="diagnosisStore.age ?? ''"
+                    :value="inputs.ageYears ?? ''"
                     :class="`${QUIET_NUMBER} text-right`"
                     @input="setNumber('ageYears', ($event.target as HTMLInputElement).value)"
                   />
@@ -825,13 +918,12 @@ const hasChart = computed(() => chartStore.hasChartData)
             :selected="diagnosisStore.finalGrade"
             :result="diagnosisStore.grade.grade"
             :direct-evidence="inputs.directEvidence"
-            :bone-loss-percent="inputs.boneLossPercent"
+            :bone-loss-percent="diagnosisStore.boneLoss"
             :age-years="diagnosisStore.age"
             :ratio="diagnosisStore.grade.ratio"
             :ratio-grade="diagnosisStore.grade.ratioGrade"
             :phenotype="diagnosisStore.phenotype"
             :phenotype-from-chart="diagnosisStore.phenotypeFromChart"
-            :plaque-percentage="findings.plaquePercentage"
             :smoking="inputs.smoking"
             :diabetes="inputs.diabetes"
             @select="selectGrade"

@@ -29,6 +29,18 @@ export interface ToothFinding {
 
 /** What the periodontal chart already answers, before the doctor types anything. */
 export interface ChartFindings {
+  /**
+   * Whether the readings meet the TAP 2023 case definition of periodontitis.
+   * False means the chart alone does not show a case — the exclusions it cannot
+   * see are still the doctor's to weigh.
+   */
+  meetsCaseDefinition: boolean
+  /**
+   * Bone loss worked out from attachment loss against an average root length,
+   * standing in for the radiograph the app does not hold. Null when the chart
+   * records no interdental attachment loss to work from.
+   */
+  estimatedBoneLossPercent: number | null
   interdentalCal: SiteFinding | null
   probingDepth: SiteFinding | null
   furcation: ToothFinding | null
@@ -54,18 +66,22 @@ export type GradeChoice =
   | { field: 'diabetes'; value: Diabetes | null }
 
 /**
- * Everything the doctor decides on this page. The four clinical measurements
- * are overrides: null means "use the chart's value", a number means the doctor
- * typed something else over it.
+ * Everything the doctor decides on this page. Notably absent are CAL, probing
+ * depth, furcation and mobility: those are measurements, and the chart is where
+ * they are recorded and corrected. This page reads them and never writes them,
+ * so a diagnosis can never cite a number the record does not hold. Disagreeing
+ * with what a measurement implies is done by ticking a band in `stageMarks` and
+ * saying why, which keeps the reading intact and the judgement visible.
  */
 export interface DiagnosisInputs {
-  interdentalCalMm: number | null
-  probingDepthMm: number | null
-  furcationGrade: number | null
-  mobilityGrade: number | null
-  // Worst-site radiographic bone loss. Feeds the stage's severity band and the
-  // grade's % bone loss ÷ age, so it is asked for once.
+  // Worst-site radiographic bone loss, read off the film. Feeds the stage's
+  // severity band and the grade's % bone loss ÷ age, so it is asked for once.
+  // null means "use the estimate the chart works out from attachment loss".
   boneLossPercent: number | null
+  // null means "use the chart's tally of missing teeth". The chart knows which
+  // teeth are gone but never why they went — caries, ortho and trauma leave the
+  // same gap — so its count is the starting point and the doctor corrects it
+  // down to the ones periodontitis took.
   teethLostToPerio: number | null
   extent: ExtentId | null
   // The band the doctor ticked on each row of the staging table. null means the
@@ -77,6 +93,9 @@ export interface DiagnosisInputs {
   stageReason: string
 
   directEvidence: DirectEvidence | null
+  // Age belongs to the patient record, and the record always wins. This is only
+  // a stand-in for a record that carries no age at all, so the % bone loss ÷ age
+  // ratio can still be worked out — it never overrides an age already on file.
   ageYears: number | null
   phenotype: Phenotype | null
   smoking: Smoking | null
