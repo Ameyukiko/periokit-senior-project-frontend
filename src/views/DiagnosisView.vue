@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -56,7 +56,6 @@ const drawerOpen = ref(false)
 const isLoading = ref(true)
 const loadFailed = ref(false)
 const showDiscardConfirm = ref(false)
-const showSaveConfirm = ref(false)
 
 const patientId = computed(() => (route.query.patientId as string) || null)
 const visitId = computed(() => (route.query.visitId as string) || null)
@@ -75,6 +74,9 @@ const resolvedPatientId = computed(
     visitStore.visits.find(visit => visit.id === visitId.value)?.patientId ??
     null,
 )
+
+// Load recorded inputs immediately in setup so template has data on first render
+diagnosisStore.openFor(visitId.value, resolvedPatientId.value)
 
 const chartQuery = computed(() =>
   resolvedPatientId.value
@@ -111,7 +113,7 @@ const openTooth = (toothId: ToothId) => {
  */
 onMounted(async () => {
   chartStore.initializeChart()
-  diagnosisStore.openFor(visitId.value)
+  diagnosisStore.openFor(visitId.value, resolvedPatientId.value)
 
   try {
     if (patientId.value && chartStore.currentPatientId !== patientId.value) {
@@ -128,6 +130,13 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+watch(
+  [visitId, resolvedPatientId],
+  ([newVisit, newPatient]) => {
+    diagnosisStore.openFor(newVisit, newPatient)
+  },
+)
 
 // Anything the doctor can change carries a faint box, so an editable value is
 // told apart from a printed one at a glance. The border firms up under the
@@ -246,16 +255,6 @@ const confirmDiscard = () => {
   showDiscardConfirm.value = false
   diagnosisStore.resetInputs()
   notifStore.info('Diagnosis cleared')
-}
-
-// Mock: there is no diagnosis record on the backend yet, so this says so
-// rather than pretending the worksheet went anywhere.
-const confirmSave = () => {
-  showSaveConfirm.value = false
-  notifStore.info(
-    'Save is a mock for now',
-    'The backend has no diagnosis record yet, so this worksheet stays in this session.',
-  )
 }
 
 const EXTENT_OPTIONS: ExtentId[] = ['localized', 'generalized', 'molar-incisor']
@@ -1005,10 +1004,6 @@ const hasChart = computed(() => chartStore.hasChartData)
                 periodontitis: framework and proposal of a new classification and case definition.
                 Journal of Periodontology, 89(S1), S159–S172.
               </p>
-              <p class="mt-1.5 text-[10px] text-slate-400">
-                Save is a mock for now — the backend has no diagnosis record yet, so this worksheet
-                lasts as long as this session.
-              </p>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
@@ -1017,12 +1012,6 @@ const hasChart = computed(() => chartStore.hasChartData)
                 @click="showDiscardConfirm = true"
               >
                 Discard changes
-              </button>
-              <button
-                class="px-3.5 py-2 bg-[#0052ff] text-white rounded-lg font-bold text-[12px] shadow-md hover:bg-blue-700 transition-colors"
-                @click="showSaveConfirm = true"
-              >
-                Save diagnosis to visit record
               </button>
             </div>
           </div>
@@ -1039,16 +1028,6 @@ const hasChart = computed(() => chartStore.hasChartData)
       type="danger"
       @confirm="confirmDiscard"
       @cancel="showDiscardConfirm = false"
-    />
-
-    <ConfirmModal
-      :show="showSaveConfirm"
-      title="Save diagnosis"
-      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Save this diagnosis to the visit record?</span><span class='text-slate-500 font-normal'>This button is a mock — the backend has no diagnosis record yet, so nothing is written.</span>"
-      confirm-text="Save"
-      cancel-text="Cancel"
-      @confirm="confirmSave"
-      @cancel="showSaveConfirm = false"
     />
   </div>
 </template>

@@ -17,6 +17,7 @@ import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
+import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -31,6 +32,7 @@ const validationStore = useClinicalValidationStore()
 const visitStore = useVisitStore()
 const notifStore = useNotificationStore()
 const xrayStore = useXrayBoardStore()
+const diagnosisStore = useDiagnosisStore()
 
 const drawerOpen = ref(false)
 const urlVisitId = ref<string | null>(null)
@@ -591,12 +593,21 @@ const confirmSaveChart = async () => {
   if (isSaving.value) return
   isSaving.value = true
   try {
+    const prevPatientId = currentPatientId.value
+    const prevVisitId = activeVisitId.value
+    const oldDiagnosisKey = resolveDiagnosisKey(prevVisitId, prevPatientId)
+
     await chartStore.saveToBackend(true)
 
     editMode.value = false
 
     const activeVisit = activeVisitId.value
     const patientId = currentPatientId.value
+
+    // Rekey and commit diagnosis data with the newly saved visit record
+    const newDiagnosisKey = resolveDiagnosisKey(activeVisit, patientId)
+    diagnosisStore.rekey(oldDiagnosisKey, newDiagnosisKey)
+    diagnosisStore.commitSaved(newDiagnosisKey)
 
     // The draft visit now has a real id — move its X-ray board along with it,
     // and with it the visit its films upload to.
@@ -664,13 +675,20 @@ const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
 // Keep the store's read-only guard in sync with the editable state.
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
-// Reset edit mode whenever the active visit changes.
-watch(activeVisitId, () => { editMode.value = false })
+// Reset edit mode and sync diagnosis whenever the active visit or patient changes.
+watch(
+  [activeVisitId, currentPatientId],
+  ([newVisit, newPatient]) => {
+    editMode.value = false
+    diagnosisStore.openFor(newVisit, newPatient)
+  },
+  { immediate: true },
+)
 
 const handleEditVisit = () => { editMode.value = true }
 
 const handleCancelEditClick = () => {
-  if (chartStore.isDirty) {
+  if (chartStore.isDirty || diagnosisStore.isDirty) {
     showCancelEditConfirmModal.value = true
   } else {
     editMode.value = false
@@ -685,6 +703,7 @@ const confirmCancelEdit = async () => {
   if (visitId && visitId !== 'new') {
     try { await chartStore.loadFromBackend(visitId) } catch (e) { console.error(e) }
   }
+  diagnosisStore.revertToSaved(resolveDiagnosisKey(activeVisitId.value, currentPatientId.value))
 }
 
 // --- beforeunload guard (crash/accidental tab close protection) ---
@@ -692,7 +711,7 @@ const confirmCancelEdit = async () => {
 // Removed again in onUnmounted below, or it would go on stopping people from
 // leaving pages that have nothing to lose.
 const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
-  if (chartStore.isDirty || hasUnsavedBoard()) {
+  if (chartStore.isDirty || diagnosisStore.isDirty || hasUnsavedBoard()) {
     e.preventDefault()
     // Ignored by current browsers, still required by older Chrome.
     e.returnValue = ''
@@ -838,9 +857,9 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <button
               v-if="chartEditable"
               @click="handleSaveClick"
-              :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty)"
+              :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="(isSaving || (isExistingVisit && editMode && !chartStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
+              :class="(isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />
