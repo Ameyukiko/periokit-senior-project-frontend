@@ -943,7 +943,7 @@ const hasChart = computed(() => chartStore.hasChartData)
     <!-- Floating Discard Changes Button -->
     <Transition name="fade">
       <div
-        v-if="hasChart && !isLoading && !loadFailed"
+        v-if="hasChart && !isLoading && !loadFailed && diagnosisStore.hasChanges"
         class="fixed bottom-4 right-4 z-40"
       >
         <button
