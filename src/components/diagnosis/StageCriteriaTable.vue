@@ -7,6 +7,14 @@ import {
   stagesForToothLoss,
 } from '@/domain/diagnosis/diagnosis.rules'
 import type { StageId, StageRow } from '@/domain/diagnosis/diagnosis.types'
+import {
+  CELL_ANSWERED,
+  CELL_BASE,
+  CELL_IDLE,
+  CELL_IN_COLUMN,
+  CELL_OPEN,
+  CELL_TICKED,
+} from './criteria-cell'
 
 const props = defineProps<{
   selected: StageId | null
@@ -14,7 +22,6 @@ const props = defineProps<{
   /** The band each row settled on — the doctor's tick, or the one the numbers fall in. */
   resolved: Record<StageRow, StageId | null>
   cal: number | null
-  calSite: string | null
   boneLossPercent: number | null
   teethLost: number | null
   complexity: Record<StageId, string[]>
@@ -89,9 +96,7 @@ const calStages = computed(() => stagesForCal(props.cal))
 const boneStages = computed(() => stagesForBoneLoss(props.boneLossPercent))
 const lossStages = computed(() => stagesForToothLoss(props.teethLost))
 
-const calChip = computed(() =>
-  props.cal === null ? '' : `Patient: ${props.cal} mm${props.calSite ? ` (${props.calSite})` : ''}`,
-)
+const calChip = computed(() => (props.cal === null ? '' : `Patient: ${props.cal} mm`))
 const boneChip = computed(() =>
   props.boneLossPercent === null ? '' : `Patient: ${props.boneLossPercent}% bone loss`,
 )
@@ -101,24 +106,22 @@ const lossChip = computed(() => {
   return `Patient: ${props.teethLost} ${props.teethLost === 1 ? 'tooth' : 'teeth'}`
 })
 
-// One cell at a time, row by row — the way the printed table is ticked. A cell
-// the numbers landed on reads softer than one the doctor ticked by hand, so the
-// two are told apart at a glance, and a cell holding no answer is drawn dashed
-// to say it is open to be ticked. The column as a whole is never highlighted:
-// the stage is a separate decision, taken in the header or in the dropdown
-// below the table.
+// One cell at a time, row by row — the way the printed table is ticked. The band
+// a row settled on reads as a pressed button whichever way it got there, and a
+// cell holding no answer is drawn dashed to say it is open to be ticked. The
+// column as a whole is never highlighted: the stage is a separate decision,
+// taken in the header or in the dropdown below the table.
 const cellClass = (row: StageRow, stage: StageId) => [
-  'px-3 py-2.5 align-top border border-slate-300 cursor-pointer transition-all duration-150',
-  props.marks[row] !== stage &&
-    props.resolved[row] !== stage &&
-    'border-dashed hover:border-solid hover:border-blue-300',
+  CELL_BASE,
+  'cursor-pointer',
+  props.marks[row] !== stage && props.resolved[row] !== stage && CELL_OPEN,
   props.marks[row] === stage
-    ? 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
+    ? CELL_TICKED
     : props.resolved[row] === stage
-      ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400 hover:bg-[#FECE44]/75'
+      ? CELL_ANSWERED
       : props.selected === stage
-        ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
-        : 'text-black hover:bg-blue-100/70',
+        ? `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
+        : CELL_IDLE,
 ]
 </script>
 
@@ -268,6 +271,13 @@ const cellClass = (row: StageRow, stage: StageId) => [
           >
             Local
             <span class="block text-[10px] font-normal text-slate-700">can raise the stage only</span>
+            <!-- Four of the ten features listed across this row are in the
+                 chart; the rest are read off the patient and the radiograph, so
+                 the band suggested here is a floor, not a verdict. -->
+            <span class="block mt-1 text-[10px] font-normal text-slate-500 leading-tight">
+              Suggested from probing depth, furcation, mobility and teeth remaining. Check the rest
+              yourself and tick a band if one fits.
+            </span>
           </th>
           <td
             v-for="column in COLUMNS"

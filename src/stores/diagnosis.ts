@@ -16,12 +16,10 @@ import { usePeriodontalChartStore } from './periodontal-chart'
 import { registerSessionClearListener } from '@/services/session'
 
 const createInputs = (): DiagnosisInputs => ({
-  interdentalCalMm: null,
-  probingDepthMm: null,
-  furcationGrade: null,
-  mobilityGrade: null,
-  // Starts at 0 rather than empty, so the field always carries a number.
-  boneLossPercent: 0,
+  // Empty means "use the estimate the chart works out from attachment loss",
+  // which is a far better starting point than a 0 nobody measured.
+  boneLossPercent: null,
+  // null means "use the chart's count of missing teeth".
   teethLostToPerio: null,
   extent: null,
   stageMarks: { cal: null, boneLoss: null, toothLoss: null, complexity: null },
@@ -51,17 +49,33 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
 
   const findings = computed(() => collectChartFindings(chartStore.teethData))
 
-  // The chart's value unless the doctor typed over it.
-  const interdentalCal = computed(
-    () => inputs.interdentalCalMm ?? findings.value.interdentalCal?.value ?? null,
+  // Straight off the chart. These four are measurements, so the chart is the
+  // only place they can be changed — a diagnosis that quoted a different number
+  // would leave the record saying one thing and the diagnosis another.
+  const interdentalCal = computed(() => findings.value.interdentalCal?.value ?? null)
+  const probingDepth = computed(() => findings.value.probingDepth?.value ?? null)
+  const furcation = computed(() => findings.value.furcation?.grade ?? null)
+  const mobility = computed(() => findings.value.mobility?.grade ?? null)
+  // The record first, always: an age on file cannot be typed over here. The
+  // input behind it only fills the gap when the record carries no age, so the
+  // grade's % bone loss ÷ age is not blocked by a record nobody can reach.
+  const age = computed(() => chartStore.patientInfo.age ?? inputs.ageYears ?? null)
+  const ageFromRecord = computed(() => chartStore.patientInfo.age !== null)
+
+  // The film wins where one has been read; otherwise the estimate the chart
+  // works out from attachment loss carries the row.
+  const boneLoss = computed(
+    () => inputs.boneLossPercent ?? findings.value.estimatedBoneLossPercent,
   )
-  const probingDepth = computed(
-    () => inputs.probingDepthMm ?? findings.value.probingDepth?.value ?? null,
+  const boneLossEstimated = computed(
+    () => inputs.boneLossPercent === null && findings.value.estimatedBoneLossPercent !== null,
   )
-  const furcation = computed(() => inputs.furcationGrade ?? findings.value.furcation?.grade ?? null)
-  const mobility = computed(() => inputs.mobilityGrade ?? findings.value.mobility?.grade ?? null)
-  const age = computed(() => inputs.ageYears ?? chartStore.patientInfo.age ?? null)
-  const teethLost = computed(() => inputs.teethLostToPerio ?? findings.value.missingTeeth.length)
+
+  // Note C under TAP 2023 table 5: tooth loss counts towards the stage only
+  // where it is known for certain to have been periodontitis that took the
+  // tooth. The chart records the gap, never the cause, so its tally is offered
+  // beside the field as a prompt and nothing is assumed until the doctor answers.
+  const teethLost = computed(() => inputs.teethLostToPerio)
 
   const complexity = computed(() =>
     complexityFindings(
@@ -76,7 +90,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   const stageReasons = computed(() =>
     stageSummary(
       interdentalCal.value,
-      inputs.boneLossPercent,
+      boneLoss.value,
       teethLost.value,
       complexity.value,
     ),
@@ -87,7 +101,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   const autoMarks = computed(() =>
     autoStageMarks(
       interdentalCal.value,
-      inputs.boneLossPercent,
+      boneLoss.value,
       teethLost.value,
       complexityStage(
         probingDepth.value,
@@ -121,11 +135,10 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
       inputs.extent !== suggestedExtent.value,
   )
 
-  // Destruction against the plaque that has to explain it — the one grade
-  // criterion the chart can answer, since it records both.
-  const suggestedPhenotype = computed(() =>
-    suggestPhenotype(findings.value.plaquePercentage, stage.value.severity, extent.value),
-  )
+  // Only the molar / incisor pattern, which the extent already counts off the
+  // chart. Weighing destruction against biofilm has no cut-off in the table, so
+  // the rest of this row is the doctor's.
+  const suggestedPhenotype = computed(() => suggestPhenotype(extent.value))
   const phenotype = computed(() => inputs.phenotype ?? suggestedPhenotype.value)
   const phenotypeFromChart = computed(
     () => inputs.phenotype === null && suggestedPhenotype.value !== null,
@@ -140,7 +153,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   const grade = computed(() =>
     assessGrade({
       directEvidence: inputs.directEvidence,
-      boneLossPercent: inputs.boneLossPercent,
+      boneLossPercent: boneLoss.value,
       ageYears: age.value,
       phenotype: phenotype.value,
       phenotypeFromChart: phenotypeFromChart.value,
@@ -199,6 +212,9 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     furcation,
     mobility,
     age,
+    ageFromRecord,
+    boneLoss,
+    boneLossEstimated,
     teethLost,
     complexity,
     stageReasons,

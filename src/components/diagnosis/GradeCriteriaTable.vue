@@ -19,6 +19,14 @@ import {
   type Phenotype,
   type Smoking,
 } from '@/domain/diagnosis/diagnosis.types'
+import {
+  CELL_ANSWERED,
+  CELL_BASE,
+  CELL_IDLE,
+  CELL_IN_COLUMN,
+  CELL_OPEN,
+  CELL_TICKED,
+} from './criteria-cell'
 
 const props = defineProps<{
   // The grade in force — the doctor's override when there is one.
@@ -33,7 +41,6 @@ const props = defineProps<{
   phenotype: Phenotype | null
   /** True when the phenotype came off the chart instead of being answered. */
   phenotypeFromChart: boolean
-  plaquePercentage: number
   smoking: Smoking | null
   diabetes: Diabetes | null
 }>()
@@ -118,7 +125,7 @@ const ratioChip = computed(() =>
 const phenotypeChip = computed(() => {
   if (!props.phenotype) return ''
   if (!props.phenotypeFromChart) return `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}`
-  return `From chart: ${PHENOTYPE_LABEL[props.phenotype]} (plaque ${props.plaquePercentage}%)`
+  return `From chart: ${PHENOTYPE_LABEL[props.phenotype]} (molar / incisor pattern)`
 })
 const smokingChip = computed(() => (props.smoking ? `Patient: ${SMOKING_LABEL[props.smoking]}` : ''))
 const diabetesChip = computed(() =>
@@ -147,31 +154,33 @@ const chooseDiabetes = (grade: GradeId) =>
     value: diabetesGrade.value === grade ? null : DIABETES_VALUES[grade],
   })
 
-// `soft` is for an answer the chart worked out rather than one the doctor gave,
-// which reads lighter — the same split the staging table makes. A cell holding
-// no answer is dashed, which is what tells these rows apart from the calculated
-// % bone loss ÷ age row below: dashed cells are the ones to fill in.
-const cellClass = (answered: GradeId | null, grade: GradeId, soft = false) => [
-  'px-3 py-2.5 align-top border border-slate-300 cursor-pointer transition-all duration-150',
-  answered !== grade && 'border-dashed hover:border-solid hover:border-blue-300',
+// An answered row reads as a pressed button either way; `fromChart` only drops
+// the ring that marks a tick as the doctor's own. A cell holding no answer is
+// dashed, which is what tells these rows apart from the calculated % bone loss ÷
+// age row below: dashed cells are the ones to fill in.
+const cellClass = (answered: GradeId | null, grade: GradeId, fromChart = false) => [
+  CELL_BASE,
+  'cursor-pointer',
+  answered !== grade && CELL_OPEN,
   answered === grade
-    ? soft
-      ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400 hover:bg-[#FECE44]/75'
-      : 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
+    ? fromChart
+      ? CELL_ANSWERED
+      : CELL_TICKED
     : props.selected === grade
-      ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
-      : 'text-black hover:bg-blue-100/70',
+      ? `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
+      : CELL_IDLE,
 ]
 
-// % bone loss ÷ age comes out of two numbers, so its row is read-only — and it
-// takes the lighter shade for the same reason the phenotype does when the chart
-// answered it: nobody ticked this, the app worked it out.
+// % bone loss ÷ age comes out of two numbers, so its row is read-only: it shows
+// the band it lands in with no ring, since nobody ticked it, and offers no
+// hover because there is nothing to click.
 const ratioCellClass = (grade: GradeId) => [
-  'px-3 py-2.5 align-top border border-slate-300 text-black transition-all duration-150',
+  CELL_BASE,
+  'text-black',
   props.ratioGrade === grade
-    ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400'
+    ? CELL_ANSWERED
     : props.selected === grade
-      ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44]'
+      ? CELL_IN_COLUMN
       : '',
 ]
 

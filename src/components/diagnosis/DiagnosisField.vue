@@ -8,7 +8,7 @@ defineProps<{
   tooltip?: string
   // Nothing recorded yet — the header counts these.
   missing?: boolean
-  // The doctor typed over what the chart recorded.
+  // The doctor typed over the value the chart started the field with.
   overridden?: boolean
 }>()
 
@@ -23,12 +23,17 @@ const isTooltipHovered = ref(false)
 
       <!-- Tooltip Info Icon -->
       <div v-if="tooltip" class="relative inline-flex items-center">
+        <!-- No `title` here: the browser would draw its own tooltip on top of
+             the one below, showing the same text twice. `aria-label` carries it
+             to screen readers instead. -->
         <button
           type="button"
           class="text-slate-300 hover:text-slate-500 focus:text-slate-500 outline-none transition-colors"
-          :title="tooltip"
+          :aria-label="tooltip"
           @mouseenter="isTooltipHovered = true"
           @mouseleave="isTooltipHovered = false"
+          @focus="isTooltipHovered = true"
+          @blur="isTooltipHovered = false"
         >
           <Info class="w-3 h-3" />
         </button>
@@ -52,7 +57,7 @@ const isTooltipHovered = ref(false)
       </button>
     </span>
 
-    <div class="flex items-center gap-1.5 flex-nowrap">
+    <div class="flex items-center gap-2 flex-nowrap">
       <span v-if="missing" class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
       <slot />
     </div>
