@@ -131,29 +131,20 @@ const cellClass = (row: StageRow, stage: StageId) => [
 <template>
   <div class="flex flex-col gap-2">
     <!-- Key / Legend -->
-    <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 px-1 text-[11px]">
+    <div class="flex items-center justify-end gap-4 px-1 text-[11px]">
       <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Key:</span>
       <div
         class="flex items-center gap-1.5"
-        title="ช่องนี้คือคำตอบของแถวนั้น ไม่ว่าจะมาจากตัวเลขที่วัดได้เอง หรือหมอติ๊กเอง"
+        title="This cell is the answer for this row, whether from measured numbers or selected manually"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44] border-t border-t-white border-b-2 border-b-amber-600 shadow-sm shrink-0"
         ></span>
-        <span class="text-slate-700 font-medium text-[10px]">Solid yellow = Row answer (measured / ticked)</span>
+        <span class="text-slate-700 font-medium text-[10px]">Solid yellow = Row answer (measured / selected)</span>
       </div>
       <div
         class="flex items-center gap-1.5"
-        title="คำตอบเดียวกัน แต่หมอติ๊กด้วยมือ (override ตัวเลข) — วงแหวนคือร่องรอยว่าใครเป็นคนตัดสิน"
-      >
-        <span
-          class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44] border-t border-t-white border-b-2 border-b-amber-600 ring-1 ring-amber-500 shadow-sm shrink-0"
-        ></span>
-        <span class="text-slate-700 font-medium text-[10px]">Amber ring = Manual override</span>
-      </div>
-      <div
-        class="flex items-center gap-1.5"
-        title="ไม่ใช่คำตอบของแถวนั้น แต่อยู่ในคอลัมน์ของ stage ที่สรุปได้ — เอาไว้ลากสายตาว่าคำตอบทั้งหมดรวมกันแล้วออกมาเป็น stage ไหน"
+        title="Not this row's answer, but in the column of the concluded stage — guides the eye to the overall result"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
@@ -171,7 +162,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
               <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
               <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
                 Solid yellow is the row's answer; light yellow indicates the concluded stage column.
-                Dashed cells are open — click one to tick that band yourself (amber ring shows manual override).
+                Dashed cells are open — click one to tick that band yourself. The stage follows the rows: it is not picked in this header.
               </span>
             </th>
           <!-- The stage is the answer these four rows add up to, so the column is
