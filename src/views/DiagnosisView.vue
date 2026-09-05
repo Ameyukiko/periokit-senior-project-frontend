@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
   Download,
   FileText,
   Image as ImageIcon,
   Info,
+  Lock,
+  RotateCcw,
   SquarePen,
   TriangleAlert,
   Stethoscope,
@@ -22,7 +24,6 @@ import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
 import { useDiagnosisStore } from '@/stores/diagnosis'
-import { GRADE_IDS, STAGE_IDS } from '@/domain/diagnosis/diagnosis.rules'
 import {
   DIABETES_LABEL,
   DIRECT_EVIDENCE_LABEL,
@@ -34,7 +35,6 @@ import {
   type DirectEvidence,
   type ExtentId,
   type GradeChoice,
-  type GradeId,
   type Phenotype,
   type Smoking,
   type StageId,
@@ -89,11 +89,27 @@ const chartQuery = computed(() =>
 
 const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
   chartStore.activeSubNav = tab
+  if (diagnosisStore.currentKey) {
+    diagnosisStore.commitSaved(diagnosisStore.currentKey)
+  }
   router.push({
     name: 'chart',
     query: { ...chartQuery.value, ...(tab === 'chart' ? {} : { tab }) },
   })
 }
+
+onBeforeRouteLeave(() => {
+  if (diagnosisStore.currentKey) {
+    diagnosisStore.commitSaved(diagnosisStore.currentKey)
+  }
+  return true
+})
+
+onBeforeUnmount(() => {
+  if (diagnosisStore.currentKey) {
+    diagnosisStore.commitSaved(diagnosisStore.currentKey)
+  }
+})
 
 /**
  * A measurement shown here is only ever read. Correcting one means correcting
@@ -164,33 +180,10 @@ const setNumber = (key: NumericKey, raw: string) => {
   inputs[key] = Number.isNaN(value) ? null : value
 }
 
-const selectStage = (stage: StageId) => {
-  if (inputs.stageOverride === stage || stage === diagnosisStore.stage.stage) {
-    inputs.stageOverride = null
-  } else {
-    inputs.stageOverride = stage
-  }
-  if (!diagnosisStore.stageOverridden) inputs.stageReason = ''
-}
-
-const handleStageSelect = (raw: string) => {
-  if (!raw) {
-    inputs.stageOverride = null
-    inputs.stageReason = ''
-    return
-  }
-  const stage = raw as StageId
-  if (diagnosisStore.stage.stage && stage === diagnosisStore.stage.stage) {
-    inputs.stageOverride = null
-    inputs.stageReason = ''
-  } else {
-    inputs.stageOverride = stage
-  }
-}
-
 // Ticking a band on one row of the staging table, which overrides the band that
 // row's measurement fell in. Clicking the same cell again hands the row back to
-// the numbers.
+// the numbers. This is the only way the stage moves — it is worked out from the
+// four rows and never set on its own.
 const markStageRow = (row: StageRow, stage: StageId) => {
   inputs.stageMarks[row] = inputs.stageMarks[row] === stage ? null : stage
 }
@@ -206,32 +199,10 @@ const selectPhenotype = (raw: string) => {
   inputs.phenotype = value === diagnosisStore.suggestedPhenotype ? null : value
 }
 
-const selectGrade = (grade: GradeId) => {
-  if (inputs.gradeOverride === grade || grade === diagnosisStore.grade.grade) {
-    inputs.gradeOverride = null
-  } else {
-    inputs.gradeOverride = grade
-  }
-  if (!diagnosisStore.gradeOverridden) inputs.gradeReason = ''
-}
-
-const handleGradeSelect = (raw: string) => {
-  if (!raw) {
-    inputs.gradeOverride = null
-    inputs.gradeReason = ''
-    return
-  }
-  const grade = raw as GradeId
-  if (diagnosisStore.grade.grade && grade === diagnosisStore.grade.grade) {
-    inputs.gradeOverride = null
-    inputs.gradeReason = ''
-  } else {
-    inputs.gradeOverride = grade
-  }
-}
-
 // Every clickable row of the grading table stands for one of the inputs above
-// it, so ticking a cell fills that answer in.
+// it, so ticking a cell fills that answer in. As with the stage, this is the
+// only way the grade moves — it is worked out from these rows and never set on
+// its own.
 const applyGradeChoice = (choice: GradeChoice) => {
   switch (choice.field) {
     case 'directEvidence':
@@ -254,6 +225,9 @@ const applyGradeChoice = (choice: GradeChoice) => {
 const confirmDiscard = () => {
   showDiscardConfirm.value = false
   diagnosisStore.resetInputs()
+  if (diagnosisStore.currentKey) {
+    diagnosisStore.commitSaved(diagnosisStore.currentKey)
+  }
   notifStore.info('Diagnosis cleared')
 }
 
@@ -390,7 +364,8 @@ const hasChart = computed(() => chartStore.hasChartData)
           <p class="mt-2.5 text-[12px] text-slate-400">
             Measurements are read from the chart and corrected there. The tables below show where
             they fall, and the stage and grade follow from that — tick a band on any row to say a
-            reading belongs elsewhere, and the final call stays yours.
+            reading belongs elsewhere. Neither is set by hand: both are always the answer their
+            own rows add up to, so a diagnosis never leaves the record without its criteria.
           </p>
 
           <!-- TAP 2023 step 1. The readings alone can fail this and the patient
@@ -579,14 +554,13 @@ const hasChart = computed(() => chartStore.hasChartData)
           </div>
 
           <StageCriteriaTable
-            :selected="diagnosisStore.finalStage"
+            :stage="diagnosisStore.finalStage"
             :marks="inputs.stageMarks"
             :resolved="diagnosisStore.stage.resolved"
             :cal="diagnosisStore.interdentalCal"
             :bone-loss-percent="diagnosisStore.boneLoss"
             :teeth-lost="diagnosisStore.teethLost"
             :complexity="diagnosisStore.complexity"
-            @select="selectStage"
             @mark="markStageRow"
           />
 
@@ -678,35 +652,16 @@ const hasChart = computed(() => chartStore.hasChartData)
               Why: {{ diagnosisStore.stage.reasons.join(' ') }}
             </p>
 
-            <div class="mt-5 flex flex-wrap items-center gap-3.5">
-              <span class="text-[13px] text-slate-400">Final stage — you decide</span>
-
-              <div class="relative inline-flex items-center">
-                <select
-                  :value="diagnosisStore.finalStage ?? ''"
-                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
-                  @change="handleStageSelect(($event.target as HTMLSelectElement).value)"
-                >
-                  <option v-if="!diagnosisStore.finalStage" value="">Not selected</option>
-                  <option v-for="stage in STAGE_IDS" :key="stage" :value="stage">
-                    Stage {{ stage }}
-                  </option>
-                </select>
-                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
-                </div>
-              </div>
-
-              <input
-                v-if="diagnosisStore.stageOverridden"
-                v-model="inputs.stageReason"
-                type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-                :placeholder="`Why does Stage ${inputs.stageOverride} fit this patient better?`"
-              />
-            </div>
+            <!-- The stage carries no dropdown of its own. It is what the four
+                 rows add up to, so the way to move it is to tick the row that
+                 reads differently, and the answer keeps its criteria with it. -->
+            <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
+              <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+              <span>
+                The stage follows the table above. To move it, tick the band that fits on the row
+                you read differently — CAL, bone loss, tooth loss or complexity.
+              </span>
+            </p>
           </div>
         </section>
 
@@ -914,8 +869,7 @@ const hasChart = computed(() => chartStore.hasChartData)
           </div>
 
           <GradeCriteriaTable
-            :selected="diagnosisStore.finalGrade"
-            :result="diagnosisStore.grade.grade"
+            :grade="diagnosisStore.finalGrade"
             :direct-evidence="inputs.directEvidence"
             :bone-loss-percent="diagnosisStore.boneLoss"
             :age-years="diagnosisStore.age"
@@ -925,7 +879,6 @@ const hasChart = computed(() => chartStore.hasChartData)
             :phenotype-from-chart="diagnosisStore.phenotypeFromChart"
             :smoking="inputs.smoking"
             :diabetes="inputs.diabetes"
-            @select="selectGrade"
             @choose="applyGradeChoice"
           />
 
@@ -960,69 +913,55 @@ const hasChart = computed(() => chartStore.hasChartData)
               Why: {{ diagnosisStore.grade.reasons.join(' ') }}
             </p>
 
-            <div class="mt-5 flex flex-wrap items-center gap-3.5">
-              <span class="text-[13px] text-slate-400">Final grade — you decide</span>
-
-              <div class="relative inline-flex items-center">
-                <select
-                  :value="diagnosisStore.finalGrade ?? ''"
-                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
-                  @change="handleGradeSelect(($event.target as HTMLSelectElement).value)"
-                >
-                  <option v-if="!diagnosisStore.finalGrade" value="">Not selected</option>
-                  <option v-for="grade in GRADE_IDS" :key="grade" :value="grade">
-                    Grade {{ grade }}
-                  </option>
-                </select>
-                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
-                </div>
-              </div>
-
-              <input
-                v-if="diagnosisStore.gradeOverridden"
-                v-model="inputs.gradeReason"
-                type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-                :placeholder="`Why does Grade ${inputs.gradeOverride} fit this patient better?`"
-              />
-            </div>
+            <!-- No dropdown here either. The grade is what the criteria arrive
+                 at, so the way to move it is to change the answer that reads
+                 wrong — above the table, or by ticking the row itself. -->
+            <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
+              <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+              <span>
+                The grade follows the table above. To move it, change the answer that reads wrong —
+                direct evidence, bone loss, age, case phenotype, smoking or diabetes.
+              </span>
+            </p>
           </div>
         </section>
 
-        <!-- Reference + record actions -->
+        <!-- Reference -->
         <section class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="min-w-0 max-w-160">
-              <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">
-                Reference
-              </span>
-              <p class="text-[11px] text-slate-500 leading-relaxed">
-                Tonetti M. S., Greenwell H., Kornman K. S. (2018). Staging and grading of
-                periodontitis: framework and proposal of a new classification and case definition.
-                Journal of Periodontology, 89(S1), S159–S172.
-              </p>
-            </div>
-
-            <div class="flex items-center gap-2 shrink-0">
-              <button
-                class="px-3.5 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[12px] shadow-sm hover:bg-slate-50 transition-colors"
-                @click="showDiscardConfirm = true"
-              >
-                Discard changes
-              </button>
-            </div>
-          </div>
+          <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">
+            Reference
+          </span>
+          <p class="text-[11px] text-slate-500 leading-relaxed max-w-2xl">
+            Tonetti M. S., Greenwell H., Kornman K. S. (2018). Staging and grading of
+            periodontitis: framework and proposal of a new classification and case definition.
+            Journal of Periodontology, 89(S1), S159–S172.
+          </p>
         </section>
       </template>
     </main>
 
+    <!-- Floating Discard Changes Button -->
+    <Transition name="fade">
+      <div
+        v-if="hasChart && !isLoading && !loadFailed"
+        class="fixed bottom-4 right-4 z-40"
+      >
+        <button
+          type="button"
+          class="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/90 hover:bg-white backdrop-blur-sm border border-slate-200/90 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50/80 rounded-full font-semibold text-xs shadow-sm hover:shadow-md transition-all duration-150 cursor-pointer opacity-85 hover:opacity-100 group"
+          title="Discard changes and restore chart defaults"
+          @click="showDiscardConfirm = true"
+        >
+          <RotateCcw class="w-3.5 h-3.5 text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
+          <span>Discard</span>
+        </button>
+      </div>
+    </Transition>
+
     <ConfirmModal
       :show="showDiscardConfirm"
       title="Discard changes"
-      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Clear everything you filled in?</span><span class='text-slate-500 font-normal'>The chart's own values come back, and your stage and grade choices are cleared.</span>"
+      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Clear everything you filled in?</span><span class='text-slate-500 font-normal'>The chart's own values come back, and every band you ticked is cleared.</span>"
       confirm-text="Discard"
       cancel-text="Cancel"
       type="danger"
