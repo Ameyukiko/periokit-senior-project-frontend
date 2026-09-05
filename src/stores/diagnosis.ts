@@ -107,6 +107,23 @@ export const useDiagnosisStore = defineStore(
       return currentStr !== JSON.stringify(createInputs())
     })
 
+    const hasChanges = computed(() => {
+      return (
+        inputs.boneLossPercent !== null ||
+        inputs.teethLostToPerio !== null ||
+        inputs.extent !== null ||
+        inputs.stageMarks.cal !== null ||
+        inputs.stageMarks.boneLoss !== null ||
+        inputs.stageMarks.toothLoss !== null ||
+        inputs.stageMarks.complexity !== null ||
+        inputs.directEvidence !== null ||
+        inputs.ageYears !== null ||
+        inputs.phenotype !== null ||
+        inputs.smoking !== null ||
+        inputs.diabetes !== null
+      )
+    })
+
     // Real-time synchronization into records and localStorage
     watch(
       inputs,
@@ -412,6 +429,7 @@ export const useDiagnosisStore = defineStore(
     inputs,
     visitKey,
     isDirty,
+    hasChanges,
     findings,
     interdentalCal,
     probingDepth,
