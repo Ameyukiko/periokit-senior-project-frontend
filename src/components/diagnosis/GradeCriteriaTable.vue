@@ -31,6 +31,9 @@ const props = defineProps<{
   ratio: number | null
   ratioGrade: GradeId | null
   phenotype: Phenotype | null
+  /** True when the phenotype came off the chart instead of being answered. */
+  phenotypeFromChart: boolean
+  plaquePercentage: number
   smoking: Smoking | null
   diabetes: Diabetes | null
 }>()
@@ -112,9 +115,11 @@ const ratioChip = computed(() =>
     ? ''
     : `Patient: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`,
 )
-const phenotypeChip = computed(() =>
-  props.phenotype ? `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}` : '',
-)
+const phenotypeChip = computed(() => {
+  if (!props.phenotype) return ''
+  if (!props.phenotypeFromChart) return `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}`
+  return `From chart: ${PHENOTYPE_LABEL[props.phenotype]} (plaque ${props.plaquePercentage}%)`
+})
 const smokingChip = computed(() => (props.smoking ? `Patient: ${SMOKING_LABEL[props.smoking]}` : ''))
 const diabetesChip = computed(() =>
   props.diabetes ? `Patient: ${DIABETES_LABEL[props.diabetes]}` : '',
@@ -142,65 +147,90 @@ const chooseDiabetes = (grade: GradeId) =>
     value: diabetesGrade.value === grade ? null : DIABETES_VALUES[grade],
   })
 
-const cellClass = (answered: GradeId | null, grade: GradeId) => [
-  'px-3 py-2.5 align-top border-t border-slate-100 cursor-pointer transition-colors',
+// `soft` is for an answer the chart worked out rather than one the doctor gave,
+// which reads lighter — the same split the staging table makes. A cell holding
+// no answer is dashed, which is what tells these rows apart from the calculated
+// % bone loss ÷ age row below: dashed cells are the ones to fill in.
+const cellClass = (answered: GradeId | null, grade: GradeId, soft = false) => [
+  'px-3 py-2.5 align-top border border-slate-300 cursor-pointer transition-all duration-150',
+  answered !== grade && 'border-dashed hover:border-solid hover:border-blue-300',
   answered === grade
-    ? 'bg-amber-50 text-slate-800 ring-1 ring-inset ring-amber-300'
-    : 'text-slate-600 hover:bg-slate-50',
+    ? soft
+      ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400 hover:bg-[#FECE44]/75'
+      : 'bg-[#FECE44] text-slate-900 font-bold border-t-2 border-t-white/80 border-b-[3px] border-b-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_3px_5px_rgba(217,119,6,0.3)] ring-1 ring-amber-500'
+    : props.selected === grade
+      ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44] hover:bg-[#FECE44]/45'
+      : 'text-black hover:bg-blue-100/70',
 ]
 
-// % bone loss ÷ age comes out of two numbers, so its row is read-only.
+// % bone loss ÷ age comes out of two numbers, so its row is read-only — and it
+// takes the lighter shade for the same reason the phenotype does when the chart
+// answered it: nobody ticked this, the app worked it out.
 const ratioCellClass = (grade: GradeId) => [
-  'px-3 py-2.5 align-top border-t border-slate-100',
-  props.ratioGrade === grade ? 'bg-amber-50/60 text-slate-800' : 'text-slate-600',
+  'px-3 py-2.5 align-top border border-slate-300 text-black transition-all duration-150',
+  props.ratioGrade === grade
+    ? 'bg-[#FECE44]/55 text-slate-900 font-bold border-b-2 border-b-amber-400'
+    : props.selected === grade
+      ? 'bg-[#FECE44]/30 text-slate-900 border-x-2 border-x-[#FECE44]'
+      : '',
 ]
 
 const rowHeaderClass =
-  'px-3 py-2.5 align-top border-t border-slate-100 text-[11px] font-bold text-slate-700'
+  'px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black'
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-2xl border border-slate-200">
-    <table class="w-full min-w-[900px] border-collapse text-left text-[11px]">
+  <div class="overflow-x-auto rounded-2xl border border-slate-400 bg-blue-50/40">
+    <table class="w-full min-w-[900px] border-collapse text-left text-[11px] text-black">
       <thead>
-        <tr class="bg-purple-500 text-white">
-          <th colspan="3" class="px-3 py-2.5 align-top w-72">
-            <span class="block text-[12px] font-bold">Periodontitis Grade</span>
-            <span class="block text-[10px] font-normal text-white/70">
+        <tr class="bg-blue-100 text-black border-b border-slate-400">
+          <th colspan="3" class="p-3 align-top w-72 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+            <span class="block text-[12px] font-bold text-black">Periodontitis Grade</span>
+            <span class="block text-[10px] font-normal text-slate-700">
               AAP / EFP 2017 — rate of progression
+            </span>
+            <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
+              Dashed cells are open — click one to answer that row. % bone loss ÷ age is
+              calculated, so it has none.
             </span>
           </th>
           <th
             v-for="column in COLUMNS"
             :key="column.id"
-            class="px-3 py-2.5 align-top font-bold"
-            :class="selected === column.id ? 'bg-amber-400 text-slate-900' : ''"
+            class="p-0 font-bold border border-slate-300 align-top transition-all duration-150"
+            :class="
+              selected === column.id
+                ? 'relative z-10 bg-gradient-to-b from-[#ffdf6d] via-[#FECE44] to-[#f4b827] text-slate-900 border-t-2 border-t-white border-b-4 border-b-amber-600 border-x-2 border-x-amber-500 shadow-[0_4px_8px_-1px_rgba(202,138,4,0.45),inset_0_2px_0_rgba(255,255,255,0.9)]'
+                : 'bg-gradient-to-b from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200/90 text-black border-b-2 border-b-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
+            "
           >
             <button
               type="button"
-              class="text-left w-full"
+              class="text-left w-full h-full p-3 transition-all duration-150 flex flex-col justify-between cursor-pointer focus:outline-none active:translate-y-0.5"
               :aria-pressed="selected === column.id"
               :title="`Set the diagnosis to Grade ${column.id}`"
               @click="emit('select', column.id)"
             >
-              <span class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-[12px]">{{ column.title }}</span>
+              <div class="flex items-center justify-between gap-1.5 flex-wrap w-full">
+                <span class="text-[12px] font-bold text-slate-900">
+                  {{ column.title }}
+                </span>
                 <span
                   v-if="selected === column.id"
-                  class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-slate-900 text-white text-[9px] font-bold"
+                  class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-600 text-white border border-red-500 text-[9px] font-bold shadow-sm"
                 >
                   <Check class="w-2.5 h-2.5" /> Selected
                 </span>
                 <span
                   v-else-if="result === column.id"
-                  class="px-1.5 py-0.5 rounded-md bg-white/20 text-white text-[9px] font-bold"
+                  class="px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-900 text-[9px] font-bold shadow-xs"
                 >
                   System result
                 </span>
-              </span>
+              </div>
               <span
-                class="block mt-1 text-[10px] font-normal"
-                :class="selected === column.id ? 'text-slate-800' : 'text-white/80'"
+                class="block mt-2 text-[10px] font-normal leading-tight"
+                :class="selected === column.id ? 'text-slate-800 font-medium' : 'text-slate-700'"
               >
                 {{ column.subtitle }}
               </span>
@@ -209,22 +239,22 @@ const rowHeaderClass =
         </tr>
       </thead>
 
-      <tbody class="bg-white">
+      <tbody class="bg-blue-50/20">
         <tr>
           <th
             rowspan="3"
-            class="px-3 py-2.5 align-top w-24 bg-slate-50/60 border-t border-slate-100 text-[11px] font-bold text-slate-700"
+            class="px-3 py-2.5 align-top w-24 bg-blue-100/60 border border-slate-300 text-[11px] font-bold text-black"
           >
             Primary criteria
           </th>
           <th
-            class="px-3 py-2.5 align-top w-28 border-t border-slate-100 text-[11px] font-bold text-slate-700"
+            class="px-3 py-2.5 align-top w-28 bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Direct evidence of progression
           </th>
           <th :class="rowHeaderClass" class="w-32">
             Longitudinal data
-            <span class="block text-[10px] font-normal text-slate-400">
+            <span class="block text-[10px] font-normal text-slate-700">
               radiographic bone loss or CAL, ≥ 5 years apart
             </span>
           </th>
@@ -237,7 +267,7 @@ const rowHeaderClass =
             {{ DIRECT_BANDS[column.id] }}
             <span
               v-if="directGrade === column.id"
-              class="block mt-1 text-[10px] font-bold text-slate-800"
+              class="block mt-1 text-[10px] font-bold text-slate-900"
             >
               {{ directChip }}
             </span>
@@ -247,13 +277,13 @@ const rowHeaderClass =
         <tr>
           <th
             rowspan="2"
-            class="px-3 py-2.5 align-top border-t border-slate-100 text-[11px] font-bold text-slate-700"
+            class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Indirect evidence of progression
           </th>
           <th :class="rowHeaderClass">
             % bone loss ÷ age
-            <span v-if="ratio === null" class="block mt-1 text-[10px] font-bold text-amber-600">
+            <span v-if="ratio === null" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs bone loss and age
             </span>
           </th>
@@ -261,7 +291,7 @@ const rowHeaderClass =
             {{ RATIO_BANDS[column.id] }}
             <span
               v-if="ratioGrade === column.id"
-              class="block mt-1 text-[10px] font-bold text-slate-800"
+              class="block mt-1 text-[10px] font-bold text-slate-900"
             >
               {{ ratioChip }}
             </span>
@@ -271,20 +301,20 @@ const rowHeaderClass =
         <tr>
           <th :class="rowHeaderClass">
             Case phenotype
-            <span v-if="!phenotype" class="block mt-1 text-[10px] font-bold text-amber-600">
+            <span v-if="!phenotype" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
           <td
             v-for="column in COLUMNS"
             :key="column.id"
-            :class="cellClass(phenotypeGrade, column.id)"
+            :class="cellClass(phenotypeGrade, column.id, phenotypeFromChart)"
             @click="choosePhenotype(column.id)"
           >
             {{ PHENOTYPE_BANDS[column.id] }}
             <span
               v-if="phenotypeGrade === column.id"
-              class="block mt-1 text-[10px] font-bold text-slate-800"
+              class="block mt-1 text-[10px] font-bold text-slate-900"
             >
               {{ phenotypeChip }}
             </span>
@@ -294,19 +324,19 @@ const rowHeaderClass =
         <tr>
           <th
             rowspan="2"
-            class="px-3 py-2.5 align-top bg-slate-50/60 border-t border-slate-100 text-[11px] font-bold text-slate-700"
+            class="px-3 py-2.5 align-top bg-blue-100/60 border border-slate-300 text-[11px] font-bold text-black"
           >
             Grade modifiers
           </th>
           <th
             rowspan="2"
-            class="px-3 py-2.5 align-top border-t border-slate-100 text-[11px] font-bold text-slate-700"
+            class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Risk factors
           </th>
           <th :class="rowHeaderClass">
             Smoking
-            <span v-if="!smoking" class="block mt-1 text-[10px] font-bold text-amber-600">
+            <span v-if="!smoking" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
@@ -319,7 +349,7 @@ const rowHeaderClass =
             {{ SMOKING_BANDS[column.id] }}
             <span
               v-if="smokingGrade === column.id"
-              class="block mt-1 text-[10px] font-bold text-slate-800"
+              class="block mt-1 text-[10px] font-bold text-slate-900"
             >
               {{ smokingChip }}
             </span>
@@ -329,7 +359,7 @@ const rowHeaderClass =
         <tr>
           <th :class="rowHeaderClass">
             Diabetes
-            <span v-if="!diabetes" class="block mt-1 text-[10px] font-bold text-amber-600">
+            <span v-if="!diabetes" class="block mt-1 text-[10px] font-bold text-amber-700">
               Needs your input
             </span>
           </th>
@@ -342,7 +372,7 @@ const rowHeaderClass =
             {{ DIABETES_BANDS[column.id] }}
             <span
               v-if="diabetesGrade === column.id"
-              class="block mt-1 text-[10px] font-bold text-slate-800"
+              class="block mt-1 text-[10px] font-bold text-slate-900"
             >
               {{ diabetesChip }}
             </span>

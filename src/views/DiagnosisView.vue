@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -48,7 +47,6 @@ const visitStore = useVisitStore()
 const notifStore = useNotificationStore()
 const diagnosisStore = useDiagnosisStore()
 
-const { patientInfo } = storeToRefs(chartStore)
 // Stable object — resetInputs() assigns into it rather than replacing it.
 const inputs = diagnosisStore.inputs
 
@@ -100,11 +98,12 @@ onMounted(async () => {
   }
 })
 
-// Values read like text until they are clicked, the way the printed AAP table
-// reads — the box only shows up under the cursor.
+// Anything the doctor can change carries a faint box, so an editable value is
+// told apart from a printed one at a glance. The border firms up under the
+// cursor and turns blue on focus.
 const QUIET =
-  'bg-transparent border-0 rounded px-1 -mx-1 text-[13px] font-bold text-slate-800 outline-none hover:bg-slate-100 focus:bg-blue-50 focus:ring-2 focus:ring-blue-100 transition-colors'
-const QUIET_NUMBER = `${QUIET} w-14`
+  'bg-white border border-slate-200 rounded-md px-1.5 py-0.5 -mx-0.5 text-[13px] font-bold text-slate-800 outline-none hover:border-slate-300 hover:bg-slate-50 focus:border-[#0052ff] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-colors'
+const QUIET_NUMBER = `${QUIET} w-16`
 const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold`
 
 type NumericKey =
@@ -129,19 +128,69 @@ const setGradeCount = (key: 'furcationGrade' | 'mobilityGrade', raw: string) => 
 }
 
 const selectStage = (stage: StageId) => {
-  inputs.stageOverride = inputs.stageOverride === stage ? null : stage
+  if (inputs.stageOverride === stage || stage === diagnosisStore.stage.stage) {
+    inputs.stageOverride = null
+  } else {
+    inputs.stageOverride = stage
+  }
   if (!diagnosisStore.stageOverridden) inputs.stageReason = ''
 }
 
-// Ticking a band on one row of the staging table. Rows are independent — the
-// stage itself is a separate decision, so a mark never moves it on its own.
+const handleStageSelect = (raw: string) => {
+  if (!raw) {
+    inputs.stageOverride = null
+    inputs.stageReason = ''
+    return
+  }
+  const stage = raw as StageId
+  if (diagnosisStore.stage.stage && stage === diagnosisStore.stage.stage) {
+    inputs.stageOverride = null
+    inputs.stageReason = ''
+  } else {
+    inputs.stageOverride = stage
+  }
+}
+
+// Ticking a band on one row of the staging table, which overrides the band that
+// row's measurement fell in. Clicking the same cell again hands the row back to
+// the numbers.
 const markStageRow = (row: StageRow, stage: StageId) => {
   inputs.stageMarks[row] = inputs.stageMarks[row] === stage ? null : stage
 }
 
+// Same shape as the stage and grade controls: picking what the chart already
+// counted hands the answer back to the chart, anything else overrides it.
+const selectExtent = (option: ExtentId) => {
+  inputs.extent = diagnosisStore.extent === option ? null : option
+}
+
+const selectPhenotype = (raw: string) => {
+  const value = (raw || null) as Phenotype | null
+  inputs.phenotype = value === diagnosisStore.suggestedPhenotype ? null : value
+}
+
 const selectGrade = (grade: GradeId) => {
-  inputs.gradeOverride = inputs.gradeOverride === grade ? null : grade
+  if (inputs.gradeOverride === grade || grade === diagnosisStore.grade.grade) {
+    inputs.gradeOverride = null
+  } else {
+    inputs.gradeOverride = grade
+  }
   if (!diagnosisStore.gradeOverridden) inputs.gradeReason = ''
+}
+
+const handleGradeSelect = (raw: string) => {
+  if (!raw) {
+    inputs.gradeOverride = null
+    inputs.gradeReason = ''
+    return
+  }
+  const grade = raw as GradeId
+  if (diagnosisStore.grade.grade && grade === diagnosisStore.grade.grade) {
+    inputs.gradeOverride = null
+    inputs.gradeReason = ''
+  } else {
+    inputs.gradeOverride = grade
+  }
 }
 
 // Every clickable row of the grading table stands for one of the inputs above
@@ -152,7 +201,9 @@ const applyGradeChoice = (choice: GradeChoice) => {
       inputs.directEvidence = choice.value
       break
     case 'phenotype':
-      inputs.phenotype = choice.value
+      // Picking what the chart already reads hands the row back to the chart.
+      inputs.phenotype =
+        choice.value === diagnosisStore.suggestedPhenotype ? null : choice.value
       break
     case 'smoking':
       inputs.smoking = choice.value
@@ -189,15 +240,6 @@ const confirmSave = () => {
     'The backend has no diagnosis record yet, so this worksheet stays in this session.',
   )
 }
-
-const visitDate = computed(() => {
-  if (!patientInfo.value.date) return '—'
-  return new Date(patientInfo.value.date).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-})
 
 const EXTENT_OPTIONS: ExtentId[] = ['localized', 'generalized', 'molar-incisor']
 const DIRECT_OPTIONS: DirectEvidence[] = ['no-loss', 'lt-2mm', 'gte-2mm']
@@ -324,23 +366,6 @@ const hasChart = computed(() => chartStore.hasChartData)
               <h1 class="text-2xl xl:text-[28px] font-bold text-slate-800 tracking-tight">
                 {{ diagnosisStore.diagnosisTitle }}
               </h1>
-              <div
-                class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[12px] text-slate-500"
-              >
-                <span>{{ patientInfo.patientName || 'Unnamed patient' }}</span>
-                <span>· HN {{ patientInfo.hn || '—' }}</span>
-                <span>· Visit {{ visitDate }}</span>
-                <span>· Stage from your input · grade from your input</span>
-                <span
-                  v-if="diagnosisStore.missingInputs.length"
-                  class="font-bold text-slate-700"
-                >
-                  · {{ diagnosisStore.missingInputs.length }} inputs still missing
-                </span>
-                <span v-else-if="diagnosisStore.isClassified" class="font-bold text-emerald-600">
-                  · Classification complete
-                </span>
-              </div>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
@@ -360,9 +385,9 @@ const hasChart = computed(() => chartStore.hasChartData)
           </div>
 
           <p class="mt-2.5 text-[12px] text-slate-400">
-            The tables below show where your numbers fall. Tick the band that matches on each row
-            and the stage and grade follow from what you ticked — nothing is read straight out of
-            the chart.
+            The tables below show where your numbers fall, and the stage and grade follow from
+            them. Tick a band on any row to override what the numbers say, and the final call
+            stays yours.
           </p>
         </header>
 
@@ -376,7 +401,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 1
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Stage</h2>
-              <span class="text-[11px] text-slate-400">From the bands you tick</span>
+              <span class="text-[11px] text-slate-400">Calculated from the table</span>
             </div>
             <p class="text-[11px] text-slate-400">
               Severity uses the worst affected site. Complexity can raise the stage, never lower it.
@@ -399,7 +424,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 step="0.5"
                 placeholder="Add"
                 :value="diagnosisStore.interdentalCal ?? ''"
-                :class="`${QUIET_PROMPT} w-14`"
+                :class="`${QUIET_PROMPT} w-16`"
                 @input="setNumber('interdentalCalMm', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500">mm</span>
@@ -420,7 +445,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 step="1"
                 placeholder="Add"
                 :value="diagnosisStore.probingDepth ?? ''"
-                :class="`${QUIET_PROMPT} w-14`"
+                :class="`${QUIET_PROMPT} w-16`"
                 @input="setNumber('probingDepthMm', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500">mm</span>
@@ -441,7 +466,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             >
               <select
                 :value="diagnosisStore.furcation ?? ''"
-                :class="`${QUIET} w-20`"
+                :class="`${QUIET} w-24`"
                 @change="setGradeCount('furcationGrade', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">None</option>
@@ -454,7 +479,7 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
               <select
                 :value="diagnosisStore.mobility ?? ''"
-                :class="`${QUIET} w-20`"
+                :class="`${QUIET} w-24`"
                 @change="setGradeCount('mobilityGrade', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">No mob</option>
@@ -480,7 +505,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 :value="inputs.boneLossPercent ?? ''"
                 :class="[
                   QUIET_PROMPT,
-                  inputs.boneLossPercent === null ? 'w-32' : 'w-10'
+                  inputs.boneLossPercent === null ? 'w-36' : 'w-12'
                 ]"
                 @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
               />
@@ -502,7 +527,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 max="32"
                 step="1"
                 :value="diagnosisStore.teethLost"
-                :class="`${QUIET} w-10`"
+                :class="`${QUIET} w-12`"
                 @input="setNumber('teethLostToPerio', ($event.target as HTMLInputElement).value)"
               />
               <span class="text-[12px] text-slate-500 whitespace-nowrap">
@@ -514,6 +539,7 @@ const hasChart = computed(() => chartStore.hasChartData)
           <StageCriteriaTable
             :selected="diagnosisStore.finalStage"
             :marks="inputs.stageMarks"
+            :resolved="diagnosisStore.stage.resolved"
             :cal="diagnosisStore.interdentalCal"
             :cal-site="calSite"
             :bone-loss-percent="inputs.boneLossPercent"
@@ -558,8 +584,12 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </span>
               </span>
               <span class="text-[11px] text-slate-400">
-                Suggested from chart: {{ findings.affectedTeeth }} of
+                Counted from chart: {{ findings.affectedTeeth }} of
                 {{ findings.remainingTeeth }} teeth affected ({{ findings.affectedPercentage }}%)
+                <template v-if="diagnosisStore.extentOverridden">
+                  — reads as {{ EXTENT_LABEL[diagnosisStore.suggestedExtent!].split(' (')[0] }},
+                  you chose otherwise
+                </template>
               </span>
             </div>
             <div class="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
@@ -569,81 +599,73 @@ const hasChart = computed(() => chartStore.hasChartData)
                 type="button"
                 class="px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors"
                 :class="
-                  inputs.extent === option
+                  diagnosisStore.extent === option
                     ? 'bg-[#0052ff] text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 "
-                :aria-pressed="inputs.extent === option"
-                @click="inputs.extent = inputs.extent === option ? null : option"
+                :aria-pressed="diagnosisStore.extent === option"
+                @click="selectExtent(option)"
               >
                 {{ EXTENT_LABEL[option] }}
               </button>
             </div>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] text-slate-400">System result</span>
-              <span class="text-[16px] font-bold text-slate-800">
-                {{ diagnosisStore.stage.stage ? `Stage ${diagnosisStore.stage.stage}` : 'Nothing ticked yet' }}
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:p-6 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[13px] text-slate-500 font-normal">System result</span>
+              <span class="text-[18px] font-bold text-slate-900">
+                {{ diagnosisStore.stage.stage ? `Stage ${diagnosisStore.stage.stage}` : 'Not enough data' }}
               </span>
               <span
-                v-if="diagnosisStore.missingStageInputs.length"
-                class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-bold"
+                v-if="diagnosisStore.stage.missing.length"
+                class="px-3 py-0.5 rounded-full bg-[#FECE44] text-slate-900 text-[12px] font-semibold tracking-normal"
               >
-                {{ diagnosisStore.missingStageInputs.length }}
-                {{ diagnosisStore.missingStageInputs.length === 1 ? 'criterion' : 'criteria' }}
+                {{ diagnosisStore.stage.missing.length }}
+                {{ diagnosisStore.stage.missing.length === 1 ? 'criterion' : 'criteria' }}
                 still missing
               </span>
-              <span v-else class="text-[11px] text-slate-400">All criteria ticked</span>
+              <span
+                v-else
+                class="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold tracking-normal"
+              >
+                All criteria recorded
+              </span>
             </div>
 
-            <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
+            <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
               Why: {{ diagnosisStore.stage.reasons.join(' ') }}
             </p>
 
-            <p
-              v-if="diagnosisStore.stageReasons.length"
-              class="mt-1.5 text-[11px] text-slate-400 leading-relaxed"
-            >
-              Your measurements: {{ diagnosisStore.stageReasons.join(' ') }}
-            </p>
+            <div class="mt-5 flex flex-wrap items-center gap-3.5">
+              <span class="text-[13px] text-slate-400">Final stage — you decide</span>
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <span class="text-[11px] text-slate-400">Final stage — you decide</span>
-              <select
-                v-model="inputs.stageOverride"
-                class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option :value="null">
-                  {{
-                    diagnosisStore.stage.stage
-                      ? `Keep Stage ${diagnosisStore.stage.stage}`
-                      : 'Not selected'
-                  }}
-                </option>
-                <option v-for="stage in STAGE_IDS" :key="stage" :value="stage">
-                  Stage {{ stage }}
-                </option>
-              </select>
-              <span v-if="!diagnosisStore.stageOverridden" class="text-[11px] text-slate-400">
-                Overriding asks for a short reason
-              </span>
+              <div class="relative inline-flex items-center">
+                <select
+                  :value="diagnosisStore.finalStage ?? ''"
+                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
+                  @change="handleStageSelect(($event.target as HTMLSelectElement).value)"
+                >
+                  <option v-if="!diagnosisStore.finalStage" value="">Not selected</option>
+                  <option v-for="stage in STAGE_IDS" :key="stage" :value="stage">
+                    Stage {{ stage }}
+                  </option>
+                </select>
+                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                  </svg>
+                </div>
+              </div>
+
               <input
-                v-else
+                v-if="diagnosisStore.stageOverridden"
                 v-model="inputs.stageReason"
                 type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
                 :placeholder="`Why does Stage ${inputs.stageOverride} fit this patient better?`"
               />
             </div>
-
-            <p
-              v-if="diagnosisStore.stageOverridden && !inputs.stageReason.trim()"
-              class="mt-2 text-[11px] font-bold text-amber-600"
-            >
-              Add a short reason so the override is readable later.
-            </p>
           </div>
         </section>
 
@@ -652,12 +674,14 @@ const hasChart = computed(() => chartStore.hasChartData)
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span
-                class="w-5 h-5 rounded-full bg-[#7c3aed] text-white text-[10px] font-bold grid place-items-center"
+                class="w-5 h-5 rounded-full bg-[#0052ff] text-white text-[10px] font-bold grid place-items-center"
               >
                 2
               </span>
               <h2 class="text-[15px] font-bold text-slate-800">Periodontitis Grade</h2>
-              <span class="text-[11px] text-slate-400">Needs your input</span>
+              <span class="text-[11px] text-slate-400">
+                From the chart where it can be, from you where it cannot
+              </span>
             </div>
             <p class="text-[11px] text-slate-400">
               Every case starts at Grade B. Primary criteria move it to A or C; risk factors can
@@ -672,7 +696,8 @@ const hasChart = computed(() => chartStore.hasChartData)
                   Complexity and risk-factor input
                 </span>
                 <span class="text-[11px] text-slate-400">
-                  Not in the periodontal chart — fill these in and the grade updates.
+                  The chart cannot answer these — bone loss comes off the X-ray, the rest off the
+                  patient. Fill them in and the grade updates.
                 </span>
               </div>
               <div
@@ -748,11 +773,20 @@ const hasChart = computed(() => chartStore.hasChartData)
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span v-if="!inputs.phenotype" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span
+                    v-if="!diagnosisStore.phenotype"
+                    class="w-1.5 h-1.5 rounded-full bg-amber-400"
+                  ></span>
                   Case phenotype
                 </span>
-                <select v-model="inputs.phenotype" :class="`${QUIET} text-right`">
-                  <option :value="null">Not assessed</option>
+                <select
+                  :value="diagnosisStore.phenotype ?? ''"
+                  :class="`${QUIET} text-right`"
+                  @change="selectPhenotype(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">
+                    {{ diagnosisStore.suggestedPhenotype ? 'From chart' : 'Not assessed' }}
+                  </option>
                   <option v-for="option in PHENOTYPE_OPTIONS" :key="option" :value="option">
                     {{ PHENOTYPE_LABEL[option] }}
                   </option>
@@ -795,17 +829,19 @@ const hasChart = computed(() => chartStore.hasChartData)
             :age-years="diagnosisStore.age"
             :ratio="diagnosisStore.grade.ratio"
             :ratio-grade="diagnosisStore.grade.ratioGrade"
-            :phenotype="inputs.phenotype"
+            :phenotype="diagnosisStore.phenotype"
+            :phenotype-from-chart="diagnosisStore.phenotypeFromChart"
+            :plaque-percentage="findings.plaquePercentage"
             :smoking="inputs.smoking"
             :diabetes="inputs.diabetes"
             @select="selectGrade"
             @choose="applyGradeChoice"
           />
 
-          <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] text-slate-400">System result</span>
-              <span class="text-[16px] font-bold text-slate-800">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:p-6 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[13px] text-slate-500 font-normal">System result</span>
+              <span class="text-[18px] font-bold text-slate-900">
                 {{
                   diagnosisStore.grade.grade
                     ? `Grade ${diagnosisStore.grade.grade}`
@@ -814,55 +850,54 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
               <span
                 v-if="diagnosisStore.grade.missing.length"
-                class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-bold"
+                class="px-3 py-0.5 rounded-full bg-[#FECE44] text-slate-900 text-[12px] font-semibold tracking-normal"
               >
                 Still needs {{ diagnosisStore.grade.missing.join(', ') }}
               </span>
-              <span v-else class="text-[11px] text-slate-400">All required input provided</span>
+              <span
+                v-else
+                class="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold tracking-normal"
+              >
+                All required input provided
+              </span>
             </div>
 
             <p
               v-if="diagnosisStore.grade.reasons.length"
-              class="mt-2 text-[11px] text-slate-500 leading-relaxed"
+              class="mt-3 text-[13px] text-slate-600 leading-relaxed"
             >
               Why: {{ diagnosisStore.grade.reasons.join(' ') }}
             </p>
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <span class="text-[11px] text-slate-400">Final grade — you decide</span>
-              <select
-                v-model="inputs.gradeOverride"
-                class="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option :value="null">
-                  {{
-                    diagnosisStore.grade.grade
-                      ? `Keep Grade ${diagnosisStore.grade.grade}`
-                      : 'Not selected'
-                  }}
-                </option>
-                <option v-for="grade in GRADE_IDS" :key="grade" :value="grade">
-                  Grade {{ grade }}
-                </option>
-              </select>
-              <span v-if="!diagnosisStore.gradeOverridden" class="text-[11px] text-slate-400">
-                Overriding asks for a short reason
-              </span>
+            <div class="mt-5 flex flex-wrap items-center gap-3.5">
+              <span class="text-[13px] text-slate-400">Final grade — you decide</span>
+
+              <div class="relative inline-flex items-center">
+                <select
+                  :value="diagnosisStore.finalGrade ?? ''"
+                  class="appearance-none bg-white border border-slate-300 hover:border-slate-400 rounded-lg pl-3.5 pr-8 py-1.5 text-[13px] font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-colors cursor-pointer"
+                  @change="handleGradeSelect(($event.target as HTMLSelectElement).value)"
+                >
+                  <option v-if="!diagnosisStore.finalGrade" value="">Not selected</option>
+                  <option v-for="grade in GRADE_IDS" :key="grade" :value="grade">
+                    Grade {{ grade }}
+                  </option>
+                </select>
+                <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                  </svg>
+                </div>
+              </div>
+
               <input
-                v-else
+                v-if="diagnosisStore.gradeOverridden"
                 v-model="inputs.gradeReason"
                 type="text"
-                class="flex-1 min-w-60 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                class="flex-1 min-w-60 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
                 :placeholder="`Why does Grade ${inputs.gradeOverride} fit this patient better?`"
               />
             </div>
-
-            <p
-              v-if="diagnosisStore.gradeOverridden && !inputs.gradeReason.trim()"
-              class="mt-2 text-[11px] font-bold text-amber-600"
-            >
-              Add a short reason so the override is readable later.
-            </p>
           </div>
         </section>
 

@@ -1,3 +1,4 @@
+import type { ToothId } from '@/domain/chart/chart.types'
 import {
   DIABETES_LABEL,
   DIRECT_EVIDENCE_LABEL,
@@ -6,6 +7,7 @@ import {
   SMOKING_LABEL,
   type Diabetes,
   type DirectEvidence,
+  type ExtentId,
   type GradeId,
   type Phenotype,
   type Smoking,
@@ -16,12 +18,13 @@ import {
 export const STAGE_IDS: StageId[] = ['I', 'II', 'III', 'IV']
 export const GRADE_IDS: GradeId[] = ['A', 'B', 'C']
 
-// ── Stage: bands from the numbers, the stage from the ticks ───────────────────
+// ── Stage: computed from the numbers, and overridable ─────────────────────────
 // Each helper answers "which columns of the AAP/EFP table does this one number
 // belong in", and a number can belong in more than one — interdental CAL of
-// 6 mm reads as Stage III and Stage IV alike. Nothing here picks between them;
-// the stage comes from `assessStage`, out of the bands the doctor ticked, never
-// straight out of the chart.
+// 6 mm reads as Stage III and Stage IV alike. `autoStageMarks` settles that by
+// taking the lower band of the pair: what separates III from IV is tooth loss
+// and complexity, which have rows of their own and can only raise the stage.
+// A band the doctor ticks by hand wins over the one the numbers land in.
 
 export const stagesForCal = (mm: number | null): StageId[] => {
   if (mm === null || mm <= 0) return []
@@ -81,6 +84,50 @@ const worseStage = (a: StageId | null, b: StageId | null): StageId | null => {
   return STAGE_IDS.indexOf(a) >= STAGE_IDS.indexOf(b) ? a : b
 }
 
+/**
+ * The complexity band the measurements themselves read as. This cannot be taken
+ * off `complexityFindings`, which lists a probing depth in every column it fits
+ * so the table can show it there: 3 mm belongs under Stage I *and* Stage II,
+ * and only the lowest of those is the complexity the patient actually has.
+ */
+export const complexityStage = (
+  probingDepth: number | null,
+  furcation: number | null,
+  mobility: number | null,
+  remainingTeeth: number,
+): StageId | null => {
+  let stage: StageId | null = null
+
+  if (probingDepth !== null && probingDepth > 0) {
+    stage = worseStage(stage, probingDepth <= 4 ? 'I' : probingDepth < 6 ? 'II' : 'III')
+  }
+  if (furcation !== null && furcation >= 2) stage = worseStage(stage, 'III')
+  if (mobility !== null && mobility >= 2) stage = worseStage(stage, 'IV')
+  if (remainingTeeth > 0 && remainingTeeth < 20) stage = worseStage(stage, 'IV')
+
+  return stage
+}
+
+/** Of the bands a number fits, the lowest — complexity raises it from there. */
+const lowestBand = (stages: StageId[]): StageId | null => stages[0] ?? null
+
+/**
+ * Where the measurements put each row of the staging table, so the doctor does
+ * not have to tick what the numbers already say. Rows with nothing recorded stay
+ * null, and `assessStage` treats a hand-ticked band as the answer instead.
+ */
+export const autoStageMarks = (
+  cal: number | null,
+  boneLossPercent: number | null,
+  toothLoss: number | null,
+  complexity: StageId | null,
+): Record<StageRow, StageId | null> => ({
+  cal: lowestBand(stagesForCal(cal)),
+  boneLoss: lowestBand(stagesForBoneLoss(boneLossPercent)),
+  toothLoss: lowestBand(stagesForToothLoss(toothLoss)),
+  complexity,
+})
+
 const SEVERITY_ROWS: { row: StageRow; label: string }[] = [
   { row: 'cal', label: 'interdental CAL' },
   { row: 'boneLoss', label: 'radiographic bone loss' },
@@ -88,37 +135,53 @@ const SEVERITY_ROWS: { row: StageRow; label: string }[] = [
 ]
 
 export interface StageAssessment {
-  /** null until at least one severity row is ticked. */
+  /** null until at least one severity row has a number or a tick. */
   stage: StageId | null
   severity: StageId | null
   complexity: StageId | null
   reasons: string[]
   missing: string[]
+  /** The band each row settled on, whether the numbers or the doctor put it there. */
+  resolved: Record<StageRow, StageId | null>
+}
+
+const NO_MARKS: Record<StageRow, StageId | null> = {
+  cal: null,
+  boneLoss: null,
+  toothLoss: null,
+  complexity: null,
 }
 
 /**
- * The stage the ticked bands add up to. Severity is the worst band ticked
- * across the three severity rows; complexity can raise that, never lower it
- * (AAP/EFP 2017). Nothing is read out of the chart here — an untouched table
- * yields no stage at all.
+ * The stage the table adds up to. Each row takes the doctor's tick if there is
+ * one and the band its measurement falls in otherwise; severity is then the
+ * worst band across the three severity rows, and complexity can raise that,
+ * never lower it (AAP/EFP 2017). A table with no numbers and no ticks yields no
+ * stage at all.
  */
-export const assessStage = (marks: Record<StageRow, StageId | null>): StageAssessment => {
+export const assessStage = (
+  marks: Record<StageRow, StageId | null>,
+  auto: Record<StageRow, StageId | null> = NO_MARKS,
+): StageAssessment => {
   const reasons: string[] = []
   const missing: string[] = []
-  const ticked: string[] = []
+  const bands: string[] = []
+  const resolved = { ...NO_MARKS }
 
   let severity: StageId | null = null
   for (const { row, label } of SEVERITY_ROWS) {
-    const mark = marks[row]
+    const mark = marks[row] ?? auto[row]
+    resolved[row] = mark
     if (!mark) {
       missing.push(label)
       continue
     }
-    ticked.push(`${label} in Stage ${mark}`)
+    bands.push(`${label} in Stage ${mark}${marks[row] ? ' — your tick' : ''}`)
     severity = worseStage(severity, mark)
   }
 
-  const complexity = marks.complexity
+  const complexity = marks.complexity ?? auto.complexity
+  resolved.complexity = complexity
   if (!complexity) missing.push('complexity')
 
   if (!severity) {
@@ -126,31 +189,59 @@ export const assessStage = (marks: Record<StageRow, StageId | null>): StageAsses
       stage: null,
       severity: null,
       complexity,
-      reasons: ['Tick a band on the severity rows and the stage follows from what you ticked.'],
+      reasons: [
+        'Fill in interdental CAL, bone loss or tooth loss and the stage follows from those numbers. Ticking a band overrides what they say.',
+      ],
       missing,
+      resolved,
     }
   }
 
   const stage = worseStage(severity, complexity)
-  reasons.push(
-    `Severity is Stage ${severity} — the worst band you ticked (${ticked.join(', ')}).`,
-  )
+  reasons.push(`Severity is Stage ${severity} — the worst band on the table (${bands.join(', ')}).`)
 
   if (complexity) {
     reasons.push(
       stage === severity
-        ? `The complexity you ticked is Stage ${complexity}, which does not raise it — complexity can raise the stage, never lower it.`
+        ? `Complexity reads as Stage ${complexity}, which does not raise it — complexity can raise the stage, never lower it.`
         : `Complexity is Stage ${complexity}, which raises the stage to ${stage}.`,
     )
   }
 
   if (missing.length) {
     reasons.push(
-      `${missing.join(' and ')} not ticked yet — ticking ${missing.length > 1 ? 'them' : 'it'} may raise the stage, but cannot take it below ${stage}.`,
+      `${missing.join(' and ')} not recorded yet — filling ${missing.length > 1 ? 'them' : 'it'} in may raise the stage, but cannot take it below ${stage}.`,
     )
   }
 
-  return { stage, severity, complexity, reasons, missing }
+  return { stage, severity, complexity, reasons, missing, resolved }
+}
+
+// ── Extent: counted off the chart ─────────────────────────────────────────────
+
+// FDI numbering puts the position in the second digit: 1–2 incisors, 3 canine,
+// 4–5 premolars, 6–8 molars.
+const isMolar = (toothId: ToothId) => toothId % 10 >= 6
+const isIncisor = (toothId: ToothId) => toothId % 10 <= 2
+
+/**
+ * The extent the affected teeth read as: a molar / incisor pattern when every
+ * affected tooth is one of those and both are involved, and otherwise the
+ * 30% split. Null when the chart has no affected tooth to count.
+ */
+export const suggestExtent = (
+  affectedToothIds: ToothId[],
+  affectedPercentage: number,
+): ExtentId | null => {
+  if (!affectedToothIds.length) return null
+
+  const molars = affectedToothIds.filter(isMolar)
+  const incisors = affectedToothIds.filter(isIncisor)
+  if (molars.length && incisors.length && molars.length + incisors.length === affectedToothIds.length) {
+    return 'molar-incisor'
+  }
+
+  return affectedPercentage >= 30 ? 'generalized' : 'localized'
 }
 
 /** Where each measured number falls, criterion by criterion. */
@@ -215,6 +306,37 @@ const DIABETES_GRADE: Record<Diabetes, GradeId> = {
   'hba1c-gte-7': 'C',
 }
 
+// The plaque score the chart has to carry before "heavy biofilm" or "low
+// biofilm" is read into it. AAP/EFP give the phenotype in words only, with no
+// cut-off, so these two are this app's convention and the doctor overrides them
+// by answering the row themselves.
+export const HEAVY_BIOFILM_PERCENT = 40
+export const LOW_BIOFILM_PERCENT = 20
+
+/**
+ * The case phenotype the chart reads as: destruction against the biofilm that
+ * has to explain it. Severity is the stage the severity rows arrived at, before
+ * complexity raised it, since complexity says nothing about rate.
+ *
+ * A chart with no plaque marked scores 0%, which is indistinguishable from a
+ * mouth that is genuinely clean — so nothing is concluded there, and the doctor
+ * answers the row.
+ */
+export const suggestPhenotype = (
+  plaquePercentage: number,
+  severity: StageId | null,
+  extent: ExtentId | null,
+): Phenotype | null => {
+  // Molar / incisor pattern is a rapid-progression pattern in its own right.
+  if (extent === 'molar-incisor') return 'exceeds'
+  if (!severity || plaquePercentage <= 0) return null
+
+  const severe = severity === 'III' || severity === 'IV'
+  if (plaquePercentage >= HEAVY_BIOFILM_PERCENT && !severe) return 'heavy-biofilm'
+  if (plaquePercentage <= LOW_BIOFILM_PERCENT && severe) return 'exceeds'
+  return 'commensurate'
+}
+
 export const gradeForDirectEvidence = (value: DirectEvidence | null) =>
   value ? DIRECT_GRADE[value] : null
 export const gradeForPhenotype = (value: Phenotype | null) => (value ? PHENOTYPE_GRADE[value] : null)
@@ -239,6 +361,8 @@ export interface GradeCriteria {
   boneLossPercent: number | null
   ageYears: number | null
   phenotype: Phenotype | null
+  /** True when the phenotype above was read off the chart rather than answered. */
+  phenotypeFromChart?: boolean
   smoking: Smoking | null
   diabetes: Diabetes | null
 }
@@ -256,6 +380,7 @@ export interface GradeAssessment {
 
 export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
   const { directEvidence, boneLossPercent, ageYears, phenotype, smoking, diabetes } = criteria
+  const phenotypeSource = criteria.phenotypeFromChart ? 'read off the chart' : 'you selected'
 
   const ratio =
     boneLossPercent !== null && ageYears !== null && ageYears > 0
@@ -285,7 +410,7 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
     }
     if (phenotypeGrade) {
       reasons.push(
-        `The case phenotype you selected (${PHENOTYPE_LABEL[phenotype!].toLowerCase()}) reads as Grade ${phenotypeGrade}.`,
+        `The case phenotype ${phenotypeSource} (${PHENOTYPE_LABEL[phenotype!].toLowerCase()}) reads as Grade ${phenotypeGrade}.`,
       )
     }
     if (!primary) {

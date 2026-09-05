@@ -4,8 +4,12 @@ import { collectChartFindings } from '@/domain/diagnosis/diagnosis.findings'
 import {
   assessGrade,
   assessStage,
+  autoStageMarks,
   complexityFindings,
+  complexityStage,
   stageSummary,
+  suggestExtent,
+  suggestPhenotype,
 } from '@/domain/diagnosis/diagnosis.rules'
 import { EXTENT_LABEL, type DiagnosisInputs } from '@/domain/diagnosis/diagnosis.types'
 import { usePeriodontalChartStore } from './periodontal-chart'
@@ -16,6 +20,7 @@ const createInputs = (): DiagnosisInputs => ({
   probingDepthMm: null,
   furcationGrade: null,
   mobilityGrade: null,
+  // Starts at 0 rather than empty, so the field always carries a number.
   boneLossPercent: 0,
   teethLostToPerio: null,
   extent: null,
@@ -67,8 +72,7 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     ),
   )
 
-  // Where the measured numbers fall — shown next to the stage as a guide for
-  // which band to tick, never as the stage itself.
+  // Where the measured numbers fall, criterion by criterion.
   const stageReasons = computed(() =>
     stageSummary(
       interdentalCal.value,
@@ -78,7 +82,23 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     ),
   )
 
-  const stage = computed(() => assessStage(inputs.stageMarks))
+  // The band each row of the staging table lands in on its own. A tick in
+  // `inputs.stageMarks` overrides it, row by row.
+  const autoMarks = computed(() =>
+    autoStageMarks(
+      interdentalCal.value,
+      inputs.boneLossPercent,
+      teethLost.value,
+      complexityStage(
+        probingDepth.value,
+        furcation.value,
+        mobility.value,
+        findings.value.remainingTeeth,
+      ),
+    ),
+  )
+
+  const stage = computed(() => assessStage(inputs.stageMarks, autoMarks.value))
 
   const finalStage = computed(() => inputs.stageOverride ?? stage.value.stage)
   const stageOverridden = computed(
@@ -88,12 +108,42 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
       inputs.stageOverride !== stage.value.stage,
   )
 
+  // How much of the mouth the chart says is involved, unless the doctor says
+  // otherwise — the chart cannot see a pattern it has no readings for.
+  const suggestedExtent = computed(() =>
+    suggestExtent(findings.value.affectedToothIds, findings.value.affectedPercentage),
+  )
+  const extent = computed(() => inputs.extent ?? suggestedExtent.value)
+  const extentOverridden = computed(
+    () =>
+      inputs.extent !== null &&
+      suggestedExtent.value !== null &&
+      inputs.extent !== suggestedExtent.value,
+  )
+
+  // Destruction against the plaque that has to explain it — the one grade
+  // criterion the chart can answer, since it records both.
+  const suggestedPhenotype = computed(() =>
+    suggestPhenotype(findings.value.plaquePercentage, stage.value.severity, extent.value),
+  )
+  const phenotype = computed(() => inputs.phenotype ?? suggestedPhenotype.value)
+  const phenotypeFromChart = computed(
+    () => inputs.phenotype === null && suggestedPhenotype.value !== null,
+  )
+  const phenotypeOverridden = computed(
+    () =>
+      inputs.phenotype !== null &&
+      suggestedPhenotype.value !== null &&
+      inputs.phenotype !== suggestedPhenotype.value,
+  )
+
   const grade = computed(() =>
     assessGrade({
       directEvidence: inputs.directEvidence,
       boneLossPercent: inputs.boneLossPercent,
       ageYears: age.value,
-      phenotype: inputs.phenotype,
+      phenotype: phenotype.value,
+      phenotypeFromChart: phenotypeFromChart.value,
       smoking: inputs.smoking,
       diabetes: inputs.diabetes,
     }),
@@ -107,19 +157,19 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
       inputs.gradeOverride !== grade.value.grade,
   )
 
-  // The rows still to be ticked, plus the extent — what stands between the
-  // worksheet and a full diagnosis line.
+  // The rows with nothing to read yet, plus the extent — what stands between
+  // the worksheet and a full diagnosis line.
   const missingStageInputs = computed(() => [
     ...stage.value.missing,
-    ...(inputs.extent ? [] : ['extent and distribution']),
+    ...(extent.value ? [] : ['extent and distribution']),
   ])
 
   const missingInputs = computed(() => [...missingStageInputs.value, ...grade.value.missing])
 
   const diagnosisTitle = computed(() => {
     const parts: string[] = []
-    if (inputs.extent === 'molar-incisor') parts.push('Periodontitis, molar / incisor pattern')
-    else if (inputs.extent) parts.push(`${EXTENT_LABEL[inputs.extent].split(' (')[0]} Periodontitis`)
+    if (extent.value === 'molar-incisor') parts.push('Periodontitis, molar / incisor pattern')
+    else if (extent.value) parts.push(`${EXTENT_LABEL[extent.value].split(' (')[0]} Periodontitis`)
     else parts.push('Periodontitis')
 
     if (finalStage.value) parts.push(`Stage ${finalStage.value}`)
@@ -152,7 +202,15 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     teethLost,
     complexity,
     stageReasons,
+    autoMarks,
     stage,
+    suggestedExtent,
+    extent,
+    extentOverridden,
+    suggestedPhenotype,
+    phenotype,
+    phenotypeFromChart,
+    phenotypeOverridden,
     finalStage,
     stageOverridden,
     grade,

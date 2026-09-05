@@ -1,5 +1,6 @@
 import type { ChartData, Surface } from '@/domain/chart/chart.types'
 import { getSiteLabel } from '@/domain/chart/chart.mapper'
+import { calculateBopPercentage, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import type { ChartFindings, SiteFinding, ToothFinding } from './diagnosis.types'
 
 const SURFACES: Surface[] = ['buccal', 'lingual']
@@ -75,9 +76,8 @@ const worstMobility = (chartData: ChartData): ToothFinding | null => {
 
 /**
  * A tooth counts as affected when any of its sites carries attachment loss or a
- * pocket deep enough to probe as disease. This is the denominator-free half of
- * the localized/generalized split, so it is only ever shown as a suggestion —
- * the doctor still chooses the extent.
+ * pocket deep enough to probe as disease. This is what the localized /
+ * generalized split is counted over.
  */
 const isAffected = (chartData: ChartData, toothId: number): boolean => {
   const tooth = chartData[toothId]
@@ -103,8 +103,13 @@ export const collectChartFindings = (chartData: ChartData): ChartFindings => {
     missingTeeth,
     remainingTeeth: presentTeeth.length,
     affectedTeeth: affectedTeeth.length,
+    affectedToothIds: affectedTeeth,
     affectedPercentage: presentTeeth.length
       ? Math.round((affectedTeeth.length / presentTeeth.length) * 100)
       : 0,
+    // The biofilm half of the case phenotype. 0% cannot be told apart from a
+    // chart where plaque was never marked, so the rules treat it as unrecorded.
+    plaquePercentage: calculatePiPercentage(chartData),
+    bopPercentage: calculateBopPercentage(chartData),
   }
 }
