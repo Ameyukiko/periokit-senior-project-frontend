@@ -17,7 +17,8 @@ import {
 } from './criteria-cell'
 
 const props = defineProps<{
-  selected: StageId | null
+  /** The stage the four rows below arrive at. Read only — the rows are what move it. */
+  stage: StageId | null
   marks: Record<StageRow, StageId | null>
   /** The band each row settled on — the doctor's tick, or the one the numbers fall in. */
   resolved: Record<StageRow, StageId | null>
@@ -28,7 +29,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  select: [stage: StageId]
   mark: [row: StageRow, stage: StageId]
 }>()
 
@@ -108,9 +108,12 @@ const lossChip = computed(() => {
 
 // One cell at a time, row by row — the way the printed table is ticked. The band
 // a row settled on reads as a pressed button whichever way it got there, and a
-// cell holding no answer is drawn dashed to say it is open to be ticked. The
-// column as a whole is never highlighted: the stage is a separate decision,
-// taken in the header or in the dropdown below the table.
+// cell holding no answer is drawn dashed to say it is open to be ticked.
+//
+// The faint tint down the column the rows add up to is only drawn on rows that
+// have not answered yet: it points an open row at where the rest of the table is
+// heading. Once a row has its band, that row shows that band and nothing else —
+// two shades of yellow on one row read as two answers.
 const cellClass = (row: StageRow, stage: StageId) => [
   CELL_BASE,
   'cursor-pointer',
@@ -119,60 +122,79 @@ const cellClass = (row: StageRow, stage: StageId) => [
     ? CELL_TICKED
     : props.resolved[row] === stage
       ? CELL_ANSWERED
-      : props.selected === stage
+      : props.resolved[row] === null && props.stage === stage
         ? `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
         : CELL_IDLE,
 ]
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-2xl border border-slate-400 bg-blue-50/40">
-    <table class="w-full min-w-[900px] border-collapse text-left text-[11px] text-black">
-      <thead>
-        <tr class="bg-blue-100 text-black border-b border-slate-400">
-          <th colspan="2" class="p-3 align-top w-56 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-            <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
-            <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
-            <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
-              Shaded cells are where your numbers fall. Dashed cells are open — click one to tick
-              that band yourself.
-            </span>
-          </th>
+  <div class="flex flex-col gap-2">
+    <!-- Key / Legend -->
+    <div class="flex items-center justify-end gap-4 px-1 text-[11px]">
+      <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Key:</span>
+      <div
+        class="flex items-center gap-1.5"
+        title="This cell is the answer for this row, whether from measured numbers or selected manually"
+      >
+        <span
+          class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44] border-t border-t-white border-b-2 border-b-amber-600 shadow-sm shrink-0"
+        ></span>
+        <span class="text-slate-700 font-medium text-[10px]">Solid yellow = Row answer (measured / selected)</span>
+      </div>
+      <div
+        class="flex items-center gap-1.5"
+        title="Not this row's answer, but in the column of the concluded stage — guides the eye to the overall result"
+      >
+        <span
+          class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
+        ></span>
+        <span class="text-slate-600 text-[10px]">Light yellow = Concluded stage column</span>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto rounded-2xl border border-slate-400 bg-blue-50/40">
+      <table class="w-full min-w-[900px] border-collapse text-left text-[11px] text-black">
+        <thead>
+          <tr class="bg-blue-100 text-black border-b border-slate-400">
+            <th colspan="2" class="p-3 align-top w-56 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+              <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
+              <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
+              <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
+                Solid yellow is the row's answer; light yellow indicates the concluded stage column.
+                Dashed cells are open — click one to tick that band yourself. The stage follows the rows: it is not picked in this header.
+              </span>
+            </th>
+          <!-- The stage is the answer these four rows add up to, so the column is
+               reported and not offered — the way to move it is to tick the row
+               that reads differently. -->
           <th
             v-for="column in COLUMNS"
             :key="column.id"
-            class="p-0 font-bold border border-slate-300 align-top transition-all duration-150"
+            class="p-3 font-bold border border-slate-300 align-top transition-all duration-150"
             :class="
-              selected === column.id
+              stage === column.id
                 ? 'relative z-10 bg-gradient-to-b from-[#ffdf6d] via-[#FECE44] to-[#f4b827] text-slate-900 border-t-2 border-t-white border-b-4 border-b-amber-600 border-x-2 border-x-amber-500 shadow-[0_4px_8px_-1px_rgba(202,138,4,0.45),inset_0_2px_0_rgba(255,255,255,0.9)]'
-                : 'bg-gradient-to-b from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200/90 text-black border-b-2 border-b-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
+                : 'bg-gradient-to-b from-blue-50 to-blue-100 text-black border-b-2 border-b-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
             "
           >
-            <button
-              type="button"
-              class="text-left w-full h-full p-3 transition-all duration-150 flex flex-col justify-between cursor-pointer focus:outline-none active:translate-y-0.5"
-              :aria-pressed="selected === column.id"
-              :title="`Set the diagnosis to Stage ${column.id}`"
-              @click="emit('select', column.id)"
-            >
-              <div class="flex items-center justify-between gap-1.5 w-full">
-                <span class="text-[12px] font-bold text-slate-900">
-                  {{ column.title }}
-                </span>
-                <span
-                  v-if="selected === column.id"
-                  class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-600 text-white border border-red-500 text-[9px] font-bold shadow-sm"
-                >
-                  <Check class="w-2.5 h-2.5" /> Selected
-                </span>
-              </div>
-              <span
-                class="block mt-2 text-[10px] font-normal leading-tight"
-                :class="selected === column.id ? 'text-slate-800 font-medium' : 'text-slate-700'"
-              >
-                {{ column.subtitle }}
+            <div class="flex items-center justify-between gap-1.5 w-full">
+              <span class="text-[12px] font-bold text-slate-900">
+                {{ column.title }}
               </span>
-            </button>
+              <span
+                v-if="stage === column.id"
+                class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-600 text-white border border-red-500 text-[9px] font-bold shadow-sm"
+              >
+                <Check class="w-2.5 h-2.5" /> Result
+              </span>
+            </div>
+            <span
+              class="block mt-2 text-[10px] font-normal leading-tight"
+              :class="stage === column.id ? 'text-slate-800 font-medium' : 'text-slate-700'"
+            >
+              {{ column.subtitle }}
+            </span>
           </th>
         </tr>
       </thead>
@@ -301,5 +323,6 @@ const cellClass = (row: StageRow, stage: StageId) => [
         </tr>
       </tbody>
     </table>
+  </div>
   </div>
 </template>

@@ -36,15 +36,11 @@ const createInputs = (): DiagnosisInputs => ({
   teethLostToPerio: null,
   extent: null,
   stageMarks: { cal: null, boneLoss: null, toothLoss: null, complexity: null },
-  stageOverride: null,
-  stageReason: '',
   directEvidence: null,
   ageYears: null,
   phenotype: null,
   smoking: null,
   diabetes: null,
-  gradeOverride: null,
-  gradeReason: '',
 })
 
 const STORAGE_KEY = 'periokit_diagnosis_records'
@@ -193,13 +189,10 @@ export const useDiagnosisStore = defineStore(
 
   const stage = computed(() => assessStage(inputs.stageMarks, autoMarks.value))
 
-  const finalStage = computed(() => inputs.stageOverride ?? stage.value.stage)
-  const stageOverridden = computed(
-    () =>
-      inputs.stageOverride !== null &&
-      stage.value.stage !== null &&
-      inputs.stageOverride !== stage.value.stage,
-  )
+  // The stage is never set by hand. It follows the four rows of the staging
+  // table, and the way to move it is to tick the row that reads differently —
+  // then the stage on the record still has its criteria standing behind it.
+  const finalStage = computed(() => stage.value.stage)
 
   // How much of the mouth the chart says is involved, unless the doctor says
   // otherwise — the chart cannot see a pattern it has no readings for.
@@ -241,13 +234,9 @@ export const useDiagnosisStore = defineStore(
     }),
   )
 
-  const finalGrade = computed(() => inputs.gradeOverride ?? grade.value.grade)
-  const gradeOverridden = computed(
-    () =>
-      inputs.gradeOverride !== null &&
-      grade.value.grade !== null &&
-      inputs.gradeOverride !== grade.value.grade,
-  )
+  // As with the stage: never set by hand. The grade is what the criteria above
+  // arrive at, and the way to move it is to change the answer that reads wrong.
+  const finalGrade = computed(() => grade.value.grade)
 
   // The rows with nothing to read yet, plus the extent — what stands between
   // the worksheet and a full diagnosis line.
@@ -445,10 +434,8 @@ export const useDiagnosisStore = defineStore(
     phenotypeFromChart,
     phenotypeOverridden,
     finalStage,
-    stageOverridden,
     grade,
     finalGrade,
-    gradeOverridden,
     missingStageInputs,
     missingInputs,
     diagnosisTitle,

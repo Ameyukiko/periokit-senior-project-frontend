@@ -3,7 +3,7 @@ import type { ToothId } from '@/domain/chart/chart.types'
 // AAP / EFP 2017 staging and grading of periodontitis.
 // Everything in this file either reads the chart or places a single criterion
 // in its band — see diagnosis.rules.ts for what the app concludes from those
-// bands, and for the ticks and overrides that let the doctor say otherwise.
+// bands, and for the ticks that let the doctor say a reading belongs elsewhere.
 
 export type StageId = 'I' | 'II' | 'III' | 'IV'
 export type GradeId = 'A' | 'B' | 'C'
@@ -70,8 +70,8 @@ export type GradeChoice =
  * depth, furcation and mobility: those are measurements, and the chart is where
  * they are recorded and corrected. This page reads them and never writes them,
  * so a diagnosis can never cite a number the record does not hold. Disagreeing
- * with what a measurement implies is done by ticking a band in `stageMarks` and
- * saying why, which keeps the reading intact and the judgement visible.
+ * with what a measurement implies is done by ticking a band in `stageMarks`,
+ * which keeps the reading intact and the judgement visible.
  */
 export interface DiagnosisInputs {
   // Worst-site radiographic bone loss, read off the film. Feeds the stage's
@@ -86,23 +86,22 @@ export interface DiagnosisInputs {
   extent: ExtentId | null
   // The band the doctor ticked on each row of the staging table. null means the
   // row keeps the band its measurement falls in; a value overrides that reading
-  // for that row alone. The stage is worked out from the two together.
+  // for that row alone. The stage is worked out from the two together, and there
+  // is no separate override for it: disagreeing with the stage means saying which
+  // row reads differently, so the answer always has its criteria behind it.
   stageMarks: Record<StageRow, StageId | null>
-  // null = keep the stage the ticked bands arrive at; a value = the doctor's own call.
-  stageOverride: StageId | null
-  stageReason: string
 
   directEvidence: DirectEvidence | null
   // Age belongs to the patient record, and the record always wins. This is only
   // a stand-in for a record that carries no age at all, so the % bone loss ÷ age
   // ratio can still be worked out — it never overrides an age already on file.
   ageYears: number | null
+  // The four answers the grading table is worked out from. As with the stage,
+  // the grade itself is not stored: it is what these arrive at, so disagreeing
+  // with it means changing the answer that reads wrong.
   phenotype: Phenotype | null
   smoking: Smoking | null
   diabetes: Diabetes | null
-  // null = keep the grade the criteria arrived at; a value = the doctor's own call.
-  gradeOverride: GradeId | null
-  gradeReason: string
 }
 
 export const EXTENT_LABEL: Record<ExtentId, string> = {
