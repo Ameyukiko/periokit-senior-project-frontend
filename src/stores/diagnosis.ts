@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { collectChartFindings } from '@/domain/diagnosis/diagnosis.findings'
 import {
   assessGrade,
@@ -14,6 +14,19 @@ import {
 import { EXTENT_LABEL, type DiagnosisInputs } from '@/domain/diagnosis/diagnosis.types'
 import { usePeriodontalChartStore } from './periodontal-chart'
 import { registerSessionClearListener } from '@/services/session'
+
+export const resolveDiagnosisKey = (
+  visitId: string | null | undefined,
+  patientId?: string | null | undefined,
+): string => {
+  if (visitId && visitId !== 'new') {
+    return visitId.startsWith('visit:') ? visitId : `visit:${visitId}`
+  }
+  if (patientId) {
+    return patientId.startsWith('draft:') ? patientId : `draft:${patientId}`
+  }
+  return 'draft:new'
+}
 
 const createInputs = (): DiagnosisInputs => ({
   // Empty means "use the estimate the chart works out from attachment loss",
@@ -34,18 +47,84 @@ const createInputs = (): DiagnosisInputs => ({
   gradeReason: '',
 })
 
-/**
- * The diagnosis worksheet for one visit. Held in memory only: the backend has
- * no place to file a diagnosis yet, so nothing here is saved — it survives
- * moving between the chart and this page, and no longer.
- */
-export const useDiagnosisStore = defineStore('diagnosis', () => {
-  const chartStore = usePeriodontalChartStore()
+const STORAGE_KEY = 'periokit_diagnosis_records'
+const SNAPSHOTS_KEY = 'periokit_diagnosis_snapshots'
 
-  const inputs = reactive<DiagnosisInputs>(createInputs())
-  // Which visit the answers above belong to, so opening another visit starts
-  // from a blank worksheet instead of inheriting someone else's smoking status.
-  const visitKey = ref<string | null>(null)
+function loadStoredRecords(): Record<string, DiagnosisInputs> {
+  if (typeof window === 'undefined' || !window.localStorage) return {}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch (e) {
+    console.error('Failed to load diagnosis records from localStorage:', e)
+    return {}
+  }
+}
+
+function saveStoredRecords(records: Record<string, DiagnosisInputs>) {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
+  } catch (e) {
+    console.error('Failed to save diagnosis records to localStorage:', e)
+  }
+}
+
+function loadStoredSnapshots(): Record<string, string> {
+  if (typeof window === 'undefined' || !window.localStorage) return {}
+  try {
+    const raw = localStorage.getItem(SNAPSHOTS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveStoredSnapshots(snapshots: Record<string, string>) {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots))
+  } catch {}
+}
+
+export const useDiagnosisStore = defineStore(
+  'diagnosis',
+  () => {
+    const chartStore = usePeriodontalChartStore()
+
+    const records = ref<Record<string, DiagnosisInputs>>(loadStoredRecords())
+    const savedSnapshots = ref<Record<string, string>>(loadStoredSnapshots())
+    const currentKey = ref<string | null>(null)
+    const inputs = reactive<DiagnosisInputs>(createInputs())
+    let isRestoring = false
+
+    // Backward-compatibility alias
+    const visitKey = computed(() => currentKey.value)
+
+    const isDirty = computed(() => {
+      if (!currentKey.value) return false
+      const saved = savedSnapshots.value[currentKey.value]
+      const currentStr = JSON.stringify(inputs)
+      if (saved !== undefined) {
+        return saved !== currentStr
+      }
+      return currentStr !== JSON.stringify(createInputs())
+    })
+
+    // Real-time synchronization into records and localStorage
+    watch(
+      inputs,
+      (newVal) => {
+        if (isRestoring || !currentKey.value) return
+        const cloned = JSON.parse(JSON.stringify(newVal))
+        records.value = {
+          ...records.value,
+          [currentKey.value]: cloned,
+        }
+        saveStoredRecords(records.value)
+      },
+      { deep: true },
+    )
 
   const findings = computed(() => collectChartFindings(chartStore.teethData))
 
@@ -193,19 +272,157 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   const isClassified = computed(() => Boolean(finalStage.value && finalGrade.value))
 
   function resetInputs() {
-    Object.assign(inputs, createInputs())
+    isRestoring = true
+    try {
+      const fresh = createInputs()
+      Object.assign(inputs, fresh)
+      if (currentKey.value) {
+        records.value = {
+          ...records.value,
+          [currentKey.value]: fresh,
+        }
+        saveStoredRecords(records.value)
+      }
+    } finally {
+      isRestoring = false
+    }
   }
 
-  /** Point the worksheet at a visit, blanking it when the visit changes. */
-  function openFor(key: string | null) {
-    if (visitKey.value === key) return
-    visitKey.value = key
-    resetInputs()
+  /** Point the worksheet at a visit, loading its recorded inputs if any exist. */
+  function openFor(visitOrKey?: string | null, patientId?: string | null) {
+    const nextKey = resolveDiagnosisKey(visitOrKey, patientId)
+
+    // Ensure records are loaded from localStorage if empty
+    if (Object.keys(records.value).length === 0) {
+      records.value = loadStoredRecords()
+      savedSnapshots.value = loadStoredSnapshots()
+    }
+
+    // Save previous inputs if needed when switching keys
+    if (currentKey.value && currentKey.value !== nextKey && !isRestoring) {
+      records.value = {
+        ...records.value,
+        [currentKey.value]: JSON.parse(JSON.stringify(inputs)),
+      }
+      saveStoredRecords(records.value)
+    }
+
+    currentKey.value = nextKey
+    const existing = records.value[nextKey]
+
+    // If inputs already matches what's stored, don't reassign
+    if (existing && JSON.stringify(inputs) === JSON.stringify(existing)) {
+      return
+    }
+
+    isRestoring = true
+    try {
+      if (existing) {
+        Object.assign(inputs, createInputs(), existing)
+      } else {
+        const fresh = createInputs()
+        Object.assign(inputs, fresh)
+        records.value = {
+          ...records.value,
+          [nextKey]: fresh,
+        }
+        saveStoredRecords(records.value)
+      }
+    } finally {
+      isRestoring = false
+    }
+  }
+
+  function rekey(oldKey: string, newKey: string) {
+    if (!oldKey || !newKey || oldKey === newKey) return
+    const newRecords = { ...records.value }
+    if (newRecords[oldKey]) {
+      newRecords[newKey] = JSON.parse(JSON.stringify(newRecords[oldKey]))
+      delete newRecords[oldKey]
+      records.value = newRecords
+      saveStoredRecords(newRecords)
+    }
+    const newSnapshots = { ...savedSnapshots.value }
+    if (newSnapshots[oldKey] !== undefined) {
+      newSnapshots[newKey] = newSnapshots[oldKey]
+      delete newSnapshots[oldKey]
+      savedSnapshots.value = newSnapshots
+      saveStoredSnapshots(newSnapshots)
+    }
+    if (currentKey.value === oldKey) {
+      currentKey.value = newKey
+    }
+  }
+
+  function commitSaved(key?: string) {
+    const target = key || currentKey.value
+    if (!target) return
+    const currentData = records.value[target] ?? inputs
+    savedSnapshots.value = {
+      ...savedSnapshots.value,
+      [target]: JSON.stringify(currentData),
+    }
+    saveStoredSnapshots(savedSnapshots.value)
+  }
+
+  function revertToSaved(key?: string) {
+    const target = key || currentKey.value
+    if (!target) return
+    const saved = savedSnapshots.value[target]
+    isRestoring = true
+    try {
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          records.value = {
+            ...records.value,
+            [target]: parsed,
+          }
+          saveStoredRecords(records.value)
+          if (currentKey.value === target) {
+            Object.assign(inputs, createInputs(), parsed)
+          }
+          return
+        } catch (_) {}
+      }
+      const fresh = createInputs()
+      records.value = {
+        ...records.value,
+        [target]: fresh,
+      }
+      saveStoredRecords(records.value)
+      if (currentKey.value === target) {
+        Object.assign(inputs, fresh)
+      }
+    } finally {
+      isRestoring = false
+    }
+  }
+
+  function clearAll() {
+    records.value = {}
+    savedSnapshots.value = {}
+    currentKey.value = null
+    isRestoring = true
+    try {
+      Object.assign(inputs, createInputs())
+    } finally {
+      isRestoring = false
+    }
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SNAPSHOTS_KEY)
+      localStorage.removeItem('diagnosis')
+    } catch (_) {}
   }
 
   return {
+    records,
+    savedSnapshots,
+    currentKey,
     inputs,
     visitKey,
+    isDirty,
     findings,
     interdentalCal,
     probingDepth,
@@ -238,11 +455,20 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     isClassified,
     openFor,
     resetInputs,
+    rekey,
+    commitSaved,
+    revertToSaved,
+    clearAll,
   }
+},
+{
+  persist: {
+    storage: localStorage,
+    pick: ['records', 'savedSnapshots'],
+  },
 })
 
 registerSessionClearListener(() => {
   const store = useDiagnosisStore()
-  store.visitKey = null
-  store.resetInputs()
+  store.clearAll()
 })
