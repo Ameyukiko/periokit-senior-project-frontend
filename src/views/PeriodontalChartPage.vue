@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, X, Pencil } from 'lucide-vue-next'
+import { Download, FileText, Image as ImageIcon, Plus, Save, Stethoscope, Loader2, Users, X, Pencil } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import ChartLegend from '@/components/chart/ChartLegend.vue'
 import ChartOverviewModal from '@/components/chart/ChartOverviewModal.vue'
@@ -768,10 +768,25 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
     />
 
     <main v-else class="max-w-400 mx-auto px-4 py-3">
-      <!-- Empty state when no patient selected -->
-      <div v-if="!hasPatient" class="flex flex-col items-center justify-center py-20">
-        <p class="text-slate-400 text-sm">Please select a patient from the drawer</p>
-      </div>
+      <!-- Empty state when no patient selected. Same card as the one the
+           diagnosis page shows when it has no chart to read. -->
+      <section
+        v-if="!hasPatient"
+        class="bg-white rounded-3xl shadow-md border border-slate-200 p-10 flex flex-col items-center gap-3 mt-3"
+      >
+        <Users class="w-8 h-8 text-slate-300" />
+        <p class="text-[13px] font-bold text-slate-700">No patient open yet</p>
+        <p class="text-[12px] text-slate-400 text-center max-w-100">
+          The chart records one patient at a time. Open My Patients and pick one — their visits
+          appear along the top, ready to chart.
+        </p>
+        <button
+          class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0052ff] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-blue-700 transition-colors"
+          @click="router.push({ name: 'my-patients' })"
+        >
+          <Users class="w-3.5 h-3.5" /> My patients
+        </button>
+      </section>
 
       <template v-else>
         <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
