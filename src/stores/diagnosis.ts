@@ -14,6 +14,7 @@ import {
 import { EXTENT_LABEL, type DiagnosisInputs } from '@/domain/diagnosis/diagnosis.types'
 import { usePeriodontalChartStore } from './periodontal-chart'
 import { registerSessionClearListener } from '@/services/session'
+import { fromDiagnosisResponseDto } from '@/domain/diagnosis/diagnosis.api-mapper'
 
 export const resolveDiagnosisKey = (
   visitId: string | null | undefined,
@@ -45,10 +46,18 @@ const createInputs = (): DiagnosisInputs => ({
 
 const STORAGE_KEY = 'periokit_diagnosis_records'
 const SNAPSHOTS_KEY = 'periokit_diagnosis_snapshots'
+const STORAGE_VERSION_KEY = 'periokit_diagnosis_storage_version'
+const STORAGE_VERSION = '2'
 
 function loadStoredRecords(): Record<string, DiagnosisInputs> {
   if (typeof window === 'undefined' || !window.localStorage) return {}
   try {
+    if (localStorage.getItem(STORAGE_VERSION_KEY) !== STORAGE_VERSION) {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SNAPSHOTS_KEY)
+      localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION)
+      return {}
+    }
     const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : {}
   } catch (e) {
@@ -360,6 +369,21 @@ export const useDiagnosisStore = defineStore(
     }
   }
 
+  function hydrateFromBackend(response: Parameters<typeof fromDiagnosisResponseDto>[0]) {
+    const mapped = fromDiagnosisResponseDto(response)
+    isRestoring = true
+    try {
+      Object.assign(inputs, createInputs(), mapped)
+      if (currentKey.value) {
+        records.value = { ...records.value, [currentKey.value]: JSON.parse(JSON.stringify(inputs)) }
+        saveStoredRecords(records.value)
+        commitSaved(currentKey.value)
+      }
+    } finally {
+      isRestoring = false
+    }
+  }
+
   function commitSaved(key?: string) {
     const target = key || currentKey.value
     if (!target) return
@@ -461,6 +485,7 @@ export const useDiagnosisStore = defineStore(
     openFor,
     resetInputs,
     rekey,
+    hydrateFromBackend,
     commitSaved,
     revertToSaved,
     clearAll,

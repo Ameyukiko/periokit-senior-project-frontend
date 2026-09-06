@@ -1,5 +1,6 @@
 import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
+import type { DiagnosisInputDto } from '@/domain/diagnosis/diagnosis.api-mapper'
 
 const SAVE_CHART = gql`
   mutation SaveChart($input: SaveChartInput!) {
@@ -21,6 +22,7 @@ const SAVE_CHART = gql`
         studentId
         visitPhase
       }
+      diagnosis { extent complexity { boneLossPercent teethLostToPerio directEvidence phenotype smoking diabetes ageYears complexityStageOverride } }
     }
   }
 `
@@ -46,6 +48,7 @@ const CHART_BY_VISIT = gql`
         studentId
         visitPhase
       }
+      diagnosis { extent complexity { boneLossPercent teethLostToPerio directEvidence phenotype smoking diabetes ageYears complexityStageOverride } }
     }
   }
 `
@@ -56,7 +59,7 @@ export const chartApi = {
     chartName?: string | null
     teethData: unknown
     // Patient info
-    patientHn?: string
+    patientHn: string
     patientFirstName: string
     patientLastName: string
     patientAge?: number | null
@@ -64,8 +67,9 @@ export const chartApi = {
     patientNationality?: string | null
     // Visit info
     visitDate: string
-    visitPhase?: string
+    visitPhase: string
     completeVisit?: boolean
+    diagnosis: DiagnosisInputDto
   }) =>
     apolloClient.mutate({ mutation: SAVE_CHART, variables: { input } }),
   getByVisit: (visitId: string) =>
