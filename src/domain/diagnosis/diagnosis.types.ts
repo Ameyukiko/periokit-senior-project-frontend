@@ -135,3 +135,21 @@ export const DIABETES_LABEL: Record<Diabetes, string> = {
 }
 
 export const FURCATION_CLASS = ['None', 'Class I', 'Class II', 'Class III']
+
+/**
+ * What the answer means for the patient — how far the disease has already gone
+ * and what treating it now involves. The tables above the result already show
+ * which criteria produced it, row by row; this is the part they never say.
+ */
+export const STAGE_MEANING: Record<StageId, string> = {
+  I: 'Initial periodontitis. Attachment loss has only just crossed out of health, the bone is still intact to the coronal third, and no tooth has been lost. The damage is real but nothing yet is beyond holding: cleaning the root surfaces and getting home care right is normally the whole of the treatment.',
+  II: 'Moderate periodontitis. Attachment and bone loss are established, but they are still confined to the coronal third of the root, pockets stay shallow enough to reach and every tooth is still firm and in place. Treatment remains non-surgical; what changes is that recall has to be kept to.',
+  III: 'Severe periodontitis with the potential for further tooth loss. Destruction now reaches the middle of the root and beyond — deep pockets, furcation involvement, or teeth already lost to the disease. Some sites will not resolve by cleaning alone and will need surgery, and each remaining tooth needs a prognosis of its own.',
+  IV: 'Severe periodontitis with the dentition itself at risk. On top of Stage III damage the bite has started to break down — drifting, flaring, loose teeth, too few teeth left to chew on. Treating the gums is no longer enough on its own; the mouth needs rehabilitating as a whole.',
+}
+
+export const GRADE_MEANING: Record<GradeId, string> = {
+  A: 'Slow rate of progression. What has been lost took a long time to go, and nothing in the record is pushing it along. The stage above says how much damage there is; this says it is unlikely to move much before the next recall.',
+  B: 'Moderate rate of progression — the rate expected of untreated periodontitis. Destruction has kept pace with the deposits causing it and no risk factor is driving it faster. Standard treatment, with recall set by the stage.',
+  C: 'Rapid rate of progression. Either the destruction runs ahead of what the biofilm explains, or smoking or diabetes is driving it. Expect it to keep moving without a shorter recall interval, and treat the risk factor as part of the periodontal treatment rather than beside it.',
+}

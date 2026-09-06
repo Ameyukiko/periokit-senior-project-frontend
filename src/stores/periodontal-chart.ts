@@ -41,6 +41,11 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     // When true the chart is being viewed (a saved visit, not in edit mode):
     // all mutating actions become no-ops so the record can't change.
     readonly: false as boolean,
+    // Whether the doctor has unlocked a saved visit for editing. It lives here
+    // rather than on the chart page because the Diagnosis page is part of the
+    // same visit: a saved visit opens read-only on both, and one Edit unlocks
+    // both. Deliberately left out of `persist` — a reload comes back locked.
+    editMode: false as boolean,
   }),
 
   getters: {
@@ -86,6 +91,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.currentPatientId = null
       this.isDirty = false
       this.readonly = false
+      this.editMode = false
       // Explicitly clear localStorage so logout wipes any unsaved draft
       try { localStorage.removeItem('periodontalChart') } catch (_) {}
     },

@@ -26,11 +26,18 @@ const props = defineProps<{
   boneLossPercent: number | null
   teethLost: number | null
   complexity: Record<StageId, string[]>
+  /** A saved visit nobody has pressed Edit on: the table is read, not ticked. */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
   mark: [row: StageRow, stage: StageId]
 }>()
+
+const mark = (row: StageRow, stage: StageId) => {
+  if (props.readonly) return
+  emit('mark', row, stage)
+}
 
 const COLUMNS: { id: StageId; title: string; subtitle: string }[] = [
   { id: 'I', title: 'Stage I', subtitle: 'Initial periodontitis' },
@@ -114,17 +121,25 @@ const lossChip = computed(() => {
 // have not answered yet: it points an open row at where the rest of the table is
 // heading. Once a row has its band, that row shows that band and nothing else —
 // two shades of yellow on one row read as two answers.
+//
+// Read-only keeps every one of those colours — the answer is still the answer
+// on a visit nobody is editing. What goes is the invitation to click: no
+// pointer, no dashed "open" border, no hover.
 const cellClass = (row: StageRow, stage: StageId) => [
   CELL_BASE,
-  'cursor-pointer',
-  props.marks[row] !== stage && props.resolved[row] !== stage && CELL_OPEN,
+  props.readonly ? 'cursor-default' : 'cursor-pointer',
+  !props.readonly && props.marks[row] !== stage && props.resolved[row] !== stage && CELL_OPEN,
   props.marks[row] === stage
     ? CELL_TICKED
     : props.resolved[row] === stage
       ? CELL_ANSWERED
       : props.resolved[row] === null && props.stage === stage
-        ? `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
-        : CELL_IDLE,
+        ? props.readonly
+          ? CELL_IN_COLUMN
+          : `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
+        : props.readonly
+          ? 'text-black'
+          : CELL_IDLE,
 ]
 </script>
 
@@ -162,7 +177,13 @@ const cellClass = (row: StageRow, stage: StageId) => [
               <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
               <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
                 Solid yellow is the row's answer; light yellow indicates the concluded stage column.
-                Dashed cells are open — click one to tick that band yourself. The stage follows the rows: it is not picked in this header.
+                <template v-if="readonly">
+                  This visit is saved — press Edit to tick a band yourself.
+                </template>
+                <template v-else>
+                  Dashed cells are open — click one to tick that band yourself.
+                </template>
+                The stage follows the rows: it is not picked in this header.
               </span>
             </th>
           <!-- The stage is the answer these four rows add up to, so the column is
@@ -220,7 +241,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             v-for="column in COLUMNS"
             :key="column.id"
             :class="cellClass('cal', column.id)"
-            @click="emit('mark', 'cal', column.id)"
+            @click="mark('cal', column.id)"
           >
             {{ CAL_BANDS[column.id] }}
             <span
@@ -245,7 +266,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             v-for="column in COLUMNS"
             :key="column.id"
             :class="cellClass('boneLoss', column.id)"
-            @click="emit('mark', 'boneLoss', column.id)"
+            @click="mark('boneLoss', column.id)"
           >
             {{ BONE_BANDS[column.id] }}
             <span
@@ -270,7 +291,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             v-for="column in COLUMNS"
             :key="column.id"
             :class="cellClass('toothLoss', column.id)"
-            @click="emit('mark', 'toothLoss', column.id)"
+            @click="mark('toothLoss', column.id)"
           >
             {{ LOSS_BANDS[column.id] }}
             <span
@@ -305,7 +326,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             v-for="column in COLUMNS"
             :key="column.id"
             :class="cellClass('complexity', column.id)"
-            @click="emit('mark', 'complexity', column.id)"
+            @click="mark('complexity', column.id)"
           >
             <span v-if="COMPLEXITY_BANDS[column.id].lead" class="block mb-1 font-medium">
               {{ COMPLEXITY_BANDS[column.id].lead }}

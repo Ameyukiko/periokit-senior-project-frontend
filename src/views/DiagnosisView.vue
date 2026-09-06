@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -7,11 +7,15 @@ import {
   FileText,
   Image as ImageIcon,
   Info,
+  Loader2,
   Lock,
+  Pencil,
   RotateCcw,
+  Save,
   SquarePen,
   TriangleAlert,
   Stethoscope,
+  X,
 } from 'lucide-vue-next'
 import Navbar from '@/components/layout/Navbar.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
@@ -23,14 +27,17 @@ import StageCriteriaTable from '@/components/diagnosis/StageCriteriaTable.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
-import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
+import { useVisitSave } from '@/composables/useVisitSave'
 import {
   DIABETES_LABEL,
   DIRECT_EVIDENCE_LABEL,
   EXTENT_LABEL,
   FURCATION_CLASS,
+  GRADE_MEANING,
   PHENOTYPE_LABEL,
   SMOKING_LABEL,
+  STAGE_MEANING,
   type Diabetes,
   type DirectEvidence,
   type ExtentId,
@@ -56,6 +63,8 @@ const drawerOpen = ref(false)
 const isLoading = ref(true)
 const loadFailed = ref(false)
 const showDiscardConfirm = ref(false)
+const showSaveConfirm = ref(false)
+const showCancelEditConfirm = ref(false)
 
 const patientId = computed(() => (route.query.patientId as string) || null)
 const visitId = computed(() => (route.query.visitId as string) || null)
@@ -69,46 +78,39 @@ const visitId = computed(() => (route.query.visitId as string) || null)
  */
 const resolvedPatientId = computed(
   () =>
-    patientId.value ??
-    chartStore.currentPatientId ??
-    visitStore.visits.find(visit => visit.id === visitId.value)?.patientId ??
+    patientId.value ||
+    chartStore.currentPatientId ||
+    visitStore.visits.find(visit => visit.id === visitId.value)?.patientId ||
     null,
 )
 
 // Load recorded inputs immediately in setup so template has data on first render
 diagnosisStore.openFor(visitId.value, resolvedPatientId.value)
 
-const chartQuery = computed(() =>
-  resolvedPatientId.value
-    ? {
-        patientId: resolvedPatientId.value,
-        ...(visitId.value ? { visitId: visitId.value } : {}),
-      }
-    : {},
-)
+/**
+ * The visit always goes back with the doctor, patient or no patient. A chart
+ * being drafted for someone not yet on file has no patientId to carry, and
+ * arriving at the chart page with an empty query is what used to make it read
+ * the trip as "start a new visit" and blank the work in progress.
+ */
+const chartQuery = computed(() => ({
+  ...(resolvedPatientId.value ? { patientId: resolvedPatientId.value } : {}),
+  ...(visitId.value ? { visitId: visitId.value } : {}),
+}))
 
 const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
   chartStore.activeSubNav = tab
-  if (diagnosisStore.currentKey) {
-    diagnosisStore.commitSaved(diagnosisStore.currentKey)
-  }
   router.push({
     name: 'chart',
     query: { ...chartQuery.value, ...(tab === 'chart' ? {} : { tab }) },
   })
 }
 
-onBeforeRouteLeave(() => {
-  if (diagnosisStore.currentKey) {
-    diagnosisStore.commitSaved(diagnosisStore.currentKey)
-  }
+onBeforeRouteLeave(to => {
+  // Edit mode belongs to the visit, and the chart and Diagnosis pages are two
+  // halves of the same visit. Stepping outside both locks it again.
+  if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
   return true
-})
-
-onBeforeUnmount(() => {
-  if (diagnosisStore.currentKey) {
-    diagnosisStore.commitSaved(diagnosisStore.currentKey)
-  }
 })
 
 /**
@@ -135,9 +137,12 @@ onMounted(async () => {
     if (patientId.value && chartStore.currentPatientId !== patientId.value) {
       await chartStore.loadPatientById(patientId.value)
     }
-    if (visitId.value && visitId.value !== 'new' && visitStore.activeVisitId !== visitId.value) {
+    // Which visit is open has to be right even for a draft, or a Save pressed
+    // from this page after a reload would not know which visit it is writing.
+    const alreadyOpen = visitStore.activeVisitId === visitId.value
+    if (visitId.value && !alreadyOpen) {
       visitStore.setActiveVisit(visitId.value)
-      await chartStore.loadFromBackend(visitId.value)
+      if (visitId.value !== 'new') await chartStore.loadFromBackend(visitId.value)
     }
   } catch (error) {
     console.error('Failed to load visit for diagnosis:', error)
@@ -156,11 +161,13 @@ watch(
 
 // Anything the doctor can change carries a faint box, so an editable value is
 // told apart from a printed one at a glance. The border firms up under the
-// cursor and turns blue on focus.
+// cursor and turns blue on focus. On a saved visit nothing here is editable, so
+// the box greys out and stops answering the cursor — the value still reads,
+// it just no longer offers itself.
 const QUIET =
-  'bg-white border border-slate-200 rounded-md px-1.5 py-0.5 -mx-0.5 text-[13px] font-bold text-slate-800 outline-none hover:border-slate-300 hover:bg-slate-50 focus:border-[#0052ff] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-colors'
+  'bg-white border border-slate-200 rounded-md px-1.5 py-0.5 -mx-0.5 text-[13px] font-bold text-slate-800 outline-none hover:border-slate-300 hover:bg-slate-50 focus:border-[#0052ff] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-colors disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-100'
 const QUIET_NUMBER = `${QUIET} w-16`
-const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold`
+const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold disabled:placeholder:text-slate-400`
 
 // No box: what the chart recorded is printed, not offered for editing. The
 // tooth it was read at sits next to it as a link into the chart.
@@ -225,10 +232,82 @@ const applyGradeChoice = (choice: GradeChoice) => {
 const confirmDiscard = () => {
   showDiscardConfirm.value = false
   diagnosisStore.resetInputs()
-  if (diagnosisStore.currentKey) {
-    diagnosisStore.commitSaved(diagnosisStore.currentKey)
-  }
   notifStore.info('Diagnosis cleared')
+}
+
+// --- Read-only / edit mode ---
+// A saved visit opens read-only here for the same reason it does on the chart
+// page: it is the same visit. `chartStore.editMode` is what both read, so one
+// Edit unlocks both and walking between them keeps it open. A draft — visit
+// 'new', or no visit at all — has never been written down and is always open.
+const isExistingVisit = computed(() => visitId.value !== null && visitId.value !== 'new')
+const editable = computed(() => !isExistingVisit.value || chartStore.editMode)
+
+// Keep the chart store's own guard in step while the doctor is on this page,
+// so pressing Edit here unlocks the chart they walk back to.
+watch(editable, value => { chartStore.readonly = !value }, { immediate: true })
+
+const handleEdit = () => {
+  chartStore.editMode = true
+}
+
+const handleCancelEditClick = () => {
+  if (chartStore.isDirty || diagnosisStore.isDirty) showCancelEditConfirm.value = true
+  else chartStore.editMode = false
+}
+
+const confirmCancelEdit = async () => {
+  showCancelEditConfirm.value = false
+  chartStore.editMode = false
+  // Throw the unsaved edits away by reading the visit back off the backend —
+  // the chart and the diagnosis together, since one save wrote both.
+  const id = visitId.value
+  if (id && id !== 'new') {
+    try {
+      await chartStore.loadFromBackend(id)
+    } catch (error) {
+      console.error('Failed to reload visit after cancelling edit:', error)
+    }
+  }
+  diagnosisStore.revertToSaved(resolveDiagnosisKey(visitId.value, resolvedPatientId.value))
+}
+
+// --- Saving ---
+// The same press as the chart page's: this is not a diagnosis of its own, it is
+// part of the visit, and the visit is saved in one go.
+const { isSaving, validate, saveVisit } = useVisitSave()
+
+const nothingToSave = computed(
+  () => isExistingVisit.value && !chartStore.isDirty && !diagnosisStore.isDirty,
+)
+
+const handleSaveClick = () => {
+  if (isSaving.value) return
+  if (!validate()) return
+  showSaveConfirm.value = true
+}
+
+const confirmSave = async () => {
+  showSaveConfirm.value = false
+  const saved = await saveVisit()
+  if (!saved) return
+
+  // A draft has just been minted a real visit id — carry it in the URL so this
+  // page, and the chart behind it, are about the visit that now exists.
+  const { visitId: savedVisitId, patientId: savedPatientId } = saved
+  if (
+    savedVisitId &&
+    (route.query.visitId !== savedVisitId ||
+      (savedPatientId && route.query.patientId !== savedPatientId))
+  ) {
+    router.replace({
+      query: {
+        ...route.query,
+        visitId: savedVisitId,
+        ...(savedPatientId ? { patientId: savedPatientId } : {}),
+      },
+    })
+  }
 }
 
 const EXTENT_OPTIONS: ExtentId[] = ['localized', 'generalized', 'molar-incisor']
@@ -262,6 +341,22 @@ const boneLossBand = computed(() => {
 })
 
 const hasChart = computed(() => chartStore.hasChartData)
+
+// What the answer means for the patient. The tables above already show which
+// criteria produced it, row by row, so the line under the result is the part
+// they never say: how much of the periodontium has gone, and what treating it
+// now involves.
+const stageMeaning = computed(() =>
+  diagnosisStore.finalStage
+    ? STAGE_MEANING[diagnosisStore.finalStage]
+    : 'The stage says how far the disease has already gone. Fill in the rows still marked above and this line will say what that means for the patient.',
+)
+
+const gradeMeaning = computed(() =>
+  diagnosisStore.finalGrade
+    ? GRADE_MEANING[diagnosisStore.finalGrade]
+    : 'The grade says how fast the disease is moving. Answer the rows still marked above and this line will say what that means for the patient.',
+)
 </script>
 
 <template>
@@ -301,15 +396,79 @@ const hasChart = computed(() => chartStore.hasChartData)
     </div>
 
     <main class="max-w-320 mx-auto px-4 py-6 flex flex-col gap-5">
-      <!-- Out of every state, including the ones with nothing to show. Same
-           pill as the one Visit History goes back to My Patients with. -->
-      <button
-        class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all -mb-2 w-fit"
-        @click="openChartTab('chart')"
-      >
-        <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-        Periodontal Chart
-      </button>
+      <div class="flex flex-wrap items-start justify-between gap-3 -mb-2">
+        <!-- Out of every state, including the ones with nothing to show. Same
+             pill as the one Visit History goes back to My Patients with. -->
+        <button
+          class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all w-fit"
+          @click="openChartTab('chart')"
+        >
+          <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          Periodontal Chart
+        </button>
+
+        <!-- The same Save the chart page carries, because it is the same save:
+             there is no diagnosis record of its own, the diagnosis is written
+             with the visit. Each button says so on hover, rather than carrying a
+             note underneath that has to be read on every visit to be read once.
+             Both tooltips hang off the right edge so they open inwards. -->
+        <div
+          v-if="hasChart && !isLoading && !loadFailed"
+          class="flex flex-wrap items-center justify-end gap-2"
+        >
+          <span v-if="isExistingVisit && !editable" class="relative group inline-flex">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+              @click="handleEdit"
+            >
+              <Pencil class="w-3.5 h-3.5" /> Edit
+            </button>
+            <span
+              class="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+            >
+              <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
+              <span class="block font-bold text-white mb-1">Saved and read-only</span>
+              Unlocks this visit — the diagnosis here and the chart behind it.
+            </span>
+          </span>
+
+          <button
+            v-if="isExistingVisit && editable"
+            type="button"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            @click="handleCancelEditClick"
+          >
+            <X class="w-3.5 h-3.5" /> Cancel
+          </button>
+
+          <span v-if="editable" class="relative group inline-flex">
+            <button
+              type="button"
+              :disabled="isSaving || nothingToSave"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
+              :class="
+                isSaving || nothingToSave
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              "
+              @click="handleSaveClick"
+            >
+              <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
+              <Save v-else class="w-3.5 h-3.5" />
+              {{ isSaving ? 'Saving...' : 'Save Chart' }}
+            </button>
+            <span
+              class="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+            >
+              <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
+              <span class="block font-bold text-white mb-1">One Save, one visit</span>
+              Saves the periodontal chart and this diagnosis together — the same Save as the
+              one on the chart page, not a separate one for the worksheet.
+            </span>
+          </span>
+        </div>
+      </div>
 
       <!-- Loading -->
       <template v-if="isLoading">
@@ -512,6 +671,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 max="100"
                 step="1"
                 placeholder="Add from X-ray"
+                :disabled="!editable"
                 :value="diagnosisStore.boneLoss ?? ''"
                 :class="[
                   QUIET_PROMPT,
@@ -540,6 +700,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 max="32"
                 step="1"
                 placeholder="Add"
+                :disabled="!editable"
                 :value="inputs.teethLostToPerio ?? ''"
                 :class="[QUIET_PROMPT, inputs.teethLostToPerio === null ? 'w-16' : 'w-12']"
                 @input="setNumber('teethLostToPerio', ($event.target as HTMLInputElement).value)"
@@ -561,6 +722,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             :bone-loss-percent="diagnosisStore.boneLoss"
             :teeth-lost="diagnosisStore.teethLost"
             :complexity="diagnosisStore.complexity"
+            :readonly="!editable"
             @mark="markStageRow"
           />
 
@@ -612,12 +774,16 @@ const hasChart = computed(() => chartStore.hasChartData)
                 v-for="option in EXTENT_OPTIONS"
                 :key="option"
                 type="button"
+                :disabled="!editable"
                 class="px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors"
-                :class="
+                :class="[
+                  !editable && 'cursor-not-allowed',
                   diagnosisStore.extent === option
                     ? 'bg-[#0052ff] text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                "
+                    : editable
+                      ? 'text-slate-500 hover:text-slate-700'
+                      : 'text-slate-400',
+                ]"
                 :aria-pressed="diagnosisStore.extent === option"
                 @click="selectExtent(option)"
               >
@@ -648,8 +814,10 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
             </div>
 
+            <!-- Not which criteria produced the stage — the table above shows
+                 that, row by row — but what having it means for this patient. -->
             <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
-              Why: {{ diagnosisStore.stage.reasons.join(' ') }}
+              {{ stageMeaning }}
             </p>
 
             <!-- The stage carries no dropdown of its own. It is what the four
@@ -749,7 +917,11 @@ const hasChart = computed(() => chartStore.hasChartData)
             <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-2">
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="text-[11px] text-slate-500 shrink-0">Direct evidence ≥ 5 yrs</span>
-                <select v-model="inputs.directEvidence" :class="`${QUIET} text-right`">
+                <select
+                  v-model="inputs.directEvidence"
+                  :disabled="!editable"
+                  :class="`${QUIET} text-right`"
+                >
                   <option :value="null">Not available</option>
                   <option v-for="option in DIRECT_OPTIONS" :key="option" :value="option">
                     {{ DIRECT_EVIDENCE_LABEL[option] }}
@@ -772,6 +944,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                     max="100"
                     step="1"
                     placeholder="—"
+                    :disabled="!editable"
                     :value="diagnosisStore.boneLoss ?? ''"
                     :class="`${QUIET_NUMBER} text-right`"
                     @input="setNumber('boneLossPercent', ($event.target as HTMLInputElement).value)"
@@ -810,6 +983,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                     max="120"
                     step="1"
                     placeholder="—"
+                    :disabled="!editable"
                     :value="inputs.ageYears ?? ''"
                     :class="`${QUIET_NUMBER} text-right`"
                     @input="setNumber('ageYears', ($event.target as HTMLInputElement).value)"
@@ -828,6 +1002,7 @@ const hasChart = computed(() => chartStore.hasChartData)
                 </span>
                 <select
                   :value="diagnosisStore.phenotype ?? ''"
+                  :disabled="!editable"
                   :class="`${QUIET} text-right`"
                   @change="selectPhenotype(($event.target as HTMLSelectElement).value)"
                 >
@@ -845,7 +1020,11 @@ const hasChart = computed(() => chartStore.hasChartData)
                   <span v-if="!inputs.smoking" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   Smoking
                 </span>
-                <select v-model="inputs.smoking" :class="`${QUIET} text-right`">
+                <select
+                  v-model="inputs.smoking"
+                  :disabled="!editable"
+                  :class="`${QUIET} text-right`"
+                >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in SMOKING_OPTIONS" :key="option" :value="option">
                     {{ SMOKING_LABEL[option] }}
@@ -858,7 +1037,11 @@ const hasChart = computed(() => chartStore.hasChartData)
                   <span v-if="!inputs.diabetes" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   Diabetes
                 </span>
-                <select v-model="inputs.diabetes" :class="`${QUIET} text-right`">
+                <select
+                  v-model="inputs.diabetes"
+                  :disabled="!editable"
+                  :class="`${QUIET} text-right`"
+                >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in DIABETES_OPTIONS" :key="option" :value="option">
                     {{ DIABETES_LABEL[option] }}
@@ -879,6 +1062,7 @@ const hasChart = computed(() => chartStore.hasChartData)
             :phenotype-from-chart="diagnosisStore.phenotypeFromChart"
             :smoking="inputs.smoking"
             :diabetes="inputs.diabetes"
+            :readonly="!editable"
             @choose="applyGradeChoice"
           />
 
@@ -906,11 +1090,10 @@ const hasChart = computed(() => chartStore.hasChartData)
               </span>
             </div>
 
-            <p
-              v-if="diagnosisStore.grade.reasons.length"
-              class="mt-3 text-[13px] text-slate-600 leading-relaxed"
-            >
-              Why: {{ diagnosisStore.grade.reasons.join(' ') }}
+            <!-- As with the stage: what the grade means for this patient, not
+                 which rows arrived at it. -->
+            <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
+              {{ gradeMeaning }}
             </p>
 
             <!-- No dropdown here either. The grade is what the criteria arrive
@@ -943,7 +1126,7 @@ const hasChart = computed(() => chartStore.hasChartData)
     <!-- Floating Discard Changes Button -->
     <Transition name="fade">
       <div
-        v-if="hasChart && !isLoading && !loadFailed && diagnosisStore.hasChanges"
+        v-if="hasChart && !isLoading && !loadFailed && editable && diagnosisStore.hasChanges"
         class="fixed bottom-4 right-4 z-40"
       >
         <button
@@ -957,6 +1140,29 @@ const hasChart = computed(() => chartStore.hasChartData)
         </button>
       </div>
     </Transition>
+
+    <!-- Says out loud what the button beneath it already says: one Save, one
+         visit. Same wording as the chart page's, because it is the same act. -->
+    <ConfirmModal
+      :show="showSaveConfirm"
+      title="Save Chart"
+      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Save this visit?</span><span class='text-slate-500 font-normal'>This saves the periodontal chart and this diagnosis together — the same as pressing Save on the chart page. You can still click Edit to change it later.</span>"
+      confirm-text="Save"
+      cancel-text="Cancel"
+      @confirm="confirmSave"
+      @cancel="showSaveConfirm = false"
+    />
+
+    <ConfirmModal
+      :show="showCancelEditConfirm"
+      title="Cancel Editing"
+      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Are you sure you want to cancel?</span><span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
+      confirm-text="Discard Changes"
+      cancel-text="Continue Editing"
+      type="danger"
+      @confirm="confirmCancelEdit"
+      @cancel="showCancelEditConfirm = false"
+    />
 
     <ConfirmModal
       :show="showDiscardConfirm"
