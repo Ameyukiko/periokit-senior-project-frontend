@@ -13,11 +13,12 @@ import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import XrayBoardPanel from '@/components/xray/XrayBoardPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
-import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
+import { useXrayBoardStore } from '@/stores/xray-board'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
 import { useNotificationStore } from '@/stores/notification'
 import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
+import { useVisitSave } from '@/composables/useVisitSave'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -55,6 +56,21 @@ async function enterNewVisitState() {
   visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
 }
 
+/**
+ * Put the tab of a draft that was never saved back on the strip. The chart it
+ * holds survives in the store, but the visit store is not persisted and
+ * `loadVisits` only ever returns visits the backend knows about — so the tab
+ * has to be re-added by hand, without touching the chart behind it.
+ */
+function keepDraftVisit(patientId: string) {
+  visitStore.visits = []
+  visitStore.addDraftVisit(
+    patientId,
+    chartStore.patientInfo.date || new Date().toISOString().split('T')[0],
+    chartStore.patientInfo.visitPhase || 'before_hygienic',
+  )
+}
+
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
@@ -71,15 +87,28 @@ onMounted(async () => {
   const hadDirtyWork = chartStore.isDirty
   const persistedPatientId = chartStore.currentPatientId
 
+  /**
+   * Is what is already in the store a draft this mount must not write over?
+   * Mounting happens on a reload, but also every time the doctor walks back
+   * here from the Diagnosis page — and a chart that has been typed into and
+   * never saved lives nowhere but the store. Blanking it there would throw the
+   * visit away for the price of switching tabs.
+   */
+  const keepsDraft = (forPatientId?: string | null) =>
+    hadDirtyWork && (persistedPatientId ?? null) === (forPatientId ?? null)
+
   if (patientId && visitId) {
     urlVisitId.value = visitId
+    const keepingDraft = visitId === 'new' && keepsDraft(patientId)
     // Null out currentPatientId before loadPatientById so that if Pinia's
     // persisted state has a different (non-null) patient, the
     // currentPatientId watcher fires with oldPatientId===null and skips,
-    // avoiding a race where it clears our visits mid-setup.
-    chartStore.currentPatientId = null
+    // avoiding a race where it clears our visits mid-setup. Skipped when the
+    // draft is being kept: re-reading the patient would hand the header back
+    // its filed values over whatever the doctor typed into this visit.
+    if (!keepingDraft) chartStore.currentPatientId = null
     try {
-      await chartStore.loadPatientById(patientId)
+      if (!keepingDraft) await chartStore.loadPatientById(patientId)
       const fetchedVisits = await visitStore.loadVisits(patientId)
       visitStore.setActiveVisit(visitId)
       if (visitId !== 'new') {
@@ -90,17 +119,8 @@ onMounted(async () => {
           visitStore.visits = []
         }
         await chartStore.loadFromBackend(visitId)
-      } else if (hadDirtyWork && persistedPatientId === patientId) {
-        // Page reload with an unsaved draft for this patient — keep teethData
-        // intact (restored from sessionStorage) but re-add the draft tab to the
-        // visit strip, since the visit store isn't persisted and loadVisits above
-        // only returns backend visits.
-        visitStore.visits = []
-        visitStore.addDraftVisit(
-          patientId,
-          chartStore.patientInfo.date || new Date().toISOString().split('T')[0],
-          chartStore.patientInfo.visitPhase || 'before_hygienic',
-        )
+      } else if (keepingDraft) {
+        keepDraftVisit(patientId)
       } else {
         visitStore.visits = []
         await enterNewVisitState()
@@ -131,6 +151,9 @@ onMounted(async () => {
     }
   } else if (visitId) {
     urlVisitId.value = visitId
+    // A draft for a patient who is not on file yet has no patientId to be
+    // recognised by — the null it was left at is what identifies it.
+    const keepingDraft = visitId === 'new' && keepsDraft(null)
     chartStore.currentPatientId = null
     visitStore.setActiveVisit(visitId)
     if (visitId !== 'new') {
@@ -146,6 +169,8 @@ onMounted(async () => {
       } catch (error) {
         console.error('Failed to load chart:', error)
       }
+    } else if (keepingDraft) {
+      keepDraftVisit('')
     } else {
       visitStore.visits = []
       await enterNewVisitState()
@@ -257,12 +282,13 @@ const {
   activeSubNav,
   summary,
   currentPatientId,
+  // Edit mode for saved visits (read-only by default — see computeds below).
+  // It lives in the store because the Diagnosis page shares it: one Edit
+  // unlocks the visit on both pages, and walking between them keeps it open.
+  editMode,
 } = storeToRefs(chartStore)
 
 const { visits, activeVisitId } = storeToRefs(visitStore)
-
-// Edit mode for saved visits (read-only by default — see computeds below).
-const editMode = ref(false)
 
 const showOverviewModal = ref(false)
 const showSaveConfirmModal = ref(false)
@@ -436,6 +462,10 @@ onBeforeRouteUpdate((to, from) => {
 })
 
 onBeforeRouteLeave(to => {
+  // Edit mode belongs to the visit for as long as the doctor is working on it,
+  // and the chart and Diagnosis pages are two halves of that work. Stepping
+  // outside both locks it again, so no visit is ever found already unlocked.
+  if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
   if (bypassRouteGuard || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
@@ -563,73 +593,38 @@ const handleOpenDiagnosis = () => {
   })
 }
 
-const isSaving = ref(false)
-
-const validateBeforeSave = () => {
-  showValidation.value = true
-  if (!patientInfo.value.hn) {
-    notifStore.error('Please enter HN before saving')
-    return false
-  }
-  if (!patientInfo.value.patientName) {
-    notifStore.error('Please enter patient name before saving')
-    return false
-  }
-  if (!chartStore.hasChartData) {
-    notifStore.error('Please enter clinical chart data before saving')
-    return false
-  }
-  return true
-}
+// The visit's own save — the chart, the diagnosis read off it and the X-ray
+// board, in one press. The Diagnosis page presses the same one.
+const { isSaving, validate, saveVisit } = useVisitSave()
 
 const handleSaveClick = () => {
   if (isSaving.value) return
-  if (!validateBeforeSave()) return
+  // Flags the header fields the doctor still has to fill in; the composable
+  // says which one out loud.
+  showValidation.value = true
+  if (!validate()) return
   showSaveConfirmModal.value = true
 }
 
 const confirmSaveChart = async () => {
   showSaveConfirmModal.value = false
-  if (isSaving.value) return
-  isSaving.value = true
-  try {
-    const prevPatientId = currentPatientId.value
-    const prevVisitId = activeVisitId.value
-    const oldDiagnosisKey = resolveDiagnosisKey(prevVisitId, prevPatientId)
+  const saved = await saveVisit()
+  if (!saved) return
 
-    await chartStore.saveToBackend(true)
+  const { visitId: activeVisit, patientId } = saved
 
-    editMode.value = false
-
-    const activeVisit = activeVisitId.value
-    const patientId = currentPatientId.value
-
-    // Rekey and commit diagnosis data with the newly saved visit record
-    const newDiagnosisKey = resolveDiagnosisKey(activeVisit, patientId)
-    diagnosisStore.rekey(oldDiagnosisKey, newDiagnosisKey)
-    diagnosisStore.commitSaved(newDiagnosisKey)
-
-    // The draft visit now has a real id — move its X-ray board along with it,
-    // and with it the visit its films upload to.
-    await xrayStore.rekeyBoard(xrayBoardKey(patientId, activeVisit), activeVisit)
-
-    // Saving never leaves this page, not even for a brand-new patient (PER-261).
-    // The backend hands back the ids it just minted; writing them into the query
-    // is all it takes for the X-ray and Diagnosis tabs to be about the new visit,
-    // so the doctor can carry on with it instead of picking it out of a list.
-    if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
-      navigate({
-        query: {
-          ...route.query,
-          visitId: activeVisit,
-          ...(patientId ? { patientId } : {}),
-        },
-      })
-    }
-  } catch (error) {
-    console.error('Failed to save chart:', error)
-  } finally {
-    isSaving.value = false
+  // Saving never leaves this page, not even for a brand-new patient (PER-261).
+  // The backend hands back the ids it just minted; writing them into the query
+  // is all it takes for the X-ray and Diagnosis tabs to be about the new visit,
+  // so the doctor can carry on with it instead of picking it out of a list.
+  if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
+    navigate({
+      query: {
+        ...route.query,
+        visitId: activeVisit,
+        ...(patientId ? { patientId } : {}),
+      },
+    })
   }
 }
 
@@ -675,15 +670,24 @@ const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
 // Keep the store's read-only guard in sync with the editable state.
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
-// Reset edit mode and sync diagnosis whenever the active visit or patient changes.
+// The diagnosis worksheet follows whichever visit is on screen.
 watch(
   [activeVisitId, currentPatientId],
   ([newVisit, newPatient]) => {
-    editMode.value = false
     diagnosisStore.openFor(newVisit, newPatient)
   },
   { immediate: true },
 )
+/**
+ * Opening a different visit locks it again — an unlocked visit is unlocked, not
+ * a page the doctor left in edit mode. Mounting is not a change: `activeVisitId`
+ * starts null on every mount (the visit store is not persisted), and coming back
+ * from the Diagnosis page must not undo the Edit that was pressed there.
+ */
+watch(activeVisitId, (newVisitId, oldVisitId) => {
+  if (oldVisitId === null || newVisitId === oldVisitId) return
+  editMode.value = false
+})
 
 const handleEditVisit = () => { editMode.value = true }
 

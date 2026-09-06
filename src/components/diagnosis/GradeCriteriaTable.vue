@@ -41,6 +41,8 @@ const props = defineProps<{
   phenotypeFromChart: boolean
   smoking: Smoking | null
   diabetes: Diabetes | null
+  /** A saved visit nobody has pressed Edit on: the table is read, not ticked. */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -129,24 +131,29 @@ const diabetesChip = computed(() =>
   props.diabetes ? `Patient: ${DIABETES_LABEL[props.diabetes]}` : '',
 )
 
-// Clicking the cell that is already ticked clears the answer again.
+// Clicking the cell that is already ticked clears the answer again. A read-only
+// visit answers nothing: the table is there to be read until Edit is pressed.
+const choose = (choice: GradeChoice) => {
+  if (props.readonly) return
+  emit('choose', choice)
+}
 const chooseDirect = (grade: GradeId) =>
-  emit('choose', {
+  choose({
     field: 'directEvidence',
     value: directGrade.value === grade ? null : DIRECT_VALUES[grade],
   })
 const choosePhenotype = (grade: GradeId) =>
-  emit('choose', {
+  choose({
     field: 'phenotype',
     value: phenotypeGrade.value === grade ? null : PHENOTYPE_VALUES[grade],
   })
 const chooseSmoking = (grade: GradeId) =>
-  emit('choose', {
+  choose({
     field: 'smoking',
     value: smokingGrade.value === grade ? null : SMOKING_VALUES[grade],
   })
 const chooseDiabetes = (grade: GradeId) =>
-  emit('choose', {
+  choose({
     field: 'diabetes',
     value: diabetesGrade.value === grade ? null : DIABETES_VALUES[grade],
   })
@@ -160,17 +167,25 @@ const chooseDiabetes = (grade: GradeId) =>
 // an answer, pointing them at where the rest of the table is heading. An
 // answered row shows its own band and nothing else — two shades of yellow on one
 // row read as two answers.
+//
+// Read-only keeps every one of those colours — the answer is still the answer on
+// a visit nobody is editing. What goes is the invitation to click: no pointer,
+// no dashed "open" border, no hover.
 const cellClass = (answered: GradeId | null, grade: GradeId, fromChart = false) => [
   CELL_BASE,
-  'cursor-pointer',
-  answered !== grade && CELL_OPEN,
+  props.readonly ? 'cursor-default' : 'cursor-pointer',
+  !props.readonly && answered !== grade && CELL_OPEN,
   answered === grade
     ? fromChart
       ? CELL_ANSWERED
       : CELL_TICKED
     : answered === null && props.grade === grade
-      ? `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
-      : CELL_IDLE,
+      ? props.readonly
+        ? CELL_IN_COLUMN
+        : `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
+      : props.readonly
+        ? 'text-black'
+        : CELL_IDLE,
 ]
 
 // % bone loss ÷ age comes out of two numbers, so its row is read-only: it shows
@@ -226,9 +241,14 @@ const rowHeaderClass =
               </span>
               <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
                 Solid yellow is the row's answer; light yellow indicates the concluded grade column.
-                Dashed cells are open — click one to answer that row. % bone loss ÷ age is
-                calculated, so it has none. The grade follows the rows: it is not picked in this
-                header.
+                <template v-if="readonly">
+                  This visit is saved — press Edit to answer a row yourself.
+                </template>
+                <template v-else>
+                  Dashed cells are open — click one to answer that row. % bone loss ÷ age is
+                  calculated, so it has none.
+                </template>
+                The grade follows the rows: it is not picked in this header.
               </span>
             </th>
           <!-- The grade is the answer these rows add up to, so the column is
