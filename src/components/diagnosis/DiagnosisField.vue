@@ -10,6 +10,9 @@ defineProps<{
   missing?: boolean
   // The doctor typed over the value the chart started the field with.
   overridden?: boolean
+  // A saved visit nobody has pressed Edit on: the mark that the value was
+  // typed over is still worth reading, but it is no longer an offer to undo it.
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{ reset: [] }>()
@@ -46,15 +49,26 @@ const isTooltipHovered = ref(false)
         </div>
       </div>
 
-      <button
-        v-if="overridden"
-        type="button"
-        class="flex items-center gap-0.5 text-[9px] font-bold text-[#0052ff] normal-case hover:underline"
-        title="Use the chart's value again"
-        @click="emit('reset')"
-      >
-        <RotateCcw class="w-2.5 h-2.5" /> edited
-      </button>
+      <template v-if="overridden">
+        <button
+          v-if="!readonly"
+          type="button"
+          class="flex items-center gap-0.5 text-[9px] font-bold text-[#0052ff] normal-case hover:underline"
+          title="Use the chart's value again"
+          @click="emit('reset')"
+        >
+          <RotateCcw class="w-2.5 h-2.5" /> edited
+        </button>
+        <!-- Read-only: the same mark, with nothing to press. Undoing the
+             override would change the diagnosis of a visit nobody is editing. -->
+        <span
+          v-else
+          class="flex items-center gap-0.5 text-[9px] font-bold text-slate-400 normal-case"
+          title="Typed over the chart's value — press Edit to change it"
+        >
+          <RotateCcw class="w-2.5 h-2.5" /> edited
+        </span>
+      </template>
     </span>
 
     <div class="flex items-center gap-2 flex-nowrap">
