@@ -240,8 +240,15 @@ const confirmDiscard = () => {
 // page: it is the same visit. `chartStore.editMode` is what both read, so one
 // Edit unlocks both and walking between them keeps it open. A draft — visit
 // 'new', or no visit at all — has never been written down and is always open.
-const isExistingVisit = computed(() => visitId.value !== null && visitId.value !== 'new')
+// Both the URL and the visit strip are asked, and either one naming a saved
+// visit locks the page. They can disagree for a moment — a draft saved from
+// here is a real visit before `router.replace` has written its id into the
+// query — and for that moment the record is the one to protect.
+const isExistingVisit = computed(() =>
+  [visitId.value, visitStore.activeVisitId].some(id => !!id && id !== 'new'),
+)
 const editable = computed(() => !isExistingVisit.value || chartStore.editMode)
+const isLocked = computed(() => isExistingVisit.value && !editable.value)
 
 // Keep the chart store's own guard in step while the doctor is on this page,
 // so pressing Edit here unlocks the chart they walk back to.
@@ -527,6 +534,22 @@ const gradeMeaning = computed(() =>
             own rows add up to, so a diagnosis never leaves the record without its criteria.
           </p>
 
+          <!-- Said out loud, because every control below is greyed out and a
+               page that quietly refuses clicks reads as a page that is broken.
+               Same lock the chart page keeps a saved visit under: one Edit
+               unlocks both. -->
+          <p
+            v-if="isLocked"
+            class="mt-2.5 flex items-start gap-2 text-[12px] text-slate-600 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2"
+          >
+            <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+            <span>
+              This visit is saved, so the diagnosis is read-only — the fields below are disabled
+              and the tables cannot be ticked. Press
+              <span class="font-bold text-slate-700">Edit</span> to change it.
+            </span>
+          </p>
+
           <!-- TAP 2023 step 1. The readings alone can fail this and the patient
                still have periodontitis, so it is said and not enforced. -->
           <p
@@ -663,6 +686,7 @@ const gradeMeaning = computed(() =>
               :hint="boneLossBand"
               :missing="diagnosisStore.boneLoss === null"
               :overridden="inputs.boneLossPercent !== null"
+              :readonly="!editable"
               @reset="inputs.boneLossPercent = null"
             >
               <input
@@ -769,7 +793,17 @@ const gradeMeaning = computed(() =>
                 </template>
               </span>
             </div>
-            <div class="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
+            <!-- Greyed as a whole when the visit is locked: a segmented control
+                 that still looks pressable is the one thing on this page that
+                 would read as editable. -->
+            <div
+              class="flex items-center gap-1 p-0.5 rounded-lg border"
+              :class="
+                editable
+                  ? 'bg-slate-100 border-slate-200'
+                  : 'bg-slate-100/70 border-slate-200/70 opacity-70'
+              "
+            >
               <button
                 v-for="option in EXTENT_OPTIONS"
                 :key="option"
@@ -1146,7 +1180,7 @@ const gradeMeaning = computed(() =>
     <ConfirmModal
       :show="showSaveConfirm"
       title="Save Chart"
-      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Save this visit?</span><span class='text-slate-500 font-normal'>This saves the periodontal chart and this diagnosis together — the same as pressing Save on the chart page. You can still click Edit to change it later.</span>"
+      message="<span class='text-slate-800 font-bold text-lg block mb-1'>Save this visit?</span><span class='text-slate-500 font-normal'>This saves both the periodontal chart and diagnosis. You can still click Edit to change it later.</span>"
       confirm-text="Save"
       cancel-text="Cancel"
       @confirm="confirmSave"
