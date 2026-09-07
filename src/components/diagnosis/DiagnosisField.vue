@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RotateCcw, Info } from 'lucide-vue-next'
 
-defineProps<{
+const props = defineProps<{
   label: string
   hint?: string
-  tooltip?: string
+  /**
+   * Laid out rather than written as a paragraph: a bold answer on the first
+   * line, the sentence that explains it, then the caveats one to a bullet. A
+   * box this narrow is unreadable as prose.
+   */
+  tooltip?: { title: string; body?: string; points?: string[] }
   // Nothing recorded yet — the header counts these.
   missing?: boolean
   // The doctor typed over the value the chart started the field with.
@@ -17,6 +22,15 @@ defineProps<{
 
 const emit = defineEmits<{ reset: [] }>()
 const isTooltipHovered = ref(false)
+
+// The same words in one run, for a reader that gets no layout at all.
+const tooltipLabel = computed(() =>
+  props.tooltip
+    ? [props.tooltip.title, props.tooltip.body, ...(props.tooltip.points ?? [])]
+        .filter(Boolean)
+        .join('. ')
+    : undefined,
+)
 </script>
 
 <template>
@@ -32,7 +46,7 @@ const isTooltipHovered = ref(false)
         <button
           type="button"
           class="text-slate-300 hover:text-slate-500 focus:text-slate-500 outline-none transition-colors"
-          :aria-label="tooltip"
+          :aria-label="tooltipLabel"
           @mouseenter="isTooltipHovered = true"
           @mouseleave="isTooltipHovered = false"
           @focus="isTooltipHovered = true"
@@ -42,9 +56,18 @@ const isTooltipHovered = ref(false)
         </button>
         <div
           v-if="isTooltipHovered"
-          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-slate-800 text-white text-[11px] font-normal normal-case rounded-lg shadow-lg whitespace-normal w-48 text-center z-50 pointer-events-none leading-tight"
+          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-3 py-2 bg-slate-800 text-[11px] font-normal normal-case tracking-normal rounded-lg shadow-lg whitespace-normal w-60 text-left z-50 pointer-events-none leading-snug"
         >
-          {{ tooltip }}
+          <span class="block font-bold text-white">{{ tooltip.title }}</span>
+          <span v-if="tooltip.body" class="block mt-1 text-slate-300">{{ tooltip.body }}</span>
+          <span
+            v-for="point in tooltip.points"
+            :key="point"
+            class="flex gap-1.5 mt-1 text-slate-300"
+          >
+            <span class="text-slate-500 shrink-0">•</span>
+            <span>{{ point }}</span>
+          </span>
           <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
         </div>
       </div>
@@ -76,6 +99,11 @@ const isTooltipHovered = ref(false)
       <slot />
     </div>
 
-    <span v-if="hint" class="text-[10px] text-slate-400 truncate" :title="hint">{{ hint }}</span>
+    <!-- A slot rather than the plain string where the hint carries something to
+         press, which is why this one is not truncated. -->
+    <span v-if="$slots.hint" class="flex items-center gap-1.5 text-[10px] text-slate-400 min-w-0">
+      <slot name="hint" />
+    </span>
+    <span v-else-if="hint" class="text-[10px] text-slate-400 truncate" :title="hint">{{ hint }}</span>
   </div>
 </template>
