@@ -52,6 +52,10 @@ const viewAllPatients = () => {
 
 const newPatient = () => {
   emit('update:open', false)
+  // A bare /chart otherwise resumes an unsaved draft rather than blanking it —
+  // that is how the doctor walks back from the Diagnosis page. This button asks
+  // for a chart for somebody not on file yet, so it says so by clearing first.
+  chartStore.resetChart()
   router.push('/chart')
 }
 

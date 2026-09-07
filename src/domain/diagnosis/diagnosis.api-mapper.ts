@@ -2,7 +2,6 @@ import type {
   DiagnosisInputs,
   DirectEvidence,
   Diabetes,
-  ExtentId,
   Phenotype,
   Smoking,
   StageId,

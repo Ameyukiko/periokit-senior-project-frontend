@@ -176,7 +176,7 @@ export const assessStage = (
       missing.push(label)
       continue
     }
-    bands.push(`${label} in Stage ${mark}${marks[row] ? ' — your tick' : ''}`)
+    bands.push(`${label} in Stage ${mark}${marks[row] ? ' (selected)' : ''}`)
     severity = worseStage(severity, mark)
   }
 
@@ -198,19 +198,19 @@ export const assessStage = (
   }
 
   const stage = worseStage(severity, complexity)
-  reasons.push(`Severity is Stage ${severity} — the worst band on the table (${bands.join(', ')}).`)
+  reasons.push(`Severity is Stage ${severity} based on the highest criterion (${bands.join(', ')}).`)
 
   if (complexity) {
     reasons.push(
       stage === severity
-        ? `Complexity reads as Stage ${complexity}, which does not raise it — complexity can raise the stage, never lower it.`
+        ? `Complexity reads as Stage ${complexity}. Complexity cannot lower the stage, so it remains Stage ${stage}.`
         : `Complexity is Stage ${complexity}, which raises the stage to ${stage}.`,
     )
   }
 
   if (missing.length) {
     reasons.push(
-      `${missing.join(' and ')} not recorded yet — filling ${missing.length > 1 ? 'them' : 'it'} in may raise the stage, but cannot take it below ${stage}.`,
+      `${missing.join(' and ')} not recorded yet. Completing missing criteria may raise the stage, but cannot lower it below Stage ${stage}.`,
     )
   }
 
@@ -339,6 +339,12 @@ const worse = (a: GradeId | null, b: GradeId | null): GradeId | null => {
 export interface GradeCriteria {
   directEvidence: DirectEvidence | null
   boneLossPercent: number | null
+  /**
+   * True when the percentage above is the chart's own estimate from attachment
+   * loss rather than a reading taken off the radiograph. The band it lands in is
+   * still shown; what it cannot do on its own is grade the case.
+   */
+  boneLossEstimated?: boolean
   ageYears: number | null
   phenotype: Phenotype | null
   /** True when the phenotype above was read off the chart rather than answered. */
@@ -348,8 +354,16 @@ export interface GradeCriteria {
 }
 
 export interface GradeAssessment {
-  /** Never null: TAP 2023 starts every case at Grade B. */
-  grade: GradeId
+  /**
+   * Null until one of these rows has been answered by the doctor. TAP 2023
+   * starts every case at Grade B, but that is where a case that has been looked
+   * at begins — with every row still unanswered there is nothing to grade, and
+   * printing a grade would put a rate of progression on the record that nobody
+   * assessed. What the chart works out by itself does not count here: the
+   * estimate from attachment loss is not a radiograph, and the molar / incisor
+   * phenotype is a pattern in the readings, not an assessment of the case.
+   */
+  grade: GradeId | null
   ratio: number | null
   ratioGrade: GradeId | null
   primary: GradeId
@@ -389,7 +403,7 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
 
     if (ratioGrade) {
       reasons.push(
-        `No radiographs 5 years apart, so the grade comes from indirect evidence — ${boneLossPercent}% bone loss ÷ ${ageYears} years = ${ratio}, in the Grade ${ratioGrade} band.`,
+        `Indirect evidence: ${boneLossPercent}% bone loss ÷ ${ageYears} years = ${ratio} (Grade ${ratioGrade} band).`,
       )
     }
     if (phenotypeGrade) {
@@ -397,11 +411,15 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
         `The case phenotype ${phenotypeSource} (${PHENOTYPE_LABEL[phenotype!].toLowerCase()}) reads as Grade ${phenotypeGrade}.`,
       )
     }
-    if (!indirect) {
+    // Asked for while the only evidence of progression is the chart's own: the
+    // estimate and the molar / incisor pattern fill the table, but neither is
+    // an answer to the question the row puts.
+    const answeredIndirect = worse(
+      criteria.boneLossEstimated ? null : ratioGrade,
+      criteria.phenotypeFromChart ? null : phenotypeGrade,
+    )
+    if (!answeredIndirect) {
       missing.push('direct evidence, % bone loss ÷ age, or case phenotype')
-      reasons.push(
-        'No evidence of progression recorded yet, so the case sits at Grade B — the band every patient starts in until something moves it.',
-      )
     }
   }
 
@@ -427,6 +445,36 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
     )
   } else {
     missing.push('diabetes')
+  }
+
+  // Grade B is where a case starts, not what an unanswered table reads as. Until
+  // one row has been answered — direct evidence, a bone loss read off the
+  // radiograph, the phenotype, smoking or diabetes — there is no case to place,
+  // and the page says so rather than reporting a rate of progression nobody
+  // assessed. The chart's own two contributions are left out on purpose: the
+  // estimate from attachment loss stands in for a radiograph that has not been
+  // read, and the molar / incisor phenotype is a pattern in the readings rather
+  // than a judgement about how fast the disease is moving. Both still show the
+  // band they fall in — they simply cannot grade the case by themselves.
+  const answered = [
+    directGrade,
+    criteria.boneLossEstimated ? null : ratioGrade,
+    criteria.phenotypeFromChart ? null : phenotypeGrade,
+    smokingGrade,
+    diabetesGrade,
+  ].some(value => value !== null)
+
+  if (!answered) {
+    reasons.push(
+      'Nothing has been answered yet, so there is no grade. Recording direct evidence, the bone loss read off the radiograph, the case phenotype, smoking or diabetes starts the case at Grade B and moves it from there.',
+    )
+    return { grade: null, ratio, ratioGrade, primary, modifier, reasons, missing }
+  }
+
+  if (!directGrade && !ratioGrade && !phenotypeGrade) {
+    reasons.push(
+      'No evidence of progression recorded yet. The case remains at default Grade B.',
+    )
   }
 
   // Modifiers raise the grade the primary criteria arrived at; they never pull

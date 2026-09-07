@@ -71,6 +71,39 @@ function keepDraftVisit(patientId: string) {
   )
 }
 
+/**
+ * A chart typed into but never saved lives nowhere but this store — the backend
+ * has no visit to read it back from. So a route that lands on a bare /chart must
+ * put the draft back rather than blank it: the navbar's own "Periodontal Chart"
+ * link carries no query, and it is the first thing a doctor on the Diagnosis
+ * page reaches for on the way back.
+ *
+ * `activeVisitId` is what says the draft belongs to this session rather than to
+ * a reload — the visit store is not persisted, so it comes back null and the
+ * draft recovery modal asks instead.
+ */
+const hasOpenDraft = () => chartStore.isDirty && visitStore.activeVisitId === 'new'
+
+/**
+ * Puts the draft's tab back on the strip and gives the URL the visit it is
+ * about, so everything that reads the query — the Diagnosis page, the X-ray
+ * board, this page's own watchers — agrees on which visit is open.
+ */
+const restoreOpenDraft = (
+  patientId: string | null,
+  extraQuery: Record<string, string | undefined> = {},
+) => {
+  keepDraftVisit(patientId ?? '')
+  return navigate({
+    name: 'chart',
+    query: { ...(patientId ? { patientId } : {}), visitId: 'new', ...extraQuery },
+  })
+}
+
+// True when this mount kept a draft that the URL did not name, so the recovery
+// modal does not ask about work it is already looking at.
+const draftRestored = ref(false)
+
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
@@ -96,6 +129,15 @@ onMounted(async () => {
    */
   const keepsDraft = (forPatientId?: string | null) =>
     hadDirtyWork && (persistedPatientId ?? null) === (forPatientId ?? null)
+
+  /**
+   * The URL names no visit, and a draft is open. Whichever way the doctor got
+   * here — the navbar link, a patient link, the Diagnosis page — the draft is
+   * the visit this page is about, so it is kept and the URL is given it back.
+   * A URL naming a different patient is not this draft and falls through.
+   */
+  const draftMatchesUrl =
+    hasOpenDraft() && (!patientId || (persistedPatientId ?? null) === patientId)
 
   if (patientId && visitId) {
     urlVisitId.value = visitId
@@ -128,6 +170,10 @@ onMounted(async () => {
     } catch (error) {
       console.error('Failed to load chart:', error)
     }
+  } else if (!visitId && draftMatchesUrl) {
+    draftRestored.value = true
+    const draftPatientId = patientId ?? persistedPatientId ?? null
+    restoreOpenDraft(draftPatientId, tabQuery)
   } else if (patientId) {
     visitStore.setActiveVisit(null)
     chartStore.resetChart()
@@ -208,7 +254,23 @@ watch(
 )
 
 // Watch for visitId changes (when user navigates to different visit)
-watch(() => route.query.visitId, async (newVisitId) => {
+watch(() => route.query.visitId, async (newVisitId, oldVisitId) => {
+  /**
+   * The URL catching up with a draft the store already holds — a query that
+   * named no visit at all now naming this patient's — is not a request for a
+   * fresh one. `restoreOpenDraft` makes exactly this move, and blanking the
+   * chart in answer to it would undo the rescue.
+   */
+  if (
+    newVisitId === 'new' &&
+    oldVisitId === undefined &&
+    hasOpenDraft() &&
+    ((route.query.patientId as string | undefined) ?? null) === chartStore.currentPatientId
+  ) {
+    urlVisitId.value = 'new'
+    return
+  }
+
   if (newVisitId && typeof newVisitId === 'string') {
     urlVisitId.value = newVisitId
     visitStore.setActiveVisit(newVisitId)
@@ -240,6 +302,13 @@ watch(() => route.query.visitId, async (newVisitId) => {
       await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
+    // The navbar's own link lands here while the page stays mounted. An open
+    // draft is not a page the doctor left behind — blanking it now would throw
+    // an unsaved visit away — so it is put back instead.
+    if (hasOpenDraft()) {
+      restoreOpenDraft(chartStore.currentPatientId)
+      return
+    }
     visitStore.clearVisits()
     chartStore.resetChart()
   }
@@ -249,6 +318,11 @@ watch(() => route.query.visitId, async (newVisitId) => {
 // to /chart from a patient-specific chart), enter new-patient mode.
 watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
   if (newPatientId === undefined && oldPatientId !== undefined && route.query.visitId === undefined) {
+    // Same as above: an unsaved draft outlives the query that named its patient.
+    if (hasOpenDraft()) {
+      restoreOpenDraft(chartStore.currentPatientId)
+      return
+    }
     visitStore.clearVisits()
     chartStore.resetChart()
   }
@@ -638,14 +712,22 @@ const formatDate = (dateStr: string) => {
 // Computed: show empty state only if we have no patient and no query params (i.e., user just clicked a drawer item but patient isn't loaded yet)
 // If there are no query params at all, we're in "new patient" mode - show the blank chart
 const hasPatient = computed(() => {
+  // A draft for somebody not on file yet has no patientId to carry — they are
+  // being typed into the header right now — so the visit alone says there is a
+  // chart here. Without this, walking to the Diagnosis page and back (which
+  // puts `visitId=new` in the query) answers with "no patient open yet" and the
+  // work, still in the store, is nowhere on screen.
+  const isDraft = route.query.visitId === 'new' || activeVisitId.value === 'new'
   // If there are no query params at all, we're in blank chart mode (new patient flow)
   const hasNoQueryParams = !route.query.patientId && !route.query.visitId
-  return hasNoQueryParams || Boolean(currentPatientId.value || route.query.patientId)
+  return isDraft || hasNoQueryParams || Boolean(currentPatientId.value || route.query.patientId)
 })
 
-// Computed: true if we're in blank chart mode (creating new patient from scratch)
+// Computed: true if we're in blank chart mode (creating new patient from scratch).
+// The visit is not part of it: a draft is still a chart for nobody on file until
+// it is saved, whether or not `visitId=new` is in the query.
 const isNewPatientMode = computed(() => {
-  return !route.query.patientId && !route.query.visitId && !currentPatientId.value
+  return !route.query.patientId && !currentPatientId.value
 })
 
 // The X-ray tab replaces the chart area with a full-height board.
@@ -728,7 +810,10 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnloadHandl
 // On mount, if localStorage has isDirty=true (restored by Pinia persist) and the
 // current session has no active visit, offer to restore the draft.
 onMounted(() => {
-  if (chartStore.isDirty && !route.query.visitId) {
+  // Not asked when the mount above already put this session's draft back: the
+  // doctor is looking at the work, and walking between the chart and the
+  // Diagnosis page is no reason to be questioned about it.
+  if (chartStore.isDirty && !route.query.visitId && !draftRestored.value) {
     showDraftRecoveryModal.value = true
   }
 })
@@ -800,8 +885,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
         <Users class="w-8 h-8 text-slate-300" />
         <p class="text-[13px] font-bold text-slate-700">No patient open yet</p>
         <p class="text-[12px] text-slate-400 text-center max-w-100">
-          The chart records one patient at a time. Open My Patients and pick one — their visits
-          appear along the top, ready to chart.
+          The chart records one patient at a time. Open My Patients and select a patient to
+          view or record visits.
         </p>
         <button
           class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0052ff] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-blue-700 transition-colors"

@@ -159,7 +159,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
       </div>
       <div
         class="flex items-center gap-1.5"
-        title="Not this row's answer, but in the column of the concluded stage — guides the eye to the overall result"
+        title="Highlights the concluded stage column for reference"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
@@ -178,10 +178,10 @@ const cellClass = (row: StageRow, stage: StageId) => [
               <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
                 Solid yellow is the row's answer; light yellow indicates the concluded stage column.
                 <template v-if="readonly">
-                  This visit is saved — press Edit to tick a band yourself.
+                  This visit is saved. Click Edit to change selections.
                 </template>
                 <template v-else>
-                  Dashed cells are open — click one to tick that band yourself.
+                  Click any dashed cell to manually select that band.
                 </template>
                 The stage follows the rows: it is not picked in this header.
               </span>
