@@ -33,8 +33,6 @@ const props = defineProps<{
   grade: GradeId | null
   directEvidence: DirectEvidence | null
   boneLossPercent: number | null
-  /** True when the percentage came off the chart's estimate, not a radiograph. */
-  boneLossEstimated?: boolean
   ageYears: number | null
   ratio: number | null
   ratioGrade: GradeId | null
@@ -118,14 +116,11 @@ const diabetesGrade = computed(() => gradeForDiabetes(props.diabetes))
 const directChip = computed(() =>
   props.directEvidence ? `Patient: ${DIRECT_EVIDENCE_LABEL[props.directEvidence]}` : '',
 )
-// Said to be an estimate where it is one: the row lands in a band either way,
-// but a percentage worked out from attachment loss is not a reading anybody
-// took, and it does not grade the case on its own.
-const ratioChip = computed(() => {
-  if (props.ratio === null) return ''
-  const lead = props.boneLossEstimated ? 'Estimated' : 'Patient'
-  return `${lead}: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`
-})
+const ratioChip = computed(() =>
+  props.ratio === null
+    ? ''
+    : `Patient: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`,
+)
 const phenotypeChip = computed(() => {
   if (!props.phenotype) return ''
   if (!props.phenotypeFromChart) return `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}`
@@ -226,12 +221,12 @@ const rowHeaderClass =
       </div>
       <div
         class="flex items-center gap-1.5"
-        title="Highlights the concluded grade column for reference"
+        title="Where the rest of the table is heading, drawn on the rows that have not answered yet"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
         ></span>
-        <span class="text-slate-600 text-[10px]">Light yellow = Concluded grade column</span>
+        <span class="text-slate-600 text-[10px]">Light yellow = Suggested for rows not answered</span>
       </div>
     </div>
 
@@ -244,15 +239,14 @@ const rowHeaderClass =
               <span class="block text-[10px] font-normal text-slate-700">
                 AAP / EFP 2017 · Rate of progression
               </span>
-              <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
-                Solid yellow is the row's answer; light yellow indicates the concluded grade column.
-                <template v-if="readonly">
-                  This visit is saved. Click Edit to change selections.
-                </template>
-                <template v-else>
-                  Click any dashed cell to select a band. (% bone loss ÷ age is calculated automatically)
-                </template>
-                The grade follows the rows: it is not picked in this header.
+              <!-- What the colours mean is the Key's job, above the table. All
+                   that is left here is the one thing the Key cannot say: that
+                   this visit is not open to be ticked at all. -->
+              <span
+                v-if="readonly"
+                class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight"
+              >
+                This visit is saved. Click Edit to change selections.
               </span>
             </th>
           <!-- The grade is the answer these rows add up to, so the column is
