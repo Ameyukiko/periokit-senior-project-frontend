@@ -33,6 +33,8 @@ const props = defineProps<{
   grade: GradeId | null
   directEvidence: DirectEvidence | null
   boneLossPercent: number | null
+  /** True when the percentage came off the chart's estimate, not a radiograph. */
+  boneLossEstimated?: boolean
   ageYears: number | null
   ratio: number | null
   ratioGrade: GradeId | null
@@ -116,11 +118,14 @@ const diabetesGrade = computed(() => gradeForDiabetes(props.diabetes))
 const directChip = computed(() =>
   props.directEvidence ? `Patient: ${DIRECT_EVIDENCE_LABEL[props.directEvidence]}` : '',
 )
-const ratioChip = computed(() =>
-  props.ratio === null
-    ? ''
-    : `Patient: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`,
-)
+// Said to be an estimate where it is one: the row lands in a band either way,
+// but a percentage worked out from attachment loss is not a reading anybody
+// took, and it does not grade the case on its own.
+const ratioChip = computed(() => {
+  if (props.ratio === null) return ''
+  const lead = props.boneLossEstimated ? 'Estimated' : 'Patient'
+  return `${lead}: ${props.boneLossPercent}% ÷ ${props.ageYears} = ${props.ratio}`
+})
 const phenotypeChip = computed(() => {
   if (!props.phenotype) return ''
   if (!props.phenotypeFromChart) return `Your assessment: ${PHENOTYPE_LABEL[props.phenotype]}`
