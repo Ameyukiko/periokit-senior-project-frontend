@@ -938,7 +938,11 @@ const gradeMeaning = computed(() =>
                 v-if="diagnosisStore.grade.ratio !== null"
                 class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm"
               >
-                <span class="text-[11px] text-slate-400">% bone loss ÷ age</span>
+                <!-- Named as an estimate while it is one, so the band beside it
+                     does not read as a grade somebody worked out. -->
+                <span class="text-[11px] text-slate-400">
+                  {{ diagnosisStore.boneLossEstimated ? 'Estimated' : '' }} % bone loss ÷ age
+                </span>
                 <span class="text-[13px] font-bold text-slate-800">
                   {{ diagnosisStore.grade.ratio }}
                 </span>
@@ -1089,6 +1093,7 @@ const gradeMeaning = computed(() =>
             :grade="diagnosisStore.finalGrade"
             :direct-evidence="inputs.directEvidence"
             :bone-loss-percent="diagnosisStore.boneLoss"
+            :bone-loss-estimated="diagnosisStore.boneLossEstimated"
             :age-years="diagnosisStore.age"
             :ratio="diagnosisStore.grade.ratio"
             :ratio-grade="diagnosisStore.grade.ratioGrade"
