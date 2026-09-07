@@ -159,12 +159,12 @@ const cellClass = (row: StageRow, stage: StageId) => [
       </div>
       <div
         class="flex items-center gap-1.5"
-        title="Highlights the concluded stage column for reference"
+        title="Where the rest of the table is heading, drawn on the rows that have not answered yet"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
         ></span>
-        <span class="text-slate-600 text-[10px]">Light yellow = Concluded stage column</span>
+        <span class="text-slate-600 text-[10px]">Light yellow = Suggested for rows not answered</span>
       </div>
     </div>
 
@@ -175,15 +175,14 @@ const cellClass = (row: StageRow, stage: StageId) => [
             <th colspan="2" class="p-3 align-top w-56 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
               <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
               <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
-              <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
-                Solid yellow is the row's answer; light yellow indicates the concluded stage column.
-                <template v-if="readonly">
-                  This visit is saved. Click Edit to change selections.
-                </template>
-                <template v-else>
-                  Click any dashed cell to manually select that band.
-                </template>
-                The stage follows the rows: it is not picked in this header.
+              <!-- What the colours mean is the Key's job, above the table. All
+                   that is left here is the one thing the Key cannot say: that
+                   this visit is not open to be ticked at all. -->
+              <span
+                v-if="readonly"
+                class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight"
+              >
+                This visit is saved. Click Edit to change selections.
               </span>
             </th>
           <!-- The stage is the answer these four rows add up to, so the column is
