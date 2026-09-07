@@ -252,6 +252,7 @@ export const useDiagnosisStore = defineStore(
     assessGrade({
       directEvidence: inputs.directEvidence,
       boneLossPercent: boneLoss.value,
+      boneLossEstimated: boneLossEstimated.value,
       ageYears: age.value,
       phenotype: phenotype.value,
       phenotypeFromChart: phenotypeFromChart.value,
