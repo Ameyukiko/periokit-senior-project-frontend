@@ -64,7 +64,7 @@ const isTooltipHovered = ref(false)
         <span
           v-else
           class="flex items-center gap-0.5 text-[9px] font-bold text-slate-400 normal-case"
-          title="Typed over the chart's value — press Edit to change it"
+          title="Custom value entered. Click Edit to change it."
         >
           <RotateCcw class="w-2.5 h-2.5" /> edited
         </span>

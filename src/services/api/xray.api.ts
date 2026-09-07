@@ -153,15 +153,12 @@ export function toBoardFailure(error: unknown): XrayBoardFailure {
   // without touching the board at all.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return {
-      title: 'Save failed — you appear to be offline.',
+      title: 'Save failed: you appear to be offline.',
       detail: 'Nothing on the board was lost.',
     }
   }
-  return { title: 'Save failed — please try again.', detail: 'Nothing on the board was lost.' }
+  return { title: 'Save failed. Please try again.', detail: 'Nothing on the board was lost.' }
 }
-
-// --- upload (PER-260, PER-245) ----------------------------------------------
-// REST rather than GraphQL, because the films go up as multipart.
 
 /** The endpoint answers with the payload itself, not the `{ success, data }`
  *  envelope the rest of the REST API uses, and puts its message under `error`

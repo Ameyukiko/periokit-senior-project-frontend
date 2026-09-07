@@ -176,7 +176,7 @@ export const assessStage = (
       missing.push(label)
       continue
     }
-    bands.push(`${label} in Stage ${mark}${marks[row] ? ' — your tick' : ''}`)
+    bands.push(`${label} in Stage ${mark}${marks[row] ? ' (selected)' : ''}`)
     severity = worseStage(severity, mark)
   }
 
@@ -198,19 +198,19 @@ export const assessStage = (
   }
 
   const stage = worseStage(severity, complexity)
-  reasons.push(`Severity is Stage ${severity} — the worst band on the table (${bands.join(', ')}).`)
+  reasons.push(`Severity is Stage ${severity} based on the highest criterion (${bands.join(', ')}).`)
 
   if (complexity) {
     reasons.push(
       stage === severity
-        ? `Complexity reads as Stage ${complexity}, which does not raise it — complexity can raise the stage, never lower it.`
+        ? `Complexity reads as Stage ${complexity}. Complexity cannot lower the stage, so it remains Stage ${stage}.`
         : `Complexity is Stage ${complexity}, which raises the stage to ${stage}.`,
     )
   }
 
   if (missing.length) {
     reasons.push(
-      `${missing.join(' and ')} not recorded yet — filling ${missing.length > 1 ? 'them' : 'it'} in may raise the stage, but cannot take it below ${stage}.`,
+      `${missing.join(' and ')} not recorded yet. Completing missing criteria may raise the stage, but cannot lower it below Stage ${stage}.`,
     )
   }
 
@@ -403,7 +403,7 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
 
     if (ratioGrade) {
       reasons.push(
-        `No radiographs 5 years apart, so the grade comes from indirect evidence — ${boneLossPercent}% bone loss ÷ ${ageYears} years = ${ratio}, in the Grade ${ratioGrade} band.`,
+        `Indirect evidence: ${boneLossPercent}% bone loss ÷ ${ageYears} years = ${ratio} (Grade ${ratioGrade} band).`,
       )
     }
     if (phenotypeGrade) {
@@ -473,7 +473,7 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
 
   if (!directGrade && !ratioGrade && !phenotypeGrade) {
     reasons.push(
-      'No evidence of progression recorded yet, so the case sits at Grade B — the band every patient starts in until something moves it.',
+      'No evidence of progression recorded yet. The case remains at default Grade B.',
     )
   }
 

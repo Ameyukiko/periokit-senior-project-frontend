@@ -330,7 +330,7 @@ const findings = computed(() => diagnosisStore.findings)
 const toothLossHint = computed(() => {
   const missing = findings.value.missingTeeth.length
   if (!missing) return 'No missing teeth on the chart'
-  return `Chart has ${missing} missing ${missing === 1 ? 'tooth' : 'teeth'} — perio only?`
+  return `Chart has ${missing} missing ${missing === 1 ? 'tooth' : 'teeth'} (periodontitis only)`
 })
 
 const boneLossBand = computed(() => {
@@ -339,10 +339,10 @@ const boneLossBand = computed(() => {
 
   const band =
     percent < 15
-      ? 'Coronal third (< 15%) — Stage I band'
+      ? 'Coronal third (< 15%): Stage I band'
       : percent <= 33
-        ? 'Coronal third (15 – 33%) — Stage II band'
-        : 'Middle third and beyond — Stage III / IV band'
+        ? 'Coronal third (15 – 33%): Stage II band'
+        : 'Middle third and beyond: Stage III / IV band'
 
   return diagnosisStore.boneLossEstimated ? `Estimated from CAL · ${band}` : band
 })
@@ -436,7 +436,7 @@ const gradeMeaning = computed(() =>
             >
               <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
               <span class="block font-bold text-white mb-1">Saved and read-only</span>
-              Unlocks this visit — the diagnosis here and the chart behind it.
+              Unlocks both this diagnosis and the periodontal chart for editing.
             </span>
           </span>
 
@@ -470,8 +470,7 @@ const gradeMeaning = computed(() =>
             >
               <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
               <span class="block font-bold text-white mb-1">One Save, one visit</span>
-              Saves the periodontal chart and this diagnosis together — the same Save as the
-              one on the chart page, not a separate one for the worksheet.
+              Saves both the periodontal chart and diagnosis for this visit.
             </span>
           </span>
         </div>
@@ -503,8 +502,8 @@ const gradeMeaning = computed(() =>
         <Stethoscope class="w-8 h-8 text-slate-300" />
         <p class="text-[13px] font-bold text-slate-700">This visit has no periodontal chart yet</p>
         <p class="text-[12px] text-slate-400 text-center max-w-100">
-          Staging reads CAL, probing depth, furcation and mobility from the chart. Record them
-          first, then come back — the radiographic and risk-factor answers are asked for here.
+          Staging requires CAL, probing depth, furcation, and mobility from the chart. Please
+          complete the chart first before evaluating radiographic and risk factors.
         </p>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 bg-[#0052ff] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-blue-700 transition-colors"
@@ -528,10 +527,9 @@ const gradeMeaning = computed(() =>
           </h1>
 
           <p class="mt-2.5 text-[12px] text-slate-400">
-            Measurements are read from the chart and corrected there. The tables below show where
-            they fall, and the stage and grade follow from that — tick a band on any row to say a
-            reading belongs elsewhere. Neither is set by hand: both are always the answer their
-            own rows add up to, so a diagnosis never leaves the record without its criteria.
+            Measurements are read from the chart. The tables below show where they fall, and the
+            stage and grade are calculated accordingly. You can manually select a different band on
+            any row if needed.
           </p>
 
           <!-- Said out loud, because every control below is greyed out and a
@@ -544,9 +542,8 @@ const gradeMeaning = computed(() =>
           >
             <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
             <span>
-              This visit is saved, so the diagnosis is read-only — the fields below are disabled
-              and the tables cannot be ticked. Press
-              <span class="font-bold text-slate-700">Edit</span> to change it.
+              This visit is saved and read-only. Click
+              <span class="font-bold text-slate-700">Edit</span> to modify inputs or table selections.
             </span>
           </p>
 
@@ -558,10 +555,9 @@ const gradeMeaning = computed(() =>
           >
             <TriangleAlert class="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
-              These readings do not meet the case definition of periodontitis on their own — it
-              asks for interdental CAL of 2 mm or more at two teeth that are not neighbours, or
-              buccal / oral CAL of 3 mm or more at two sites probing over 3 mm. The staging below
-              still follows what is recorded.
+              These measurements do not meet the case definition criteria for periodontitis
+              (requires interdental CAL ≥ 2 mm at non-adjacent teeth, or buccal/oral CAL ≥ 3 mm with
+              pocket depth &gt; 3 mm at ≥ 2 teeth). Staging below reflects current recordings.
             </span>
           </p>
         </header>
@@ -788,8 +784,7 @@ const gradeMeaning = computed(() =>
                 Counted from chart: {{ findings.affectedTeeth }} of
                 {{ findings.remainingTeeth }} teeth affected ({{ findings.affectedPercentage }}%)
                 <template v-if="diagnosisStore.extentOverridden">
-                  — reads as {{ EXTENT_LABEL[diagnosisStore.suggestedExtent!].split(' (')[0] }},
-                  you chose otherwise
+                  (suggested: {{ EXTENT_LABEL[diagnosisStore.suggestedExtent!].split(' (')[0] }})
                 </template>
               </span>
             </div>
@@ -860,8 +855,8 @@ const gradeMeaning = computed(() =>
             <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
               <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
               <span>
-                The stage follows the table above. To move it, tick the band that fits on the row
-                you read differently — CAL, bone loss, tooth loss or complexity.
+                The stage is determined by the criteria above. To adjust it, select the appropriate
+                band for CAL, bone loss, tooth loss, or complexity.
               </span>
             </p>
           </div>
@@ -916,19 +911,16 @@ const gradeMeaning = computed(() =>
                     <span class="block text-[11px] font-bold">Where these answers come from</span>
                     <span class="block mt-1.5 text-[11px] font-normal text-white/80 leading-relaxed">
                       <span class="block">
-                        · <span class="text-white">Bone loss</span> — estimated from the chart;
-                        replace it with the radiograph
+                        · <span class="text-white">Bone loss</span>: estimated from chart, or entered from radiographs
                       </span>
                       <span class="block">
-                        · <span class="text-white">Direct evidence, smoking, diabetes</span> —
-                        taken from the patient
+                        · <span class="text-white">Direct evidence, smoking, diabetes</span>: reported patient history
                       </span>
                       <span class="block">
-                        · <span class="text-white">Age</span> — taken from the patient record
+                        · <span class="text-white">Age</span>: retrieved from patient record
                       </span>
                       <span class="block">
-                        · <span class="text-white">Case phenotype</span> — suggested only for a
-                        molar / incisor pattern; otherwise yours to assess
+                        · <span class="text-white">Case phenotype</span>: suggested for molar / incisor pattern, or evaluated clinically
                       </span>
                     </span>
                   </span>
@@ -1008,7 +1000,7 @@ const gradeMeaning = computed(() =>
                   <button
                     type="button"
                     :class="CHART_LINK"
-                    title="From the patient record — change it in the chart header"
+                    title="From patient record. Update in the chart header"
                     @click="openChartTab('chart')"
                   >
                     <SquarePen class="w-3 h-3" />
@@ -1141,8 +1133,8 @@ const gradeMeaning = computed(() =>
             <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
               <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
               <span>
-                The grade follows the table above. To move it, change the answer that reads wrong —
-                direct evidence, bone loss, age, case phenotype, smoking or diabetes.
+                The grade is determined by the criteria above. To adjust it, update direct evidence,
+                bone loss, age, phenotype, smoking, or diabetes.
               </span>
             </p>
           </div>

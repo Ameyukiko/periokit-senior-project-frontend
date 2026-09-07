@@ -221,9 +221,9 @@ export function describeUploadFailure(
   if (status === 400 && reason !== 'unknown') {
     return {
       title: 'The film was not accepted',
-      // Reads as "The upload was refused — larger than 10 MB", which is the
+      // Reads as "The upload was refused: larger than 10 MB", which is the
       // same half-sentence a pre-flight rejection ends with.
-      detail: `The upload was refused — ${REASON_TEXT[reason]}.`,
+      detail: `The upload was refused: ${REASON_TEXT[reason]}.`,
       canRetry: isRetryableReason(reason),
       needsSignIn: false,
       // About this one film, so the rest of the batch still has a chance.
@@ -233,7 +233,7 @@ export function describeUploadFailure(
 
   return {
     title: 'The film could not be uploaded',
-    detail: 'Nothing was lost. The file is still here — try again.',
+    detail: 'Nothing was lost. The file is still here. Please try again.',
     canRetry: true,
     needsSignIn: false,
     stopsBatch: false,

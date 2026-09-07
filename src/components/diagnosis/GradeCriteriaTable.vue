@@ -226,7 +226,7 @@ const rowHeaderClass =
       </div>
       <div
         class="flex items-center gap-1.5"
-        title="Not this row's answer, but in the column of the concluded grade — guides the eye to the overall result"
+        title="Highlights the concluded grade column for reference"
       >
         <span
           class="w-3.5 h-3.5 rounded-[3px] bg-[#FECE44]/30 border border-amber-400/80 shrink-0"
@@ -242,16 +242,15 @@ const rowHeaderClass =
             <th colspan="3" class="p-3 align-top w-72 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
               <span class="block text-[12px] font-bold text-black">Periodontitis Grade</span>
               <span class="block text-[10px] font-normal text-slate-700">
-                AAP / EFP 2017 — rate of progression
+                AAP / EFP 2017 · Rate of progression
               </span>
               <span class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight">
                 Solid yellow is the row's answer; light yellow indicates the concluded grade column.
                 <template v-if="readonly">
-                  This visit is saved — press Edit to answer a row yourself.
+                  This visit is saved. Click Edit to change selections.
                 </template>
                 <template v-else>
-                  Dashed cells are open — click one to answer that row. % bone loss ÷ age is
-                  calculated, so it has none.
+                  Click any dashed cell to select a band. (% bone loss ÷ age is calculated automatically)
                 </template>
                 The grade follows the rows: it is not picked in this header.
               </span>

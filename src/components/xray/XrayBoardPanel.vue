@@ -54,8 +54,8 @@ watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
 const hint = computed(() =>
   layout.value
-    ? 'X-ray Board — layout mode, drag films into the slots'
-    : 'X-ray Board — free canvas, no fixed layout',
+    ? 'X-ray Board: Layout mode (drag films into slots)'
+    : 'X-ray Board: Free canvas (no fixed layout)',
 )
 
 /** Failed, or mid-retry: either way we cannot vouch for what the board holds. */
@@ -130,7 +130,7 @@ const dialogOpen = computed(
 // A greyed-out button with no reason reads as a broken one.
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
-  if (!canUpload.value) return 'Save the visit first — the films go up with it'
+  if (!canUpload.value) return 'Save the visit first to upload films'
   if (isEmpty.value) return 'Add at least one X-ray first'
   return 'Save this board'
 })

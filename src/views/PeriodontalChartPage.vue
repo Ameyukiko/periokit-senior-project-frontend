@@ -885,8 +885,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
         <Users class="w-8 h-8 text-slate-300" />
         <p class="text-[13px] font-bold text-slate-700">No patient open yet</p>
         <p class="text-[12px] text-slate-400 text-center max-w-100">
-          The chart records one patient at a time. Open My Patients and pick one — their visits
-          appear along the top, ready to chart.
+          The chart records one patient at a time. Open My Patients and select a patient to
+          view or record visits.
         </p>
         <button
           class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0052ff] text-white rounded-lg font-bold text-[11px] shadow-md hover:bg-blue-700 transition-colors"
