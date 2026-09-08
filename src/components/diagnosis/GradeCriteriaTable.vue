@@ -235,10 +235,20 @@ const rowHeaderClass =
         <thead>
           <tr class="bg-blue-100 text-black border-b border-slate-400">
             <th colspan="3" class="p-3 align-top w-72 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-              <span class="block text-[12px] font-bold text-black">Periodontitis Grade</span>
-              <span class="block text-[10px] font-normal text-slate-700">
-                AAP / EFP 2017 · Rate of progression
-              </span>
+              <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                <div>
+                  <span class="block text-[12px] font-bold text-black">Periodontitis Grade</span>
+                  <span class="block text-[10px] font-normal text-slate-700">
+                    AAP / EFP 2017 · Rate of progression
+                  </span>
+                </div>
+                <span
+                  v-if="!grade"
+                  class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-600 text-white border border-red-500 text-[9px] font-bold shadow-sm"
+                >
+                  Not enough input
+                </span>
+              </div>
               <!-- What the colours mean is the Key's job, above the table. All
                    that is left here is the one thing the Key cannot say: that
                    this visit is not open to be ticked at all. -->
@@ -327,7 +337,7 @@ const rowHeaderClass =
           </th>
           <th :class="rowHeaderClass">
             % bone loss ÷ age
-            <span v-if="ratio === null" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="ratio === null" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs bone loss and age
             </span>
           </th>
@@ -345,7 +355,7 @@ const rowHeaderClass =
         <tr>
           <th :class="rowHeaderClass">
             Case phenotype
-            <span v-if="!phenotype" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="!phenotype" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>
@@ -380,7 +390,7 @@ const rowHeaderClass =
           </th>
           <th :class="rowHeaderClass">
             Smoking
-            <span v-if="!smoking" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="!smoking" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>
@@ -403,7 +413,7 @@ const rowHeaderClass =
         <tr>
           <th :class="rowHeaderClass">
             Diabetes
-            <span v-if="!diabetes" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="!diabetes" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>

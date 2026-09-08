@@ -173,8 +173,18 @@ const cellClass = (row: StageRow, stage: StageId) => [
         <thead>
           <tr class="bg-blue-100 text-black border-b border-slate-400">
             <th colspan="2" class="p-3 align-top w-56 border border-slate-300 bg-gradient-to-b from-blue-50 to-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-              <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
-              <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
+              <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                <div>
+                  <span class="block text-[12px] font-bold text-black">Periodontitis Stage</span>
+                  <span class="block text-[10px] font-normal text-slate-700">AAP / EFP 2017</span>
+                </div>
+                <span
+                  v-if="!stage"
+                  class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-600 text-white border border-red-500 text-[9px] font-bold shadow-sm"
+                >
+                  Not enough data
+                </span>
+              </div>
               <!-- What the colours mean is the Key's job, above the table. All
                    that is left here is the one thing the Key cannot say: that
                    this visit is not open to be ticked at all. -->
@@ -232,7 +242,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
           >
             Interdental CAL
             <span class="block text-[10px] font-normal text-slate-700">at site of greatest loss</span>
-            <span v-if="cal === null && !marks.cal" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="cal === null && !marks.cal" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>
@@ -257,7 +267,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Radiographic bone loss
-            <span v-if="boneLossPercent === null && !marks.boneLoss" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="boneLossPercent === null && !marks.boneLoss" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>
@@ -282,7 +292,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             class="px-3 py-2.5 align-top bg-blue-50/50 border border-slate-300 text-[11px] font-bold text-black"
           >
             Tooth loss due to periodontitis
-            <span v-if="teethLost === null && !marks.toothLoss" class="block mt-1 text-[10px] font-bold text-amber-700">
+            <span v-if="teethLost === null && !marks.toothLoss" class="block mt-1 text-[10px] font-bold text-red-600">
               Needs your input
             </span>
           </th>
