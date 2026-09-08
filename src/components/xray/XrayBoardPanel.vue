@@ -52,8 +52,10 @@ const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 // the visit id is where its films are uploaded to.
 watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
+// Layout mode is a way of placing films, so it only describes a board that can
+// still be placed into. A saved board reads as what it holds.
 const hint = computed(() =>
-  layout.value
+  layout.value && editable.value
     ? 'X-ray Board: Layout mode (drag films into slots)'
     : 'X-ray Board: Free canvas (no fixed layout)',
 )
@@ -253,10 +255,13 @@ function confirmCancelEdit() {
           <Sun v-else class="h-[15px] w-[15px]" />
         </button>
 
+        <!-- Gone rather than greyed on a read-only board: the slots it switches
+             on are not drawn there either, so the chip would toggle nothing. -->
         <button
+          v-if="editable"
           class="xray-chip"
           :class="{ 'is-on': layout }"
-          :disabled="!editable || isSaving"
+          :disabled="isSaving"
           title="Switch free canvas ↔ layout (18-film FMX)"
           @click="board.toggleLayout()"
         >

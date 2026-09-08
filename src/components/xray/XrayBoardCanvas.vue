@@ -644,8 +644,11 @@ onBeforeUnmount(() => {
     @drop="onDrop"
   >
     <div class="absolute left-0 top-0 origin-top-left" :style="worldStyle">
-      <!-- 18-film full-mouth template, layout mode only -->
-      <div v-if="layout" class="pointer-events-none absolute inset-0 z-0">
+      <!-- 18-film full-mouth template, layout mode only. The slots are where a
+           film is dropped, so a saved board nobody is editing shows the films
+           alone — empty labelled frames on a read-only record read as films
+           that are missing. -->
+      <div v-if="layout && editable" class="pointer-events-none absolute inset-0 z-0">
         <div
           v-for="slot in FMX_SLOTS"
           :key="slot.id"
@@ -724,9 +727,10 @@ onBeforeUnmount(() => {
 
     <!-- Layout mode already shows the slots, so the drop hint is redundant there.
          Hidden after a failed load too: an empty board we could not read must
-         not invite the doctor to fill it in (SRS-193). -->
+         not invite the doctor to fill it in (SRS-193) — and a read-only board
+         cannot take the drop it is inviting. -->
     <div
-      v-if="isEmpty && !layout && !loadFailed"
+      v-if="isEmpty && !layout && !loadFailed && editable"
       class="pointer-events-none absolute inset-0 grid place-items-center text-center"
       :style="{ color: 'var(--xray-empty-text)' }"
     >
