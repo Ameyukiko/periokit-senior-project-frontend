@@ -3,13 +3,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ImageOff, RotateCw } from 'lucide-vue-next'
 import {
-  FMX_SLOTS,
   GRID_SIZE,
+  LAYOUT_DIVIDER_Y,
   MAX_SCALE,
   MIN_OBJECT_SIZE,
   MIN_SCALE,
 } from '@/domain/xray/xray.constants'
-import { clamp, rotateVec, toRad } from '@/domain/xray/xray.geometry'
+import { boardBounds, clamp, rotateVec, toRad } from '@/domain/xray/xray.geometry'
 import type { FmxSlot, Viewport, XrayImageObject, XrayObject } from '@/domain/xray/xray.types'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore } from '@/stores/xray-board'
@@ -38,6 +38,8 @@ const {
   objects,
   sortedObjects,
   layout,
+  layoutMode,
+  visibleSlots,
   selectedId,
   editingNoteId,
   viewport,
@@ -140,6 +142,18 @@ function objectStyle(object: XrayObject, index: number): Record<string, string> 
   if (object.objectType === 'note') style.background = object.noteColor
   return style
 }
+
+/** The rule between the two templates, drawn across everything on the board. */
+const dividerStyle = computed(() => {
+  const bounds = boardBounds(objects.value, visibleSlots.value)
+  const left = bounds ? bounds.minX - 60 : -900
+  const right = bounds ? bounds.maxX + 60 : 900
+  return {
+    left: `${left}px`,
+    top: `${LAYOUT_DIVIDER_Y}px`,
+    width: `${right - left}px`,
+  }
+})
 
 function slotStyle(slot: FmxSlot): Record<string, string> {
   return {
@@ -644,16 +658,18 @@ onBeforeUnmount(() => {
     @drop="onDrop"
   >
     <div class="absolute left-0 top-0 origin-top-left" :style="worldStyle">
-      <!-- 18-film full-mouth template, layout mode only. The slots are where a
-           film is dropped, so a saved board nobody is editing shows the films
-           alone — empty labelled frames on a read-only record read as films
-           that are missing. -->
+      <!-- Whichever templates the layout control is showing, and only while the
+           board can still be laid out: a saved board nobody is editing shows the
+           films alone — empty labelled frames on a read-only record read as
+           films that are missing. -->
       <div v-if="layout && editable" class="pointer-events-none absolute inset-0 z-0">
+        <!-- Both templates at once are two boards, not one long grid. -->
+        <div v-if="layoutMode === 'both'" class="xray-layout-divider" :style="dividerStyle" />
         <div
-          v-for="slot in FMX_SLOTS"
-          :key="slot.id"
+          v-for="slot in visibleSlots"
+          :key="slot.code"
           class="xray-slot"
-          :class="{ 'is-filled': filledSlots.has(String(slot.id)) }"
+          :class="{ 'is-filled': filledSlots.has(slot.code) }"
           :style="slotStyle(slot)"
         >
           <span>{{ slot.label }}</span>
@@ -892,6 +908,12 @@ onBeforeUnmount(() => {
   text-align: center;
   padding: 0 10px;
   color: var(--xray-slot-text);
+}
+.xray-layout-divider {
+  position: absolute;
+  height: 0;
+  border-top: calc(2px * var(--inv)) dashed var(--xray-slot-line);
+  opacity: 0.8;
 }
 .xray-slot.is-filled {
   border-style: solid;
