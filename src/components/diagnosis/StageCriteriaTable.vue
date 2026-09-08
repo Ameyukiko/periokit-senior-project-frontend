@@ -185,15 +185,6 @@ const cellClass = (row: StageRow, stage: StageId) => [
                   Not enough data
                 </span>
               </div>
-              <!-- What the colours mean is the Key's job, above the table. All
-                   that is left here is the one thing the Key cannot say: that
-                   this visit is not open to be ticked at all. -->
-              <span
-                v-if="readonly"
-                class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight"
-              >
-                This visit is saved. Click Edit to change selections.
-              </span>
             </th>
           <!-- The stage is the answer these four rows add up to, so the column is
                reported and not offered — the way to move it is to tick the row

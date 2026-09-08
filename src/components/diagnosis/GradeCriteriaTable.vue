@@ -249,15 +249,6 @@ const rowHeaderClass =
                   Not enough input
                 </span>
               </div>
-              <!-- What the colours mean is the Key's job, above the table. All
-                   that is left here is the one thing the Key cannot say: that
-                   this visit is not open to be ticked at all. -->
-              <span
-                v-if="readonly"
-                class="block mt-1.5 text-[10px] font-normal text-slate-600 leading-tight"
-              >
-                This visit is saved. Click Edit to change selections.
-              </span>
             </th>
           <!-- The grade is the answer these rows add up to, so the column is
                reported and not offered — the way to move it is to change the

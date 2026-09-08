@@ -11,8 +11,6 @@ const props = defineProps<{
    * box this narrow is unreadable as prose.
    */
   tooltip?: { title: string; body?: string; points?: string[] }
-  // Nothing recorded yet — the header counts these.
-  missing?: boolean
   // The doctor typed over the value the chart started the field with.
   overridden?: boolean
   // A saved visit nobody has pressed Edit on: the mark that the value was
@@ -95,7 +93,6 @@ const tooltipLabel = computed(() =>
     </span>
 
     <div class="flex items-center gap-2 flex-nowrap">
-      <span v-if="missing" class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
       <slot />
     </div>
 

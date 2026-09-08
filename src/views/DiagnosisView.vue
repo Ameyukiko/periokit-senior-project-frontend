@@ -352,7 +352,7 @@ const boneLossEstimate = computed(() => {
 
   return {
     percent,
-    sum: `CAL ${site.value} mm at ${site.toothId} ÷ ${averageRootLength(site.toothId)} mm average root = ${percent}%`,
+    sum: `CAL ${site.value} mm at ${site.toothId} ÷ ${averageRootLength(site.toothId)} mm average root × 100 = ${percent}%`,
   }
 })
 
@@ -388,8 +388,11 @@ const boneLossTooltip = computed(() => ({
   body: 'Bone lost at the worst site, as a percentage of the root length.',
   points: boneLossEstimate.value
     ? [
+        // The formula before the arithmetic: the doctor is being offered a
+        // number they did not measure, so what it is made of comes first.
+        '%RBL = interdental CAL ÷ root length × 100 (TAP 2023 worksheet)',
         `Estimate below: ${boneLossEstimate.value.sum}`,
-        "That uses an average root length, not this patient's",
+        "That uses an average root length for the tooth, not this patient's",
       ]
     : [],
 }))
@@ -565,15 +568,15 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
       <template v-else>
         <!-- Diagnosis header -->
         <header class="px-1">
-          <span class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+          <h1 class="text-2xl xl:text-[28px] font-extrabold text-slate-900 tracking-tight">
             Periodontal diagnosis · AAP / EFP 2017
-          </span>
+          </h1>
 
           <!-- Saving lives at the foot of the page, once, below the decisions
                it is meant to record. -->
-          <h1 class="mt-1.5 text-2xl xl:text-[28px] font-extrabold text-[#0052ff] tracking-tight">
-            {{ diagnosisStore.diagnosisTitle }}
-          </h1>
+          <h2 class="mt-1.5 text-lg xl:text-[20px] font-extrabold text-[#0052ff] tracking-tight">
+            Result : {{ diagnosisStore.diagnosisTitle }}
+          </h2>
 
           <p class="mt-2.5 text-[12px] text-slate-400">
             Measurements are read from the chart. The tables below show where they fall, and the
@@ -646,7 +649,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
             <DiagnosisField
               label="Interdental CAL"
               :tooltip="CAL_TOOLTIP"
-              :missing="diagnosisStore.interdentalCal === null"
             >
               <template v-if="findings.interdentalCal">
                 <span :class="RECORDED">{{ diagnosisStore.interdentalCal }}</span>
@@ -669,7 +671,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
               label="Max probing depth"
               class="xl:pl-6"
               :tooltip="DEPTH_TOOLTIP"
-              :missing="diagnosisStore.probingDepth === null"
             >
               <template v-if="findings.probingDepth">
                 <span :class="RECORDED">{{ diagnosisStore.probingDepth }}</span>
@@ -728,7 +729,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
               label="Radiographic bone loss"
               class="xl:pl-6"
               :tooltip="boneLossTooltip"
-              :missing="diagnosisStore.boneLoss === null"
               :readonly="!editable"
             >
               <input
@@ -779,7 +779,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
               class="xl:pl-6"
               :tooltip="TOOTH_LOSS_TOOLTIP"
               :hint="toothLossHint"
-              :missing="inputs.teethLostToPerio === null"
             >
               <input
                 type="number"
@@ -1027,10 +1026,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span
-                    v-if="diagnosisStore.boneLoss === null"
-                    class="w-1.5 h-1.5 rounded-full bg-amber-400"
-                  ></span>
                   Bone loss, worst site
                 </span>
                 <span class="flex items-center gap-1">
@@ -1054,10 +1049,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
                    appears for a record that carries no age at all. -->
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span
-                    v-if="diagnosisStore.age === null"
-                    class="w-1.5 h-1.5 rounded-full bg-amber-400"
-                  ></span>
                   Patient age
                 </span>
                 <span v-if="diagnosisStore.ageFromRecord" class="flex items-center gap-1.5">
@@ -1090,10 +1081,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span
-                    v-if="!diagnosisStore.phenotype"
-                    class="w-1.5 h-1.5 rounded-full bg-amber-400"
-                  ></span>
                   Case phenotype
                 </span>
                 <select
@@ -1113,7 +1100,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span v-if="!inputs.smoking" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   Smoking
                 </span>
                 <select
@@ -1130,7 +1116,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
-                  <span v-if="!inputs.diabetes" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   Diabetes
                 </span>
                 <select
