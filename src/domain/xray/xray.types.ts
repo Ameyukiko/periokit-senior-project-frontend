@@ -39,16 +39,31 @@ export interface XrayNoteObject extends XrayObjectBase {
 
 export type XrayObject = XrayImageObject | XrayNoteObject
 
-/** One film position of the 18-film full-mouth series template. */
+/**
+ * One mounting position on the board — a film of the 18-film full-mouth series,
+ * or one of the nine intraoral photograph views.
+ */
 export interface FmxSlot {
+  /** Position within its own template. Unique only together with the prefix. */
   id: number
+  /** What a mounted object stores in `slotCode`. Unique across all templates. */
+  code: string
   /** Centre of the slot in world coordinates. */
   x: number
   y: number
   w: number
   h: number
   label: string
+  /** FDI numbers of the teeth the film covers. Absent on photograph slots. */
+  teeth?: number[]
 }
+
+/**
+ * Which slot templates the board is showing. One control cycles through these,
+ * so the doctor can lay out films alone, photographs alone, or both together
+ * without the toolbar growing a second button.
+ */
+export type XrayLayoutMode = 'off' | 'fmx' | 'intraoral' | 'both'
 
 export interface Viewport {
   /** Screen offset of the world origin, in pixels. */

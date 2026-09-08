@@ -1,5 +1,4 @@
 import {
-  FMX_SLOTS,
   IMAGE_MAX_LONG_SIDE,
   SLOT_PADDING,
   SLOT_SNAP_TOLERANCE,
@@ -20,9 +19,10 @@ export const rotateVec = (x: number, y: number, angle: number) => ({
 /**
  * Axis-aligned bounding box of everything on the board, used by "Fit".
  * Rotated objects contribute their rotated corners, so nothing is clipped.
+ * `slots` is whichever templates are on screen — Fit frames what can be seen.
  */
-export function boardBounds(objects: XrayObject[], includeSlots: boolean): Bounds | null {
-  if (!objects.length && !includeSlots) return null
+export function boardBounds(objects: XrayObject[], slots: FmxSlot[]): Bounds | null {
+  if (!objects.length && !slots.length) return null
 
   const bounds: Bounds = {
     minX: Infinity,
@@ -31,13 +31,11 @@ export function boardBounds(objects: XrayObject[], includeSlots: boolean): Bound
     maxY: -Infinity,
   }
 
-  if (includeSlots) {
-    for (const slot of FMX_SLOTS) {
-      bounds.minX = Math.min(bounds.minX, slot.x - slot.w / 2)
-      bounds.minY = Math.min(bounds.minY, slot.y - slot.h / 2)
-      bounds.maxX = Math.max(bounds.maxX, slot.x + slot.w / 2)
-      bounds.maxY = Math.max(bounds.maxY, slot.y + slot.h / 2)
-    }
+  for (const slot of slots) {
+    bounds.minX = Math.min(bounds.minX, slot.x - slot.w / 2)
+    bounds.minY = Math.min(bounds.minY, slot.y - slot.h / 2)
+    bounds.maxX = Math.max(bounds.maxX, slot.x + slot.w / 2)
+    bounds.maxY = Math.max(bounds.maxY, slot.y + slot.h / 2)
   }
 
   for (const object of objects) {
@@ -56,9 +54,13 @@ export function boardBounds(objects: XrayObject[], includeSlots: boolean): Bound
   return bounds
 }
 
-/** The FMX slot a film dropped at (cx, cy) should snap into, if any. */
-export function findSlotAt(cx: number, cy: number): FmxSlot | undefined {
-  return FMX_SLOTS.find(
+/**
+ * The slot an object dropped at (cx, cy) should snap into, if any. Only the
+ * slots on screen are offered: a template that is not being shown is not one
+ * the doctor is laying out into.
+ */
+export function findSlotAt(cx: number, cy: number, slots: FmxSlot[]): FmxSlot | undefined {
+  return slots.find(
     slot =>
       Math.abs(cx - slot.x) <= slot.w / 2 + SLOT_SNAP_TOLERANCE &&
       Math.abs(cy - slot.y) <= slot.h / 2 + SLOT_SNAP_TOLERANCE,
@@ -66,10 +68,10 @@ export function findSlotAt(cx: number, cy: number): FmxSlot | undefined {
 }
 
 /**
- * The persisted identity of an FMX slot. `FmxSlot.label` is display text and may
- * be reworded, so the stable numeric id is what a saved board points at.
+ * The persisted identity of a slot. `FmxSlot.label` is display text and may be
+ * reworded, so the stable code is what a saved board points at.
  */
-export const slotCodeOf = (slot: FmxSlot) => String(slot.id)
+export const slotCodeOf = (slot: FmxSlot) => slot.code
 
 /**
  * On-board size a film gets the moment it is added (SRS-223, SRS-224). A sensor
