@@ -47,6 +47,7 @@ import {
   type StageId,
   type StageRow,
 } from '@/domain/diagnosis/diagnosis.types'
+import { averageRootLength } from '@/domain/diagnosis/root-length'
 import type { ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -335,17 +336,67 @@ const toothLossHint = computed(() => {
 
 const boneLossBand = computed(() => {
   const percent = diagnosisStore.boneLoss
-  if (percent === null) return 'Read from the X-ray, at the worst site'
+  if (percent === null) return ''
 
-  const band =
-    percent < 15
-      ? 'Coronal third (< 15%): Stage I band'
-      : percent <= 33
-        ? 'Coronal third (15 – 33%): Stage II band'
-        : 'Middle third and beyond: Stage III / IV band'
-
-  return diagnosisStore.boneLossEstimated ? `Estimated from CAL · ${band}` : band
+  return percent < 15 ? '< 15% · Stage I' : percent <= 33 ? '15 – 33% · Stage II' : '> 33% · Stage III / IV'
 })
+
+// What the chart works out for the same site, and the arithmetic behind it.
+// Offered under the field rather than poured into it: the attachment loss this
+// is derived from already carries the CAL row of the staging table, and a
+// severity taken as the worst row would count that one reading twice.
+const boneLossEstimate = computed(() => {
+  const percent = diagnosisStore.estimatedBoneLoss
+  const site = findings.value.interdentalCal
+  if (percent === null || !site) return null
+
+  return {
+    percent,
+    sum: `CAL ${site.value} mm at ${site.toothId} ÷ ${averageRootLength(site.toothId)} mm average root = ${percent}%`,
+  }
+})
+
+// Field tooltips, laid out rather than written as a paragraph: the answer in
+// bold, the sentence behind it, then the caveats one to a bullet.
+const FROM_CHART = 'Edit the chart to change it'
+
+const CAL_TOOLTIP = {
+  title: 'Worst site in the chart',
+  body: 'The highest interdental attachment loss recorded.',
+  points: [FROM_CHART],
+}
+const DEPTH_TOOLTIP = {
+  title: 'Deepest pocket in the chart',
+  body: 'The deepest probing depth recorded, at any site.',
+  points: [FROM_CHART],
+}
+const FURCATION_TOOLTIP = {
+  title: 'Worst of each in the chart',
+  body: 'The most severe furcation, and the most severe mobility.',
+  points: [FROM_CHART],
+}
+const TOOTH_LOSS_TOOLTIP = {
+  title: 'Only teeth lost to perio',
+  body: 'The chart records which teeth are missing, never why.',
+  points: ['Counts towards the stage only where perio is the known cause', 'Enter the number yourself'],
+}
+
+// The sum itself, in the tooltip the field already carries an icon for. It was
+// a `title` on the hint line before, where nothing said it was there to hover.
+const boneLossTooltip = computed(() => ({
+  title: 'Read off the X-ray',
+  body: 'Bone lost at the worst site, as a percentage of the root length.',
+  points: boneLossEstimate.value
+    ? [
+        `Estimate below: ${boneLossEstimate.value.sum}`,
+        "That uses an average root length, not this patient's",
+      ]
+    : [],
+}))
+
+const useBoneLossEstimate = () => {
+  inputs.boneLossPercent = boneLossEstimate.value?.percent ?? null
+}
 
 const hasChart = computed(() => chartStore.hasChartData)
 
@@ -596,7 +647,7 @@ const gradeMeaning = computed(() =>
           >
             <DiagnosisField
               label="Interdental CAL"
-              tooltip="The highest interdental attachment loss recorded in the chart. To change this value, edit the chart."
+              :tooltip="CAL_TOOLTIP"
               :missing="diagnosisStore.interdentalCal === null"
             >
               <template v-if="findings.interdentalCal">
@@ -619,7 +670,7 @@ const gradeMeaning = computed(() =>
             <DiagnosisField
               label="Max probing depth"
               class="xl:pl-6"
-              tooltip="The deepest probing depth recorded in the chart. To change this value, edit the chart."
+              :tooltip="DEPTH_TOOLTIP"
               :missing="diagnosisStore.probingDepth === null"
             >
               <template v-if="findings.probingDepth">
@@ -642,7 +693,7 @@ const gradeMeaning = computed(() =>
             <DiagnosisField
               label="Furcation / mobility"
               class="xl:pl-6"
-              tooltip="The most severe furcation involvement and tooth mobility recorded in the chart. To change these values, edit the chart."
+              :tooltip="FURCATION_TOOLTIP"
             >
               <template v-if="findings.furcation">
                 <span :class="RECORDED">{{ FURCATION_CLASS[findings.furcation.grade] }}</span>
@@ -678,12 +729,9 @@ const gradeMeaning = computed(() =>
             <DiagnosisField
               label="Radiographic bone loss"
               class="xl:pl-6"
-              tooltip="Bone loss at the worst site, as a percentage of the root length. The application estimates it from the attachment loss in the chart, using an average root length. Enter the value measured on the radiograph to replace the estimate."
-              :hint="boneLossBand"
+              :tooltip="boneLossTooltip"
               :missing="diagnosisStore.boneLoss === null"
-              :overridden="inputs.boneLossPercent !== null"
               :readonly="!editable"
-              @reset="inputs.boneLossPercent = null"
             >
               <input
                 type="number"
@@ -705,12 +753,33 @@ const gradeMeaning = computed(() =>
               >
                 % at worst site
               </span>
+
+              <template #hint>
+                <span v-if="boneLossBand" class="truncate">{{ boneLossBand }}</span>
+                <!-- Offered rather than filled in, so taking it is a decision
+                     rather than a number that was already there. Once taken it
+                     counts as the doctor's figure. The sum behind it is in the
+                     tooltip above. -->
+                <template v-else-if="boneLossEstimate">
+                  <span class="truncate">Chart estimates {{ boneLossEstimate.percent }}%</span>
+                  <button
+                    v-if="editable"
+                    type="button"
+                    class="shrink-0 font-bold text-[#0052ff] hover:underline"
+                    title="Use the chart's estimate until the radiograph has been read"
+                    @click="useBoneLossEstimate"
+                  >
+                    Use
+                  </button>
+                </template>
+                <span v-else>Read from the X-ray, at the worst site</span>
+              </template>
             </DiagnosisField>
 
             <DiagnosisField
               label="Tooth loss cause"
               class="xl:pl-6"
-              tooltip="The number of teeth lost because of periodontitis. Tooth loss counts towards the stage only when periodontitis is known to be the cause, and the chart records which teeth are missing but not why, so enter this value yourself."
+              :tooltip="TOOTH_LOSS_TOOLTIP"
               :hint="toothLossHint"
               :missing="inputs.teethLostToPerio === null"
             >
@@ -930,11 +999,7 @@ const gradeMeaning = computed(() =>
                 v-if="diagnosisStore.grade.ratio !== null"
                 class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm"
               >
-                <!-- Named as an estimate while it is one, so the band beside it
-                     does not read as a grade somebody worked out. -->
-                <span class="text-[11px] text-slate-400">
-                  {{ diagnosisStore.boneLossEstimated ? 'Estimated' : '' }} % bone loss ÷ age
-                </span>
+                <span class="text-[11px] text-slate-400">% bone loss ÷ age</span>
                 <span class="text-[13px] font-bold text-slate-800">
                   {{ diagnosisStore.grade.ratio }}
                 </span>
@@ -1085,7 +1150,6 @@ const gradeMeaning = computed(() =>
             :grade="diagnosisStore.finalGrade"
             :direct-evidence="inputs.directEvidence"
             :bone-loss-percent="diagnosisStore.boneLoss"
-            :bone-loss-estimated="diagnosisStore.boneLossEstimated"
             :age-years="diagnosisStore.age"
             :ratio="diagnosisStore.grade.ratio"
             :ratio-grade="diagnosisStore.grade.ratioGrade"

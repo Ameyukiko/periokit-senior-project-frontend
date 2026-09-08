@@ -30,8 +30,9 @@ export const resolveDiagnosisKey = (
 }
 
 const createInputs = (): DiagnosisInputs => ({
-  // Empty means "use the estimate the chart works out from attachment loss",
-  // which is a far better starting point than a 0 nobody measured.
+  // Empty until the radiograph has been read. Nothing stands in for it: %RBL is
+  // a measurement off the film, and the chart's estimate is a prompt beside the
+  // field rather than a value in it.
   boneLossPercent: null,
   // null means "use the chart's count of missing teeth".
   teethLostToPerio: null,
@@ -163,14 +164,17 @@ export const useDiagnosisStore = defineStore(
   const age = computed(() => chartStore.patientInfo.age ?? inputs.ageYears ?? null)
   const ageFromRecord = computed(() => chartStore.patientInfo.age !== null)
 
-  // The film wins where one has been read; otherwise the estimate the chart
-  // works out from attachment loss carries the row.
-  const boneLoss = computed(
-    () => inputs.boneLossPercent ?? findings.value.estimatedBoneLossPercent,
-  )
-  const boneLossEstimated = computed(
-    () => inputs.boneLossPercent === null && findings.value.estimatedBoneLossPercent !== null,
-  )
+  // Only what was read off the film. The chart's estimate used to fall in
+  // behind an empty field, which counted the same attachment loss twice — once
+  // in the CAL row of the staging table and again here — and because severity
+  // takes the worst row, the second count could only ever raise the stage.
+  // 2 mm of CAL on a 13 mm root is the case definition in the CAL row and 15.4%
+  // in this one, which is already Stage II. The estimate is offered beside the
+  // field instead, for the doctor to accept or ignore.
+  const boneLoss = computed(() => inputs.boneLossPercent)
+
+  /** What the chart makes of the worst interdental site, offered as a prompt. */
+  const estimatedBoneLoss = computed(() => findings.value.estimatedBoneLossPercent)
 
   // Note C under TAP 2023 table 5: tooth loss counts towards the stage only
   // where it is known for certain to have been periodontitis that took the
@@ -252,7 +256,6 @@ export const useDiagnosisStore = defineStore(
     assessGrade({
       directEvidence: inputs.directEvidence,
       boneLossPercent: boneLoss.value,
-      boneLossEstimated: boneLossEstimated.value,
       ageYears: age.value,
       phenotype: phenotype.value,
       phenotypeFromChart: phenotypeFromChart.value,
@@ -463,7 +466,7 @@ export const useDiagnosisStore = defineStore(
     age,
     ageFromRecord,
     boneLoss,
-    boneLossEstimated,
+    estimatedBoneLoss,
     teethLost,
     complexity,
     stageReasons,

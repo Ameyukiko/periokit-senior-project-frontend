@@ -338,13 +338,8 @@ const worse = (a: GradeId | null, b: GradeId | null): GradeId | null => {
 
 export interface GradeCriteria {
   directEvidence: DirectEvidence | null
+  /** Read off the radiograph. Null until it has been, never estimated. */
   boneLossPercent: number | null
-  /**
-   * True when the percentage above is the chart's own estimate from attachment
-   * loss rather than a reading taken off the radiograph. The band it lands in is
-   * still shown; what it cannot do on its own is grade the case.
-   */
-  boneLossEstimated?: boolean
   ageYears: number | null
   phenotype: Phenotype | null
   /** True when the phenotype above was read off the chart rather than answered. */
@@ -359,9 +354,9 @@ export interface GradeAssessment {
    * starts every case at Grade B, but that is where a case that has been looked
    * at begins — with every row still unanswered there is nothing to grade, and
    * printing a grade would put a rate of progression on the record that nobody
-   * assessed. What the chart works out by itself does not count here: the
-   * estimate from attachment loss is not a radiograph, and the molar / incisor
-   * phenotype is a pattern in the readings, not an assessment of the case.
+   * assessed. What the chart works out by itself does not count here: the molar
+   * / incisor phenotype is a pattern in the readings, not an assessment of the
+   * case.
    */
   grade: GradeId | null
   ratio: number | null
@@ -412,10 +407,10 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
       )
     }
     // Asked for while the only evidence of progression is the chart's own: the
-    // estimate and the molar / incisor pattern fill the table, but neither is
-    // an answer to the question the row puts.
+    // molar / incisor pattern fills the table, but it is not an answer to the
+    // question the row puts.
     const answeredIndirect = worse(
-      criteria.boneLossEstimated ? null : ratioGrade,
+      ratioGrade,
       criteria.phenotypeFromChart ? null : phenotypeGrade,
     )
     if (!answeredIndirect) {
@@ -451,14 +446,13 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
   // one row has been answered — direct evidence, a bone loss read off the
   // radiograph, the phenotype, smoking or diabetes — there is no case to place,
   // and the page says so rather than reporting a rate of progression nobody
-  // assessed. The chart's own two contributions are left out on purpose: the
-  // estimate from attachment loss stands in for a radiograph that has not been
-  // read, and the molar / incisor phenotype is a pattern in the readings rather
-  // than a judgement about how fast the disease is moving. Both still show the
-  // band they fall in — they simply cannot grade the case by themselves.
+  // assessed. The molar / incisor phenotype is left out on purpose: it is a
+  // pattern in the readings rather than a judgement about how fast the disease
+  // is moving. It still shows the band it falls in — it simply cannot grade the
+  // case by itself.
   const answered = [
     directGrade,
-    criteria.boneLossEstimated ? null : ratioGrade,
+    ratioGrade,
     criteria.phenotypeFromChart ? null : phenotypeGrade,
     smokingGrade,
     diabetesGrade,
