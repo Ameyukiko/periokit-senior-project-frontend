@@ -284,11 +284,13 @@ export const useDiagnosisStore = defineStore(
     else parts.push('Periodontitis')
 
     if (finalStage.value) parts.push(`Stage ${finalStage.value}`)
-    if (finalGrade.value) parts.push(`Grade ${finalGrade.value}`)
+    parts.push(`Grade ${finalGrade.value}`)
     return parts.join(', ')
   })
 
-  const isClassified = computed(() => Boolean(finalStage.value && finalGrade.value))
+  // The grade is never missing — TAP 2023 starts every case at Grade B — so the
+  // stage is what stands between the worksheet and a diagnosis line.
+  const isClassified = computed(() => Boolean(finalStage.value))
 
   function resetInputs() {
     isRestoring = true

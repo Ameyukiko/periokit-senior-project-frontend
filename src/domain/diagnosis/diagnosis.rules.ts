@@ -350,15 +350,12 @@ export interface GradeCriteria {
 
 export interface GradeAssessment {
   /**
-   * Null until one of these rows has been answered by the doctor. TAP 2023
-   * starts every case at Grade B, but that is where a case that has been looked
-   * at begins — with every row still unanswered there is nothing to grade, and
-   * printing a grade would put a rate of progression on the record that nobody
-   * assessed. What the chart works out by itself does not count here: the molar
-   * / incisor phenotype is a pattern in the readings, not an assessment of the
-   * case.
+   * Always a grade. TAP 2023 and AAP/EFP both start every case at Grade B and
+   * ask for evidence to move it to A or C, so a table nobody has answered reads
+   * as Grade B rather than as no grade at all. `missing` is what says the
+   * evidence has not been looked for yet.
    */
-  grade: GradeId | null
+  grade: GradeId
   ratio: number | null
   ratioGrade: GradeId | null
   primary: GradeId
@@ -442,32 +439,12 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
     missing.push('diabetes')
   }
 
-  // Grade B is where a case starts, not what an unanswered table reads as. Until
-  // one row has been answered — direct evidence, a bone loss read off the
-  // radiograph, the phenotype, smoking or diabetes — there is no case to place,
-  // and the page says so rather than reporting a rate of progression nobody
-  // assessed. The molar / incisor phenotype is left out on purpose: it is a
-  // pattern in the readings rather than a judgement about how fast the disease
-  // is moving. It still shows the band it falls in — it simply cannot grade the
-  // case by itself.
-  const answered = [
-    directGrade,
-    ratioGrade,
-    criteria.phenotypeFromChart ? null : phenotypeGrade,
-    smokingGrade,
-    diabetesGrade,
-  ].some(value => value !== null)
-
-  if (!answered) {
-    reasons.push(
-      'Nothing has been answered yet, so there is no grade. Recording direct evidence, the bone loss read off the radiograph, the case phenotype, smoking or diabetes starts the case at Grade B and moves it from there.',
-    )
-    return { grade: null, ratio, ratioGrade, primary, modifier, reasons, missing }
-  }
-
+  // TAP 2023: assume Grade B and look for the evidence that moves the case to A
+  // or C. An unanswered table is therefore a Grade B case, not an ungraded one —
+  // `missing` above is what says the evidence has not been looked for yet.
   if (!directGrade && !ratioGrade && !phenotypeGrade) {
     reasons.push(
-      'No evidence of progression recorded yet. The case remains at default Grade B.',
+      'No evidence of progression recorded yet, so the case stays at the default Grade B. Direct evidence, % bone loss ÷ age or the case phenotype moves it from there.',
     )
   }
 
