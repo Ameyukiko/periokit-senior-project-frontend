@@ -29,6 +29,7 @@ import type {
   XrayUploadItem,
 } from '@/domain/xray/xray.types'
 import { useXrayHistory } from '@/composables/useXrayHistory'
+import { useXraySaveState } from '@/composables/useXraySaveState'
 import { useXrayImageCache } from '@/composables/useXrayImageCache'
 import { useXrayUploadQueue, type LandResult } from '@/composables/useXrayUploadQueue'
 import { useXrayViewport } from '@/composables/useXrayViewport'
@@ -204,18 +205,24 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const editingNoteId = ref<string | null>(null)
 
   // --- save state (Draft -> Saved -> Edit -> Saved) --------------------------
-  const saved = ref(false)
-  const savedAt = ref<Date | null>(null)
-  /**
-   * The board as it was last written down, in full — this is what Cancel puts
-   * back and what tells a saved object from one added since, so it keeps every
-   * field rather than only the saved ones.
-   */
-  const savedSnapshot = ref<string | null>(null)
-  /** The same moment, reduced to what a save would write (PER-257 §3). */
-  const savedFingerprint = ref<string | null>(null)
-  const editMode = ref(false)
-  const isSaving = ref(false)
+  // The cycle itself, and the two copies of the last save it turns on.
+  const {
+    saved,
+    savedAt,
+    savedSnapshot,
+    editMode,
+    isSaving,
+    editable,
+    isDirty,
+    wasSaved,
+    markSaved,
+    clear: clearSaveState,
+  } = useXraySaveState({
+    take: () => snapshot(),
+    fingerprint: () => fingerprint(objects.value),
+    isEmpty: () => objects.value.length === 0,
+    isReadable: () => loadState.value === 'loaded',
+  })
 
   /**
    * "no board for this visit" and "we could not find out" are different answers
@@ -280,25 +287,9 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const selectedNote = computed(() =>
     selectedObject.value?.objectType === 'note' ? selectedObject.value : null,
   )
-  /**
-   * Was the selected object part of the board as it was last saved? Deleting one
-   * of those is worth a question (SRS-283) — a film added a moment ago is not,
-   * and asking every time is what teaches a doctor to click straight through it.
-   */
-  const selectedIsSaved = computed(() => {
-    if (!selectedId.value || !savedSnapshot.value) return false
-    const parsed = JSON.parse(savedSnapshot.value) as { objects: XrayObject[] }
-    return parsed.objects.some(object => object.id === selectedId.value)
-  })
+  const selectedIsSaved = computed(() => wasSaved(selectedId.value))
   const isLoading = computed(() => loadState.value === 'loading')
   const loadFailed = computed(() => loadState.value === 'error')
-  /**
-   * A never-saved board is editable; a saved one until Edit is pressed is not.
-   * A board we have not read is nobody's to edit — we don't know what it holds.
-   */
-  const editable = computed(
-    () => loadState.value === 'loaded' && (!saved.value || editMode.value),
-  )
   const isEmpty = computed(() => objects.value.length === 0)
   /**
    * Paint order (SRS-167). Sorted here rather than by reordering `objects`, so
@@ -314,20 +305,6 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
     return taken
   })
-  /**
-   * Whether a save would write anything different from what is already there.
-   *
-   * PER-257 §3 returns false outside edit mode; here a board that has never been
-   * written down at all counts its films instead. A Draft with films on it has
-   * unsaved work by definition, and it is what the route guard reads — a doctor
-   * closing the tab on films that were never saved has to be asked, and there is
-   * no edit mode to be in yet.
-   */
-  const isDirty = computed(() =>
-    savedFingerprint.value === null
-      ? objects.value.length > 0
-      : fingerprint(objects.value) !== savedFingerprint.value,
-  )
   const noteColors = computed(() => [...NOTE_COLORS, ...customNoteColors.value])
   /**
    * A visit only exists server-side once `saveChart` has created it, so the
@@ -371,17 +348,6 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    */
   function snapshot() {
     return JSON.stringify({ objects: normalizeZIndex(objects.value) })
-  }
-
-  /**
-   * Pins the board as it stands now. PER-257 §5 allows exactly three callers —
-   * a board that has just been read, a board that has just been saved, and the
-   * moment Edit is pressed — and nothing else may move these, or Cancel would
-   * put back a board the doctor never agreed to.
-   */
-  function markSaved() {
-    savedSnapshot.value = snapshot()
-    savedFingerprint.value = fingerprint(objects.value)
   }
 
   /** Next free slot on top of the stack. An empty board starts at 0. */
@@ -672,11 +638,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     layoutMode.value = 'off'
     selectedId.value = null
     editingNoteId.value = null
-    saved.value = false
-    savedAt.value = null
-    savedSnapshot.value = null
-    savedFingerprint.value = null
-    editMode.value = false
+    clearSaveState()
     clearHistory()
   }
 
