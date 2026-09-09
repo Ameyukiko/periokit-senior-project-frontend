@@ -13,16 +13,15 @@ import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import XrayBoardPanel from '@/components/xray/XrayBoardPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
-import { useXrayBoardStore } from '@/stores/xray-board'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
-import { useNotificationStore } from '@/stores/notification'
 import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
 import { useVisitSave } from '@/composables/useVisitSave'
+import { useVisitTabs } from '@/composables/useVisitTabs'
+import { useXrayLeaveGuard } from '@/composables/useXrayLeaveGuard'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
-import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import draggable from 'vuedraggable'
 
 const route = useRoute()
@@ -31,8 +30,6 @@ const chartStore = usePeriodontalChartStore()
 chartStore.initializeChart()
 const validationStore = useClinicalValidationStore()
 const visitStore = useVisitStore()
-const notifStore = useNotificationStore()
-const xrayStore = useXrayBoardStore()
 const diagnosisStore = useDiagnosisStore()
 
 const drawerOpen = ref(false)
@@ -366,19 +363,24 @@ const { visits, activeVisitId } = storeToRefs(visitStore)
 
 const showOverviewModal = ref(false)
 const showSaveConfirmModal = ref(false)
-const showCloseTabWarningModal = ref(false)
 const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
 const showCancelEditConfirmModal = ref(false)
 
-const showXrayLeaveWarningModal = ref(false)
-
-// ID of the visit tab the user is trying to close (pending confirmation)
-let pendingCloseVisitId: string | null = null
-// What to run once the doctor agrees to leave unsaved X-ray work behind.
-// Its result is never read — router.push hands back a NavigationFailure that
-// the guard has no use for — so the action is free to return anything.
-let pendingXrayNavigation: (() => unknown) | null = null
+// The X-ray board is only in memory until it is saved, and opening another
+// visit reloads it from storage on top of whatever was there — so anything that
+// changes which visit is open asks first (SRS-363). Moving between the Chart
+// and X-ray sub-tabs is safe: the board reloads only when its visit changes.
+const {
+  showLeaveWarning: showXrayLeaveWarningModal,
+  hasUnsavedBoard,
+  isBypassing,
+  navigate,
+  guard: guardUnsavedXray,
+  confirmLeave: confirmLeaveXray,
+  cancelLeave: cancelLeaveXray,
+  askBeforeLeaving,
+} = useXrayLeaveGuard()
 
 // Auto-fit scale toggle
 const enableAutoFit = ref(false)
@@ -388,150 +390,13 @@ onMounted(() => {
   isTouchDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
 })
 
-// The X-ray board is only in memory until it is saved, and opening another
-// visit reloads it from storage on top of whatever was there — so anything that
-// changes which visit is open asks first (SRS-363). Moving between the Chart
-// and X-ray sub-tabs is safe: the board reloads only when its visit changes.
-/**
- * Is there anything to ask about? PER-259 §B1 gates the question on being in
- * edit mode as well as dirty. `editable` is this board's version of that: a
- * saved board is read-only until Edit is pressed, and a board that failed to
- * load is nobody's to change either.
- *
- * It is `editable` rather than `editMode` because the card's two modes assume
- * every board has already been saved once. A Draft has never been written down,
- * so `editMode` is false while the doctor is free to arrange films on it — and
- * that is exactly the board whose work has nowhere else to survive.
- */
-const hasUnsavedBoard = () => xrayStore.editable && xrayStore.isDirty
-
-const guardUnsavedXray = (proceed: () => unknown) => {
-  if (!hasUnsavedBoard()) return proceed()
-  // A question about one way out is already on screen. Whatever arrives behind
-  // it is dropped rather than queued: replacing the pending answer would send
-  // the doctor somewhere they were never asked about, and the second route is
-  // cancelled by its own guard either way.
-  if (showXrayLeaveWarningModal.value) return
-  pendingXrayNavigation = proceed
-  showXrayLeaveWarningModal.value = true
-}
-
-const confirmLeaveXray = async () => {
-  showXrayLeaveWarningModal.value = false
-  const proceed = pendingXrayNavigation
-  pendingXrayNavigation = null
-  await proceed?.()
-}
-
-const cancelLeaveXray = () => {
-  showXrayLeaveWarningModal.value = false
-  pendingXrayNavigation = null
-}
-
-/**
- * The page's own navigations have already been past the gate, or are the gate's
- * own doing — following a just-saved visit to its real id, blanking the URL
- * after the last tab closes. This marks them so the route guards below let them
- * through instead of asking a second time about work the doctor kept.
- */
-let bypassRouteGuard = false
-const navigate = (to: RouteLocationRaw, mode: 'push' | 'replace' = 'replace') => {
-  bypassRouteGuard = true
-  const navigation = mode === 'push' ? router.push(to) : router.replace(to)
-  return navigation.finally(() => {
-    bypassRouteGuard = false
-  })
-}
-
-/**
- * Nothing outside this page knows the X-ray board exists: the visit drawer, the
- * sidebar links and the browser's own Back button all go straight through the
- * router (SRS-363). Asking here rather than at each call site is what covers
- * the ones nobody has written yet.
- *
- * Leaving does not throw the board away by itself — it survives in the store —
- * but opening any other visit does, and by then the question would be on the
- * wrong page with the films already gone. This is the last moment to ask.
- */
-/**
- * Whether the navigation being asked about is the browser going backwards.
- * vue-router does not say, and it changes what "Leave" has to do: cancelling a
- * Back makes the router put the current page back, so pushing the destination
- * afterwards would stack it in front of the page the doctor was returning to,
- * and Back would bring them straight here again.
- *
- * Read from the history entry rather than from a `popstate` listener. The
- * browser moves the entry before it fires the event, so by the time a guard
- * runs, `history.state.position` is already the destination's — while a push or
- * replace has not touched history yet and still reads as where we are. A flag
- * set by the listener would also survive a Back that was never asked about and
- * send the *next* navigation backwards instead.
- *
- * `position` is vue-router's own bookkeeping; if it ever stops being there,
- * every navigation reads as forward, which is what the code did before.
- */
-const historyPosition = () => {
-  const position = (window.history.state as { position?: unknown } | null)?.position
-  return typeof position === 'number' ? position : null
-}
-
-let currentPosition = historyPosition()
-const stopTrackingPosition = router.afterEach(() => {
-  currentPosition = historyPosition()
-})
-onUnmounted(stopTrackingPosition)
-
-const isGoingBack = () => {
-  const target = historyPosition()
-  return target !== null && currentPosition !== null && target < currentPosition
-}
-
-/** Goes where the cancelled navigation was heading, the way it was heading. */
-const resumeLeaving = (to: RouteLocationNormalized, wasBack: boolean) => {
-  if (!wasBack) return navigate(to.fullPath, 'push')
-
-  // `history.go` hands back no promise to close the gate with, so it is closed
-  // by the navigation that follows and by a timer behind it. A gate stuck open
-  // means the next unsaved board leaves without a word, which is far worse than
-  // the spare history entry this avoids.
-  bypassRouteGuard = true
-  const failsafe = window.setTimeout(() => {
-    bypassRouteGuard = false
-  }, 2000)
-  const stopWatching = router.afterEach(() => {
-    window.clearTimeout(failsafe)
-    bypassRouteGuard = false
-    stopWatching()
-  })
-  router.go(-1)
-}
-
-/**
- * Nothing outside this page knows the X-ray board exists: the visit drawer, the
- * sidebar links and the browser's own Back button all go straight through the
- * router (SRS-363). Asking here rather than at each call site is what covers
- * the ones nobody has written yet.
- *
- * Leaving does not throw the board away by itself — it survives in the store —
- * but opening any other visit does, and by then the question would be on the
- * wrong page with the films already gone. This is the last moment to ask.
- */
-const askBeforeLeaving = (to: RouteLocationNormalized) => {
-  // Read now, not when the doctor answers: by then the router has already put
-  // the URL back and the history position no longer says where they were going.
-  const wasBack = isGoingBack()
-  guardUnsavedXray(() => resumeLeaving(to, wasBack))
-  return false
-}
-
-
 onBeforeRouteUpdate((to, from) => {
   // Only a change of visit or patient reloads the board over what is on screen.
   // Toggling between the Chart and X-ray sub-tabs is a query change as well,
   // and that one must never ask (SRS-365).
   const sameBoard =
     to.query.visitId === from.query.visitId && to.query.patientId === from.query.patientId
-  if (bypassRouteGuard || sameBoard || !hasUnsavedBoard()) return true
+  if (isBypassing() || sameBoard || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
 
@@ -540,116 +405,19 @@ onBeforeRouteLeave(to => {
   // and the chart and Diagnosis pages are two halves of that work. Stepping
   // outside both locks it again, so no visit is ever found already unlocked.
   if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
-  if (bypassRouteGuard || !hasUnsavedBoard()) return true
+  if (isBypassing() || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
 
-// Switch to a different visit (tab click)
-const handleSwitchVisit = (visitId: string) => {
-  if (visitId === activeVisitId.value) return
-  guardUnsavedXray(() => doSwitchVisit(visitId))
-}
-
-const doSwitchVisit = async (visitId: string) => {
-  visitStore.setActiveVisit(visitId)
-
-  navigate({
-    name: 'chart',
-    query: { ...route.query, visitId }
-  })
-
-  // The route watcher handles 'new' (draft) tabs — skip loadFromBackend for them.
-  if (visitId === 'new') return
-
-  try {
-    await chartStore.loadFromBackend(visitId)
-  } catch (error) {
-    console.error('Failed to load chart for visit:', error)
-  }
-}
-
-// Close a visit tab. If the visit has unsaved changes, show a warning first.
-const handleCloseVisit = async (visitId: string) => {
-  if (visits.value.length <= 1) return
-  // Closing the open tab takes its X-ray board with it, so that gets asked
-  // about before the chart's own warning.
-  if (visitId === activeVisitId.value) {
-    guardUnsavedXray(() => closeVisitTab(visitId))
-    return
-  }
-  await closeVisitTab(visitId)
-}
-
-const closeVisitTab = async (visitId: string) => {
-  // Only warn for the draft (id='new') or a visit with dirty unsaved edits
-  const isDirtyTab = visitId === 'new' && chartStore.isDirty
-  if (isDirtyTab && visitId === activeVisitId.value) {
-    pendingCloseVisitId = visitId
-    showCloseTabWarningModal.value = true
-    return
-  }
-  await doCloseVisit(visitId)
-}
-
-const confirmCloseTab = async () => {
-  showCloseTabWarningModal.value = false
-  if (pendingCloseVisitId) {
-    await doCloseVisit(pendingCloseVisitId)
-    pendingCloseVisitId = null
-  }
-}
-
-const doCloseVisit = async (visitId: string) => {
-  const wasActive = visitId === activeVisitId.value
-  const nextActiveId = visitStore.removeVisit(visitId)
-
-  if (!wasActive) return
-
-  if (nextActiveId) {
-    navigate({ name: 'chart', query: { ...route.query, visitId: nextActiveId } })
-    try {
-      await chartStore.loadFromBackend(nextActiveId)
-    } catch (error) {
-      console.error('Failed to load chart for visit:', error)
-    }
-  } else {
-    // No tabs left — clear the visit from the URL and blank the chart.
-    const query = { ...route.query }
-    delete query.visitId
-    navigate({ name: 'chart', query })
-    chartStore.resetChart()
-    const patientId = currentPatientId.value
-    if (patientId) await chartStore.loadPatientById(patientId)
-  }
-}
-
-// Start a new visit for the current patient. The visit is only persisted on
-// the backend once its chart is saved (saveChart with no visitId creates it),
-// so here we just enter the local 'new' draft state.
-const handleNewVisit = async () => {
-  const patientId = currentPatientId.value || route.query.patientId as string | undefined
-
-  if (!patientId) {
-    notifStore.error('Please select a patient first')
-    return
-  }
-
-  // Already drafting a new visit — just give a fresh blank chart.
-  if (route.query.visitId === 'new') {
-    await enterNewVisitState()
-    return
-  }
-
-  // Navigating to the 'new' sentinel triggers the route watcher, which puts the
-  // page into draft mode (blank chart, same patient) — and reloads the X-ray
-  // board over whatever was on it. Asked here rather than left to the route
-  // guard, because the active visit has to move together with the URL or the
-  // two end up disagreeing about which visit is open.
-  guardUnsavedXray(async () => {
-    visitStore.setActiveVisit('new')
-    await navigate({ name: 'chart', query: { patientId, visitId: 'new' } })
-  })
-}
+// The visit tab strip — opening, closing, and starting a fresh draft.
+const {
+  showCloseTabWarning: showCloseTabWarningModal,
+  switchVisit: handleSwitchVisit,
+  closeVisit: handleCloseVisit,
+  confirmCloseTab,
+  cancelCloseTab,
+  newVisit: handleNewVisit,
+} = useVisitTabs({ navigate, guard: guardUnsavedXray, enterNewVisitState })
 
 // Open the AAP/EFP staging and grading worksheet for the visit on screen.
 // Pushed through the router rather than `navigate`, so an unsaved X-ray board
@@ -1090,7 +858,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             cancel-text="Cancel"
             type="danger"
             @confirm="confirmCloseTab"
-            @cancel="showCloseTabWarningModal = false"
+            @cancel="cancelCloseTab"
           />
 
           <!-- Unsaved X-ray Board Warning -->
