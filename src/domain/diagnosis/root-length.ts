@@ -57,3 +57,15 @@ export const estimateBoneLossPercent = (
 
   return Math.min(100, Math.round((interdentalCalMm / rootLength) * 1000) / 10)
 }
+
+/**
+ * The arithmetic behind `estimateBoneLossPercent`, written out. The doctor is
+ * being offered a number they did not measure, so the figures it was worked
+ * from are shown alongside it rather than left implied.
+ */
+export const boneLossWorking = (
+  interdentalCalMm: number,
+  toothId: ToothId,
+  percent: number,
+): string =>
+  `CAL ${interdentalCalMm} mm at ${toothId} ÷ ${averageRootLength(toothId)} mm average root × 100 = ${percent}%`

@@ -40,6 +40,19 @@ export const stagesForBoneLoss = (percent: number | null): StageId[] => {
   return ['III', 'IV']
 }
 
+/**
+ * The band a %RBL figure reads as, in the words the field carries under it.
+ * Built off `stagesForBoneLoss` rather than repeating its 15 / 33 cut-offs, so
+ * the line under the field can never disagree with the row in the table.
+ */
+export const boneLossBand = (percent: number | null): string => {
+  const [stage] = stagesForBoneLoss(percent)
+  if (!stage) return ''
+  if (stage === 'I') return '< 15% · Stage I'
+  if (stage === 'II') return '15 – 33% · Stage II'
+  return '> 33% · Stage III / IV'
+}
+
 export const stagesForToothLoss = (count: number | null): StageId[] => {
   if (count === null) return []
   if (count === 0) return ['I', 'II']

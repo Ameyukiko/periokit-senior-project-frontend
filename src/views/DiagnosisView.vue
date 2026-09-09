@@ -47,7 +47,8 @@ import {
   type StageId,
   type StageRow,
 } from '@/domain/diagnosis/diagnosis.types'
-import { averageRootLength } from '@/domain/diagnosis/root-length'
+import { boneLossBand as boneLossBandOf } from '@/domain/diagnosis/diagnosis.rules'
+import { boneLossWorking } from '@/domain/diagnosis/root-length'
 import type { ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -334,12 +335,7 @@ const toothLossHint = computed(() => {
   return `Chart has ${missing} missing ${missing === 1 ? 'tooth' : 'teeth'} (periodontitis only)`
 })
 
-const boneLossBand = computed(() => {
-  const percent = diagnosisStore.boneLoss
-  if (percent === null) return ''
-
-  return percent < 15 ? '< 15% · Stage I' : percent <= 33 ? '15 – 33% · Stage II' : '> 33% · Stage III / IV'
-})
+const boneLossBand = computed(() => boneLossBandOf(diagnosisStore.boneLoss))
 
 // What the chart works out for the same site, and the arithmetic behind it.
 // Offered under the field rather than poured into it: the attachment loss this
@@ -350,10 +346,7 @@ const boneLossEstimate = computed(() => {
   const site = findings.value.interdentalCal
   if (percent === null || !site) return null
 
-  return {
-    percent,
-    sum: `CAL ${site.value} mm at ${site.toothId} ÷ ${averageRootLength(site.toothId)} mm average root × 100 = ${percent}%`,
-  }
+  return { percent, sum: boneLossWorking(site.value, site.toothId, percent) }
 })
 
 // Field tooltips, laid out rather than written as a paragraph: the answer in
