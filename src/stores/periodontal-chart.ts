@@ -8,6 +8,8 @@ import { useNotificationStore } from './notification'
 import { mapChartToPayload, mapPayloadToChart } from '@/domain/chart/chart.mapper'
 import { chartApi } from '@/services/api/chart.api'
 import { registerSessionClearListener } from '@/services/session'
+import { toDiagnosisInputDto } from '@/domain/diagnosis/diagnosis.api-mapper'
+import { useDiagnosisStore } from './diagnosis'
 
 const createDefaultPatientInfo = (): PatientInfo => {
   const authStore = useAuthStore()
@@ -39,6 +41,11 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     // When true the chart is being viewed (a saved visit, not in edit mode):
     // all mutating actions become no-ops so the record can't change.
     readonly: false as boolean,
+    // Whether the doctor has unlocked a saved visit for editing. It lives here
+    // rather than on the chart page because the Diagnosis page is part of the
+    // same visit: a saved visit opens read-only on both, and one Edit unlocks
+    // both. Deliberately left out of `persist` — a reload comes back locked.
+    editMode: false as boolean,
   }),
 
   getters: {
@@ -84,6 +91,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.currentPatientId = null
       this.isDirty = false
       this.readonly = false
+      this.editMode = false
       // Explicitly clear localStorage so logout wipes any unsaved draft
       try { localStorage.removeItem('periodontalChart') } catch (_) {}
     },
@@ -225,6 +233,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       const visitId = visitStore.activeVisitId === 'new' ? undefined : visitStore.activeVisitId
 
       const { patientInfo } = this
+      const diagnosisStore = useDiagnosisStore()
 
       // Validate patient info before save (HN and Patient Name are required)
       if (!patientInfo.hn) {
@@ -260,6 +269,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
           visitDate: patientInfo.date,
           visitPhase: patientInfo.visitPhase || 'before_hygienic',
           completeVisit,
+          diagnosis: toDiagnosisInputDto(diagnosisStore.inputs),
         })
 
         const savedChart = data?.saveChart
@@ -309,6 +319,9 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       try {
         const { data } = await chartApi.getByVisit(visitId)
         const chartData = data?.chartByVisit
+        const diagnosisStore = useDiagnosisStore()
+        diagnosisStore.openFor(visitId, this.currentPatientId)
+        if (chartData?.diagnosis) diagnosisStore.hydrateFromBackend(chartData.diagnosis)
 
         // Keep the current patient in sync — covers the post-save reload where
         // the chart page navigates by visitId alone and would otherwise lose

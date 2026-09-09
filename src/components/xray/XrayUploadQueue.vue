@@ -154,7 +154,7 @@ watch(
         v-if="!canUpload"
         class="border-t border-slate-100 px-3 py-1.5 text-[11.5px] text-slate-500"
       >
-        This visit is not saved yet — these films stay on this device.
+        This visit is not saved yet. These films stay on this device until saved.
       </p>
     </div>
   </Transition>

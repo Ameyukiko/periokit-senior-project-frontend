@@ -315,7 +315,7 @@ onUnmounted(() => {
               Comparing Visit #{{ compareAnchorVisitNumber }} and Visit #{{ compareSecondVisitNumber }}
             </template>
             <template v-else>
-              Selecting Visit #{{ compareAnchorVisitNumber }} to Compare — select the 2nd visit
+              Selected Visit #{{ compareAnchorVisitNumber }}. Select a second visit to compare.
             </template>
           </p>
         </div>

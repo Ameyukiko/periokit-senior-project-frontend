@@ -3,13 +3,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ImageOff, RotateCw } from 'lucide-vue-next'
 import {
-  FMX_SLOTS,
   GRID_SIZE,
+  LAYOUT_DIVIDER_Y,
   MAX_SCALE,
   MIN_OBJECT_SIZE,
   MIN_SCALE,
 } from '@/domain/xray/xray.constants'
-import { clamp, rotateVec, toRad } from '@/domain/xray/xray.geometry'
+import { boardBounds, clamp, rotateVec, toRad } from '@/domain/xray/xray.geometry'
 import type { FmxSlot, Viewport, XrayImageObject, XrayObject } from '@/domain/xray/xray.types'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore } from '@/stores/xray-board'
@@ -38,6 +38,8 @@ const {
   objects,
   sortedObjects,
   layout,
+  layoutMode,
+  visibleSlots,
   selectedId,
   editingNoteId,
   viewport,
@@ -99,6 +101,15 @@ const spaceDown = ref(false)
 const isDropping = ref(false)
 
 let drag: Drag | null = null
+/**
+ * The object the pointer last went down on, remembered because `dblclick`
+ * cannot say. Taking pointer capture to drag retargets the compatibility mouse
+ * events to the stage, so a double-click on a note arrives with the board as
+ * its target and the note nowhere in it — which is why reopening a note for
+ * editing quietly stopped working. `pointerdown` is dispatched before capture
+ * is taken and still names the real object.
+ */
+let lastPointerDownId: string | null = null
 let dropDepth = 0
 let resizeObserver: ResizeObserver | null = null
 
@@ -131,6 +142,18 @@ function objectStyle(object: XrayObject, index: number): Record<string, string> 
   if (object.objectType === 'note') style.background = object.noteColor
   return style
 }
+
+/** The rule between the two templates, drawn across everything on the board. */
+const dividerStyle = computed(() => {
+  const bounds = boardBounds(objects.value, visibleSlots.value)
+  const left = bounds ? bounds.minX - 60 : -900
+  const right = bounds ? bounds.maxX + 60 : 900
+  return {
+    left: `${left}px`,
+    top: `${LAYOUT_DIVIDER_Y}px`,
+    width: `${right - left}px`,
+  }
+})
 
 function slotStyle(slot: FmxSlot): Record<string, string> {
   return {
@@ -210,6 +233,10 @@ function startPan(event: PointerEvent, deselect: boolean, refused = false) {
 }
 
 function onPointerDown(event: PointerEvent) {
+  // Cleared first: every way out of this function that is not "went down on an
+  // object" has to leave nothing behind for a following double-click to reuse.
+  lastPointerDownId = null
+
   if (event.button === 2) return
 
   // Controls drawn on top of the canvas keep their own click: panning captures
@@ -230,6 +257,7 @@ function onPointerDown(event: PointerEvent) {
   const handleEl = target.closest<HTMLElement>('[data-handle]')
   const objectEl = target.closest<HTMLElement>('[data-object-id]')
   const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
+  lastPointerDownId = object?.id ?? null
 
   // Read-only board: nothing may move, but picking a film is still allowed
   // (SRS-257) — clicking the one you are reading is how a doctor keeps their
@@ -461,10 +489,10 @@ function onNoteBlur() {
   board.pushHistory()
 }
 
-function onDoubleClick(event: MouseEvent) {
+/** Reopens a note for editing. Asks `lastPointerDownId`, never `event.target`. */
+function onDoubleClick() {
   if (!editable.value) return
-  const objectEl = (event.target as HTMLElement).closest<HTMLElement>('[data-object-id]')
-  const object = objects.value.find(candidate => candidate.id === objectEl?.dataset.objectId)
+  const object = objects.value.find(candidate => candidate.id === lastPointerDownId)
   if (object?.objectType !== 'note') return
   board.select(object.id)
   board.editingNoteId = object.id
@@ -630,13 +658,18 @@ onBeforeUnmount(() => {
     @drop="onDrop"
   >
     <div class="absolute left-0 top-0 origin-top-left" :style="worldStyle">
-      <!-- 18-film full-mouth template, layout mode only -->
-      <div v-if="layout" class="pointer-events-none absolute inset-0 z-0">
+      <!-- Whichever templates the layout control is showing, and only while the
+           board can still be laid out: a saved board nobody is editing shows the
+           films alone — empty labelled frames on a read-only record read as
+           films that are missing. -->
+      <div v-if="layout && editable" class="pointer-events-none absolute inset-0 z-0">
+        <!-- Both templates at once are two boards, not one long grid. -->
+        <div v-if="layoutMode === 'both'" class="xray-layout-divider" :style="dividerStyle" />
         <div
-          v-for="slot in FMX_SLOTS"
-          :key="slot.id"
+          v-for="slot in visibleSlots"
+          :key="slot.code"
           class="xray-slot"
-          :class="{ 'is-filled': filledSlots.has(String(slot.id)) }"
+          :class="{ 'is-filled': filledSlots.has(slot.code) }"
           :style="slotStyle(slot)"
         >
           <span>{{ slot.label }}</span>
@@ -710,9 +743,10 @@ onBeforeUnmount(() => {
 
     <!-- Layout mode already shows the slots, so the drop hint is redundant there.
          Hidden after a failed load too: an empty board we could not read must
-         not invite the doctor to fill it in (SRS-193). -->
+         not invite the doctor to fill it in (SRS-193) — and a read-only board
+         cannot take the drop it is inviting. -->
     <div
-      v-if="isEmpty && !layout && !loadFailed"
+      v-if="isEmpty && !layout && !loadFailed && editable"
       class="pointer-events-none absolute inset-0 grid place-items-center text-center"
       :style="{ color: 'var(--xray-empty-text)' }"
     >
@@ -874,6 +908,12 @@ onBeforeUnmount(() => {
   text-align: center;
   padding: 0 10px;
   color: var(--xray-slot-text);
+}
+.xray-layout-divider {
+  position: absolute;
+  height: 0;
+  border-top: calc(2px * var(--inv)) dashed var(--xray-slot-line);
+  opacity: 0.8;
 }
 .xray-slot.is-filled {
   border-style: solid;

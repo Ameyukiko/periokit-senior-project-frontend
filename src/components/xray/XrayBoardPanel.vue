@@ -12,6 +12,7 @@ import XrayZoomBar from './XrayZoomBar.vue'
 import { UPLOAD_ACCEPT_ATTR } from '@/domain/xray/xray.constants'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
+import type { XrayLayoutMode } from '@/domain/xray/xray.types'
 
 const props = defineProps<{
   patientId: string | null
@@ -23,6 +24,7 @@ const notifications = useNotificationStore()
 const {
   objects,
   layout,
+  layoutMode,
   saved,
   savedAt,
   editMode,
@@ -52,10 +54,27 @@ const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 // the visit id is where its films are uploaded to.
 watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
+/** The four templates, in the order the picker offers them. */
+const LAYOUT_OPTIONS = [
+  { value: 'off', label: 'Canvas' },
+  { value: 'fmx', label: 'X-ray' },
+  { value: 'intraoral', label: 'Intraoral' },
+  { value: 'both', label: 'Both' },
+] as const
+
+const LAYOUT_HINTS = {
+  off: 'X-ray Board: Free canvas (no fixed layout)',
+  fmx: 'X-ray Board: Layout mode — 18-film FMX (drag films into slots)',
+  intraoral: 'X-ray Board: Layout mode — 9 intraoral photographs',
+  both: 'X-ray Board: Layout mode — FMX films above, intraoral photographs below',
+} as const
+
+// Layout mode is a way of placing films, so it only describes a board that can
+// still be placed into. A saved board reads as what it holds.
 const hint = computed(() =>
-  layout.value
-    ? 'X-ray Board — layout mode, drag films into the slots'
-    : 'X-ray Board — free canvas, no fixed layout',
+  layout.value && editable.value
+    ? LAYOUT_HINTS[layoutMode.value]
+    : LAYOUT_HINTS.off,
 )
 
 /** Failed, or mid-retry: either way we cannot vouch for what the board holds. */
@@ -130,7 +149,7 @@ const dialogOpen = computed(
 // A greyed-out button with no reason reads as a broken one.
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
-  if (!canUpload.value) return 'Save the visit first — the films go up with it'
+  if (!canUpload.value) return 'Save the visit first to upload films'
   if (isEmpty.value) return 'Add at least one X-ray first'
   return 'Save this board'
 })
@@ -253,16 +272,25 @@ function confirmCancelEdit() {
           <Sun v-else class="h-[15px] w-[15px]" />
         </button>
 
-        <button
-          class="xray-chip"
+        <!-- Gone rather than greyed on a read-only board: the slots it switches
+             on are not drawn there either, so the chip would toggle nothing. -->
+        <label
+          v-if="editable"
+          class="xray-chip xray-layout-picker"
           :class="{ 'is-on': layout }"
-          :disabled="!editable || isSaving"
-          title="Switch free canvas ↔ layout (18-film FMX)"
-          @click="board.toggleLayout()"
         >
-          <LayoutGrid class="h-[15px] w-[15px]" />
-          Layout
-        </button>
+          <LayoutGrid class="h-[15px] w-[15px] shrink-0" />
+          <select
+            :value="layoutMode"
+            :disabled="isSaving"
+            aria-label="Slot template"
+            @change="board.setLayoutMode(($event.target as HTMLSelectElement).value as XrayLayoutMode)"
+          >
+            <option v-for="option in LAYOUT_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
 
         <!-- Locked while a save is in flight, like Save itself: the board is
              being written down, and both of these would change what it holds. -->
@@ -412,6 +440,23 @@ function confirmCancelEdit() {
   font-size: 13px;
   color: #3f4d61;
   white-space: nowrap;
+}
+.xray-layout-picker {
+  gap: 4px;
+  padding: 6px 6px 6px 9px;
+  cursor: pointer;
+}
+.xray-layout-picker select {
+  background: transparent;
+  border: 0;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.xray-layout-picker:has(select:disabled) {
+  opacity: 0.45;
+  cursor: default;
 }
 .xray-chip:hover:not(:disabled) {
   border-color: #c7d3e5;

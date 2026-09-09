@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
+  FMX_SLOTS,
+  INTRAORAL_SLOTS,
   FIT_MAX_SCALE,
   FIT_PADDING,
   HISTORY_MAX,
@@ -33,6 +35,7 @@ import type {
   XrayBoardObjectInput,
   XrayBoardResponse,
   XrayImageObject,
+  XrayLayoutMode,
   XrayNoteObject,
   XrayObject,
   XrayRejectReason,
@@ -200,7 +203,13 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
    */
   const visitId = ref<string | null>(null)
   const objects = ref<XrayObject[]>([])
-  const layout = ref(false)
+  const layoutMode = ref<XrayLayoutMode>('off')
+  /** Kept for everything that only asks whether any template is on screen. */
+  const layout = computed(() => layoutMode.value !== 'off')
+  const visibleSlots = computed(() => [
+    ...(layoutMode.value === 'fmx' || layoutMode.value === 'both' ? FMX_SLOTS : []),
+    ...(layoutMode.value === 'intraoral' || layoutMode.value === 'both' ? INTRAORAL_SLOTS : []),
+  ])
   const selectedId = ref<string | null>(null)
   const editingNoteId = ref<string | null>(null)
 
@@ -504,7 +513,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     }
     pendingFit = false
 
-    const bounds = boardBounds(objects.value, layout.value)
+    const bounds = boardBounds(objects.value, visibleSlots.value)
     if (!bounds) {
       viewport.value = { x: width / 2, y: height / 2, scale: 1 }
       return
@@ -959,10 +968,14 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   /**
    * Not an edit and not undoable: the mode is a way of looking at the board, and
    * the slots a film is mounted in travel in `slot_code` either way.
+   *
+   * Picked from a list rather than cycled: all four modes are named on screen,
+   * so choosing one is one click whichever mode the board is in.
    */
-  function toggleLayout() {
-    layout.value = !layout.value
-    if (layout.value) fit()
+  function setLayoutMode(mode: XrayLayoutMode) {
+    if (mode === layoutMode.value) return
+    layoutMode.value = mode
+    if (mode !== 'off') fit()
   }
 
   /**
@@ -973,7 +986,11 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     const object = objects.value.find(candidate => candidate.id === id)
     if (!object || object.objectType !== 'image') return 'none'
 
-    const slot = findSlotAt(object.posX + object.width / 2, object.posY + object.height / 2)
+    const slot = findSlotAt(
+    object.posX + object.width / 2,
+    object.posY + object.height / 2,
+    visibleSlots.value,
+  )
     if (!slot) {
       object.slotCode = null
       return 'none'
@@ -1090,7 +1107,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
   function clearBoardState() {
     objects.value = []
-    layout.value = false
+    layoutMode.value = 'off'
     selectedId.value = null
     editingNoteId.value = null
     saved.value = false
@@ -1124,11 +1141,17 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
         failedAssets.value.add(object.assetId)
       }
     }
-    // No column says which mode the board was left in, and none is needed: a
-    // board with a film mounted in a slot is a board being laid out.
-    layout.value = objects.value.some(
+    // No column says which mode the board was left in, and none is needed: the
+    // slots the images sit in say it. A board laid out into both templates
+    // comes back showing both.
+    const mounted = objects.value.filter(
       object => object.objectType === 'image' && object.slotCode !== null,
-    )
+    ) as XrayImageObject[]
+    const hasPhoto = mounted.some(object => object.slotCode!.startsWith('io-'))
+    const hasFilm = mounted.some(object => !object.slotCode!.startsWith('io-'))
+    layoutMode.value = hasFilm && hasPhoto
+      ? 'both'
+      : hasPhoto ? 'intraoral' : hasFilm ? 'fmx' : 'off'
     saved.value = board.status === 'saved'
     savedAt.value = board.savedAt ? new Date(board.savedAt) : null
   }
@@ -1432,6 +1455,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     visitId,
     objects,
     layout,
+    layoutMode,
+    visibleSlots,
     selectedId,
     editingNoteId,
     saved,
@@ -1489,7 +1514,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     changeNoteFontSize,
     removeSelected,
     reorder,
-    toggleLayout,
+    setLayoutMode,
     snapToSlot,
     pushHistory,
     undo,
