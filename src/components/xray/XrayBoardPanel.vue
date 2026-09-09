@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { AlertTriangle, LayoutGrid, Loader2, Moon, Pencil, RotateCw, Save, Sun, X } from 'lucide-vue-next'
+import {
+  AlertTriangle, Check, ChevronDown, LayoutGrid, Loader2, Moon, Pencil, RotateCw, Save, Sun, X,
+} from 'lucide-vue-next'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import XrayBoardCanvas from './XrayBoardCanvas.vue'
 import XrayBoardToolbar from './XrayBoardToolbar.vue'
@@ -12,7 +14,6 @@ import XrayZoomBar from './XrayZoomBar.vue'
 import { UPLOAD_ACCEPT_ATTR } from '@/domain/xray/xray.constants'
 import { useNotificationStore } from '@/stores/notification'
 import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
-import type { XrayLayoutMode } from '@/domain/xray/xray.types'
 
 const props = defineProps<{
   patientId: string | null
@@ -54,13 +55,48 @@ const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 // the visit id is where its films are uploaded to.
 watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
-/** The four templates, in the order the picker offers them. */
-const LAYOUT_OPTIONS = [
-  { value: 'off', label: 'Canvas' },
-  { value: 'fmx', label: 'X-ray' },
-  { value: 'intraoral', label: 'Intraoral' },
-  { value: 'both', label: 'Both' },
-] as const
+// The two templates are ticked independently: neither is a free canvas, both is
+// both. The store still keeps one mode, since a board is only ever in one of the
+// four states and everything downstream asks it that way.
+const showFmx = computed(() => layoutMode.value === 'fmx' || layoutMode.value === 'both')
+const showIntraoral = computed(
+  () => layoutMode.value === 'intraoral' || layoutMode.value === 'both',
+)
+
+const setTemplates = (fmx: boolean, intraoral: boolean) =>
+  board.setLayoutMode(
+    fmx && intraoral ? 'both' : fmx ? 'fmx' : intraoral ? 'intraoral' : 'off',
+  )
+
+// The menu stays open while the boxes are ticked — the two are read together,
+// and a menu that closed on the first tick would make ticking the second one a
+// second trip.
+const layoutMenu = ref<HTMLElement | null>(null)
+const layoutMenuOpen = ref(false)
+
+function onClickOutsideLayout(event: MouseEvent) {
+  if (!layoutMenu.value?.contains(event.target as Node)) closeLayoutMenu()
+}
+
+function closeLayoutMenu() {
+  layoutMenuOpen.value = false
+  document.removeEventListener('mousedown', onClickOutsideLayout)
+}
+
+function toggleLayoutMenu() {
+  layoutMenuOpen.value = !layoutMenuOpen.value
+  if (layoutMenuOpen.value) document.addEventListener('mousedown', onClickOutsideLayout)
+  else document.removeEventListener('mousedown', onClickOutsideLayout)
+}
+
+onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutsideLayout))
+
+/** What the chip says it is showing, without opening the menu. */
+const layoutSummary = computed(() =>
+  showFmx.value && showIntraoral.value
+    ? 'Both'
+    : showFmx.value ? 'X-ray' : showIntraoral.value ? 'Intraoral' : 'None',
+)
 
 const LAYOUT_HINTS = {
   off: 'X-ray Board: Free canvas (no fixed layout)',
@@ -274,23 +310,32 @@ function confirmCancelEdit() {
 
         <!-- Gone rather than greyed on a read-only board: the slots it switches
              on are not drawn there either, so the chip would toggle nothing. -->
-        <label
-          v-if="editable"
-          class="xray-chip xray-layout-picker"
-          :class="{ 'is-on': layout }"
-        >
-          <LayoutGrid class="h-[15px] w-[15px] shrink-0" />
-          <select
-            :value="layoutMode"
+        <div v-if="editable" ref="layoutMenu" class="relative">
+          <button
+            class="xray-chip"
+            :class="{ 'is-on': layout }"
             :disabled="isSaving"
-            aria-label="Slot template"
-            @change="board.setLayoutMode(($event.target as HTMLSelectElement).value as XrayLayoutMode)"
+            @click="toggleLayoutMenu()"
           >
-            <option v-for="option in LAYOUT_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
+            <LayoutGrid class="h-[15px] w-[15px]" />
+            {{ layoutSummary }}
+            <ChevronDown class="h-3 w-3 text-slate-400" />
+          </button>
+
+          <div
+            v-if="layoutMenuOpen"
+            class="absolute left-0 top-full z-50 mt-1.5 w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+          >
+            <button class="xray-layout-tick" @click="setTemplates(!showFmx, showIntraoral)">
+              X-ray
+              <Check v-if="showFmx" class="ml-auto h-3.5 w-3.5 text-[#0052ff]" />
+            </button>
+            <button class="xray-layout-tick" @click="setTemplates(showFmx, !showIntraoral)">
+              Intraoral
+              <Check v-if="showIntraoral" class="ml-auto h-3.5 w-3.5 text-[#0052ff]" />
+            </button>
+          </div>
+        </div>
 
         <!-- Locked while a save is in flight, like Save itself: the board is
              being written down, and both of these would change what it holds. -->
@@ -441,22 +486,19 @@ function confirmCancelEdit() {
   color: #3f4d61;
   white-space: nowrap;
 }
-.xray-layout-picker {
-  gap: 4px;
-  padding: 6px 6px 6px 9px;
+.xray-layout-tick {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #3f4d61;
   cursor: pointer;
 }
-.xray-layout-picker select {
-  background: transparent;
-  border: 0;
-  outline: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.xray-layout-picker:has(select:disabled) {
-  opacity: 0.45;
-  cursor: default;
+.xray-layout-tick:hover {
+  background: #f1f5f9;
 }
 .xray-chip:hover:not(:disabled) {
   border-color: #c7d3e5;
