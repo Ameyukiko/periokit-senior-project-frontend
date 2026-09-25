@@ -520,32 +520,7 @@ const chartEditable = computed(
 // Patient-identity fields stay locked on existing visits
 const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
-// Edit / Cancel / Save keep their place beside Diagnosis until the button row
-// scrolls up under the sticky sub-nav (which ends at ~105px), and only then
-// break out and follow the page, so Save is never scrolled away from.
-const buttonRowRef = ref<HTMLElement | null>(null)
-const actionsFloating = ref(false)
-
-const updateActionsFloating = () => {
-  const rect = buttonRowRef.value?.getBoundingClientRect()
-  actionsFloating.value = !!rect && rect.bottom < 110
-}
-
-// The row itself never leaves the flow, so measuring it cannot flip-flop the
-// way measuring the buttons would once they go fixed.
-onMounted(() => {
-  window.addEventListener('scroll', updateActionsFloating, { passive: true })
-  window.addEventListener('resize', updateActionsFloating)
-  updateActionsFloating()
-})
-onUnmounted(() => {
-  window.removeEventListener('scroll', updateActionsFloating)
-  window.removeEventListener('resize', updateActionsFloating)
-})
-
-const actionButtonShape = computed(() =>
-  actionsFloating.value ? 'px-4 py-2.5 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
-)
+const actionButtonShape = 'px-3 py-1.5 rounded-lg shadow-sm'
 
 // Keep the store's read-only guard in sync with the editable state.
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
@@ -694,7 +669,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </section>
 
       <template v-else>
-        <div ref="buttonRowRef" class="flex flex-wrap items-center justify-between gap-4 mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
           <button
             class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
             :class="selectedToothId !== null ? 'xl:ml-18' : 'xl:ml-63'"
@@ -721,10 +696,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- Beside Diagnosis at the top of the page, bottom right once the
-                 row scrolls away. z-40 keeps the floating state under the
-                 virtual numpad (z-200) and the mobile tooth sidebar (z-150). -->
-            <div :class="actionsFloating ? 'fixed bottom-6 right-2 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2'">
+            <div class="flex flex-wrap items-center gap-2">
               <!-- Edit button: existing visit, not yet in edit mode -->
               <button
                 v-if="isExistingVisit && !editMode"
