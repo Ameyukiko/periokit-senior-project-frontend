@@ -221,7 +221,7 @@ const goBack = () => {
           <h2 class="text-sm font-bold text-slate-800 mb-4">Select Visits to Compare</h2>
           <div class="flex flex-col xl:flex-row items-center gap-4 xl:gap-6 justify-between">
             <div class="flex-1 w-full xl:w-auto">
-              <label class="block text-xs font-medium text-slate-500 mb-1">First Visit (Top)</label>
+              <label class="block text-xs font-medium text-slate-500 mb-1">First Visit</label>
               <div class="relative">
                 <select v-model="selectedVisitIdA" class="w-full appearance-none bg-slate-100 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:border-transparent font-medium">
                   <option v-for="v in visits" :key="v.id" :value="v.id">
@@ -239,7 +239,7 @@ const goBack = () => {
             </div>
 
             <div class="flex-1 w-full xl:w-auto">
-              <label class="block text-xs font-medium text-slate-500 mb-1">Second Visit (Bottom)</label>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Second Visit</label>
               <div class="relative">
                 <select v-model="selectedVisitIdB" class="w-full appearance-none bg-slate-100 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:border-transparent font-medium">
                   <option v-for="v in visits" :key="v.id" :value="v.id">
