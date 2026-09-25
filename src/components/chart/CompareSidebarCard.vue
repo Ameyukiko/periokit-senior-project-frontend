@@ -19,6 +19,8 @@ const props = defineProps<{
   toothDataB: ToothData | null
   visitLabelA: string
   visitLabelB: string
+  visitDateA: string
+  visitDateB: string
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -113,13 +115,13 @@ const getPrognosisColorKC = (val?: string) => {
         <!-- Visit label headers -->
         <div class="grid grid-cols-2 divide-x divide-slate-100 bg-slate-50 border-b border-slate-100 shrink-0">
           <div class="px-4 py-3 text-center">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visit A</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ visitDateA }}</p>
             <p class="text-sm font-bold text-[#0052ff] truncate mt-0.5">{{ visitLabelA }}</p>
             <div v-if="toothDataA?.extracted" class="mt-1.5 inline-flex px-2 py-0.5 bg-red-50 text-red-500 border border-red-100 rounded text-[9px] font-black uppercase tracking-wider">Extracted</div>
             <div v-else-if="toothDataA?.implant" class="mt-1.5 inline-flex px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-black uppercase tracking-wider">Implant</div>
           </div>
           <div class="px-4 py-3 text-center">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visit B</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ visitDateB }}</p>
             <p class="text-sm font-bold text-[#0052ff] truncate mt-0.5">{{ visitLabelB }}</p>
             <div v-if="toothDataB?.extracted" class="mt-1.5 inline-flex px-2 py-0.5 bg-red-50 text-red-500 border border-red-100 rounded text-[9px] font-black uppercase tracking-wider">Extracted</div>
             <div v-else-if="toothDataB?.implant" class="mt-1.5 inline-flex px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-black uppercase tracking-wider">Implant</div>

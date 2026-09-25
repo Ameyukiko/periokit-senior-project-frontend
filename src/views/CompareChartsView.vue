@@ -46,12 +46,19 @@ const chartContentRefA = ref<HTMLElement | null>(null)
 const chartScale = ref(1)
 const scaledChartHeight = ref(0)
 
-const getChartNaturalWidth = () => {
-  const groups = (!fullChartMode.value && archFilter.value === 'lower') ? LOWER_ARCH : UPPER_ARCH
+const getArchNaturalWidth = (groups: number[][]) => {
   const teethWidth = groups.reduce((total, group) => {
     return total + group.reduce((s, id) => s + getToothColumnWidth(id), 0) + 4 // +4 for group borders
   }, 0)
   return 80 + teethWidth + (groups.length - 1) * 16 + 24 // label + gaps + padding
+}
+
+const getChartNaturalWidth = () => {
+  // Full chart renders both arches, so the wider one drives the scale.
+  if (fullChartMode.value) {
+    return Math.max(getArchNaturalWidth(UPPER_ARCH), getArchNaturalWidth(LOWER_ARCH))
+  }
+  return getArchNaturalWidth(archFilter.value === 'lower' ? LOWER_ARCH : UPPER_ARCH)
 }
 
 const updateScaleAndHeight = async () => {
@@ -208,7 +215,7 @@ const goBack = () => {
 
       <div class="flex flex-col xl:flex-row gap-6 max-w-[1600px] mx-auto items-start justify-center transition-all duration-500">
         <!-- Main container -->
-        <div class="flex-1 max-w-7xl w-full space-y-6 transition-all duration-500 min-w-0">
+        <div :class="['flex-1 w-full space-y-6 transition-all duration-500 min-w-0', fullChartMode ? 'max-w-[1600px]' : 'max-w-7xl']">
         <!-- Select Visits to Compare -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
           <h2 class="text-sm font-bold text-slate-800 mb-4">Select Visits to Compare</h2>
@@ -270,9 +277,9 @@ const goBack = () => {
           <div v-else-if="chartDataA && chartDataB" class="flex gap-6 items-start">
 
             <!-- Charts column -->
-            <div class="flex-1 min-w-0 space-y-6 transition-all duration-300">
+            <div class="flex-1 min-w-0 transition-all duration-300">
 
-              <!-- Header Row 1 -->
+              <!-- Toolbar -->
               <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
                 <!-- Arch Toggle -->
                 <div :class="['flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center shrink-0 transition-opacity', fullChartMode ? 'opacity-30 pointer-events-none' : '']">
@@ -289,248 +296,256 @@ const goBack = () => {
                     Lower
                   </button>
                 </div>
-                
-                <!-- Mini Summary Bar -->
-                <div
-                  v-if="summaryA"
-                  @click="showSummaryA = true"
-                  class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
-                >
-                  <!-- Scrollable Badges -->
-                  <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
-                    <!-- Full-mouth Summary Label -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
-                      <Activity class="w-3.5 h-3.5 text-blue-500" />
-                      <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
-                    </div>
 
-                    <!-- Teeth Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
-                      <span class="text-[11px] font-black text-slate-600">
-                        {{ summaryA.totalTeeth - summaryA.missingTeeth }}/{{ summaryA.totalTeeth }}
-                      </span>
-                    </div>
+                <div class="hidden xl:block flex-1"></div>
 
-                    <!-- Implants Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
-                      <span class="text-[11px] font-black text-violet-600">
-                        {{ summaryA.implantTeeth }}
-                      </span>
-                    </div>
+                <button @click="fullChartMode = !fullChartMode" :class="['w-full xl:w-auto flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors', fullChartMode ? 'border border-teal-500 text-teal-700 bg-teal-100 hover:bg-teal-200' : 'border border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-400']">
+                  <Minimize2 v-if="fullChartMode" class="w-3.5 h-3.5" />
+                  <Maximize2 v-else class="w-3.5 h-3.5" />
+                  {{ fullChartMode ? 'Compact' : 'Full Chart' }}
+                </button>
+              </div>
 
-                    <!-- BoP Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
-                      <span class="text-[11px] font-black text-rose-600">
-                        {{ summaryA.bopPercentage }}%
-                      </span>
-                    </div>
+              <!-- Visit panels: stacked in compact mode, side by side in full chart mode -->
+              <div :class="fullChartMode ? 'flex flex-col xl:flex-row items-start gap-6' : 'space-y-6'">
 
-                    <!-- PI Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
-                      <span class="text-[11px] font-black text-blue-600">
-                        {{ summaryA.piPercentage }}%
-                      </span>
-                    </div>
+                <!-- Visit 1 panel -->
+                <div class="flex-1 min-w-0 w-full">
+                  <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
+                    <!-- Mini Summary Bar -->
+                    <div
+                      v-if="summaryA"
+                      @click="showSummaryA = true"
+                      class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
+                    >
+                      <!-- Scrollable Badges -->
+                      <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
+                        <!-- Full-mouth Summary Label -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
+                          <Activity class="w-3.5 h-3.5 text-blue-500" />
+                          <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
+                        </div>
 
-                    <!-- Mobility Badge -->
-                    <div v-if="summaryA.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
-                      <span class="text-[11px] font-black text-amber-600">
-                        {{ summaryA.mobilityCount }}
-                      </span>
-                    </div>
+                        <!-- Teeth Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
+                          <span class="text-[11px] font-black text-slate-600">
+                            {{ summaryA.totalTeeth - summaryA.missingTeeth }}/{{ summaryA.totalTeeth }}
+                          </span>
+                        </div>
 
-                    <!-- Furcation Badge -->
-                    <div v-if="summaryA.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
-                      <span class="text-[11px] font-black text-purple-600">
-                        {{ summaryA.furcationCount }}
-                      </span>
-                    </div>
+                        <!-- Implants Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
+                          <span class="text-[11px] font-black text-violet-600">
+                            {{ summaryA.implantTeeth }}
+                          </span>
+                        </div>
 
-                    <!-- Keratinized Badge -->
-                    <div v-if="summaryA.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
-                      <span class="text-[11px] font-black text-teal-600">
-                        {{ summaryA.keratinizedLowCount }}
-                      </span>
-                    </div>
+                        <!-- BoP Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
+                          <span class="text-[11px] font-black text-rose-600">
+                            {{ summaryA.bopPercentage }}%
+                          </span>
+                        </div>
 
-                    <!-- PD Breakdown -->
-                    <template v-for="item in sortedPdBreakdownA" :key="item.depth">
-                      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
-                        <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
-                        <span class="text-[11px] font-black text-rose-600">
-                          {{ item.count }}
-                        </span>
+                        <!-- PI Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
+                          <span class="text-[11px] font-black text-blue-600">
+                            {{ summaryA.piPercentage }}%
+                          </span>
+                        </div>
+
+                        <!-- Mobility Badge -->
+                        <div v-if="summaryA.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
+                          <span class="text-[11px] font-black text-amber-600">
+                            {{ summaryA.mobilityCount }}
+                          </span>
+                        </div>
+
+                        <!-- Furcation Badge -->
+                        <div v-if="summaryA.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
+                          <span class="text-[11px] font-black text-purple-600">
+                            {{ summaryA.furcationCount }}
+                          </span>
+                        </div>
+
+                        <!-- Keratinized Badge -->
+                        <div v-if="summaryA.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
+                          <span class="text-[11px] font-black text-teal-600">
+                            {{ summaryA.keratinizedLowCount }}
+                          </span>
+                        </div>
+
+                        <!-- PD Breakdown -->
+                        <template v-for="item in sortedPdBreakdownA" :key="item.depth">
+                          <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                            <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
+                            <span class="text-[11px] font-black text-rose-600">
+                              {{ item.count }}
+                            </span>
+                          </div>
+                        </template>
                       </div>
-                    </template>
-                  </div>
 
-                  <!-- Sticky "More" Indicator -->
-                  <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
-                    <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
-                  </div>
-                </div>
-
-                <!-- Action buttons -->
-                <div class="flex items-center gap-2 shrink-0 w-full xl:w-auto">
-                  <button @click="fullChartMode = !fullChartMode" :class="['flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors', fullChartMode ? 'border border-teal-500 text-teal-700 bg-teal-100 hover:bg-teal-200' : 'border border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-400']">
-                    <Minimize2 v-if="fullChartMode" class="w-3.5 h-3.5" />
-                    <Maximize2 v-else class="w-3.5 h-3.5" />
-                    {{ fullChartMode ? 'Compact' : 'Full Chart' }}
-                  </button>
-                  <button @click="showOverviewA = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Overview
-                  </button>
-                </div>
-              </div>
-
-              <!-- Visit 1 -->
-              <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
-                <div class="flex justify-center mb-6">
-                  <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
-                </div>
-                <div ref="chartWrapperRef" class="w-full overflow-hidden" :style="!fullChartMode && scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
-                  <div ref="chartContentRefA" :style="chartScaleStyle">
-                    <PeriodontalChartGrid
-                      :key="`${selectedVisitIdA}-${fullChartMode}`"
-                      :chart-data="chartDataA"
-                      :selected-tooth-id="selectedToothId"
-                      :readonly="true"
-                      :arch-filter="fullChartMode ? 'both' : archFilter"
-                      :summary-mode="fullChartMode ? false : summaryMode"
-                      :fit-width="true"
-                      :get-field-validation="() => 'none'"
-                      @tooth-click="handleToothClick"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Header Row 2 -->
-              <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 pt-2 mb-4">
-                <div class="w-full xl:w-[140px] hidden xl:block shrink-0"></div>
-                <!-- Mini Summary Bar -->
-                <div
-                  v-if="summaryB"
-                  @click="showSummaryB = true"
-                  class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
-                >
-                  <!-- Scrollable Badges -->
-                  <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
-                    <!-- Full-mouth Summary Label -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
-                      <Activity class="w-3.5 h-3.5 text-blue-500" />
-                      <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
-                    </div>
-
-                    <!-- Teeth Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
-                      <span class="text-[11px] font-black text-slate-600">
-                        {{ summaryB.totalTeeth - summaryB.missingTeeth }}/{{ summaryB.totalTeeth }}
-                      </span>
-                    </div>
-
-                    <!-- Implants Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
-                      <span class="text-[11px] font-black text-violet-600">
-                        {{ summaryB.implantTeeth }}
-                      </span>
-                    </div>
-
-                    <!-- BoP Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
-                      <span class="text-[11px] font-black text-rose-600">
-                        {{ summaryB.bopPercentage }}%
-                      </span>
-                    </div>
-
-                    <!-- PI Badge -->
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
-                      <span class="text-[11px] font-black text-blue-600">
-                        {{ summaryB.piPercentage }}%
-                      </span>
-                    </div>
-
-                    <!-- Mobility Badge -->
-                    <div v-if="summaryB.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
-                      <span class="text-[11px] font-black text-amber-600">
-                        {{ summaryB.mobilityCount }}
-                      </span>
-                    </div>
-
-                    <!-- Furcation Badge -->
-                    <div v-if="summaryB.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
-                      <span class="text-[11px] font-black text-purple-600">
-                        {{ summaryB.furcationCount }}
-                      </span>
-                    </div>
-
-                    <!-- Keratinized Badge -->
-                    <div v-if="summaryB.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
-                      <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
-                      <span class="text-[11px] font-black text-teal-600">
-                        {{ summaryB.keratinizedLowCount }}
-                      </span>
-                    </div>
-
-                    <!-- PD Breakdown -->
-                    <template v-for="item in sortedPdBreakdownB" :key="item.depth">
-                      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
-                        <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
-                        <span class="text-[11px] font-black text-rose-600">
-                          {{ item.count }}
-                        </span>
+                      <!-- Sticky "More" Indicator -->
+                      <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
+                        <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
                       </div>
-                    </template>
+                    </div>
+
+                    <button @click="showOverviewA = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                      Overview
+                    </button>
                   </div>
 
-                  <!-- Sticky "More" Indicator -->
-                  <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
-                    <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
+                  <!-- Visit 1 -->
+                  <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
+                    <div class="flex justify-center mb-6">
+                      <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
+                    </div>
+                    <div ref="chartWrapperRef" class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                      <div ref="chartContentRefA" :style="chartScaleStyle">
+                        <PeriodontalChartGrid
+                          :key="`${selectedVisitIdA}-${fullChartMode}`"
+                          :chart-data="chartDataA"
+                          :selected-tooth-id="selectedToothId"
+                          :readonly="true"
+                          :arch-filter="fullChartMode ? 'both' : archFilter"
+                          :summary-mode="fullChartMode ? false : summaryMode"
+                          :fit-width="true"
+                          :get-field-validation="() => 'none'"
+                          @tooth-click="handleToothClick"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0 w-full xl:w-auto">
-                  <button @click="showOverviewB = true" class="flex-1 xl:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Overview
-                  </button>
-                </div>
-              </div>
+                <!-- Visit 2 panel -->
+                <div class="flex-1 min-w-0 w-full">
+                  <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
+                    <!-- Mini Summary Bar -->
+                    <div
+                      v-if="summaryB"
+                      @click="showSummaryB = true"
+                      class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
+                    >
+                      <!-- Scrollable Badges -->
+                      <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
+                        <!-- Full-mouth Summary Label -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
+                          <Activity class="w-3.5 h-3.5 text-blue-500" />
+                          <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
+                        </div>
 
-              <!-- Visit 2 -->
-              <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
-                <div class="flex justify-center mb-6">
-                  <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
-                </div>
-                <div class="w-full overflow-hidden" :style="!fullChartMode && scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
-                  <div :style="chartScaleStyle">
-                    <PeriodontalChartGrid
-                      :key="`${selectedVisitIdB}-${fullChartMode}`"
-                      :chart-data="chartDataB"
-                      :selected-tooth-id="selectedToothId"
-                      :readonly="true"
-                      :arch-filter="fullChartMode ? 'both' : archFilter"
-                      :summary-mode="fullChartMode ? false : summaryMode"
-                      :fit-width="true"
-                      :get-field-validation="() => 'none'"
-                      @tooth-click="handleToothClick"
-                    />
+                        <!-- Teeth Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
+                          <span class="text-[11px] font-black text-slate-600">
+                            {{ summaryB.totalTeeth - summaryB.missingTeeth }}/{{ summaryB.totalTeeth }}
+                          </span>
+                        </div>
+
+                        <!-- Implants Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
+                          <span class="text-[11px] font-black text-violet-600">
+                            {{ summaryB.implantTeeth }}
+                          </span>
+                        </div>
+
+                        <!-- BoP Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
+                          <span class="text-[11px] font-black text-rose-600">
+                            {{ summaryB.bopPercentage }}%
+                          </span>
+                        </div>
+
+                        <!-- PI Badge -->
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
+                          <span class="text-[11px] font-black text-blue-600">
+                            {{ summaryB.piPercentage }}%
+                          </span>
+                        </div>
+
+                        <!-- Mobility Badge -->
+                        <div v-if="summaryB.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
+                          <span class="text-[11px] font-black text-amber-600">
+                            {{ summaryB.mobilityCount }}
+                          </span>
+                        </div>
+
+                        <!-- Furcation Badge -->
+                        <div v-if="summaryB.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
+                          <span class="text-[11px] font-black text-purple-600">
+                            {{ summaryB.furcationCount }}
+                          </span>
+                        </div>
+
+                        <!-- Keratinized Badge -->
+                        <div v-if="summaryB.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
+                          <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
+                          <span class="text-[11px] font-black text-teal-600">
+                            {{ summaryB.keratinizedLowCount }}
+                          </span>
+                        </div>
+
+                        <!-- PD Breakdown -->
+                        <template v-for="item in sortedPdBreakdownB" :key="item.depth">
+                          <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
+                            <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
+                            <span class="text-[11px] font-black text-rose-600">
+                              {{ item.count }}
+                            </span>
+                          </div>
+                        </template>
+                      </div>
+
+                      <!-- Sticky "More" Indicator -->
+                      <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
+                        <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </div>
+
+                    <button @click="showOverviewB = true" class="w-full xl:w-auto shrink-0 flex justify-center items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                      Overview
+                    </button>
+                  </div>
+
+                  <!-- Visit 2 -->
+                  <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
+                    <div class="flex justify-center mb-6">
+                      <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
+                    </div>
+                    <div class="w-full overflow-hidden" :style="scaledChartHeight ? { height: `${scaledChartHeight}px` } : {}">
+                      <div :style="chartScaleStyle">
+                        <PeriodontalChartGrid
+                          :key="`${selectedVisitIdB}-${fullChartMode}`"
+                          :chart-data="chartDataB"
+                          :selected-tooth-id="selectedToothId"
+                          :readonly="true"
+                          :arch-filter="fullChartMode ? 'both' : archFilter"
+                          :summary-mode="fullChartMode ? false : summaryMode"
+                          :fit-width="true"
+                          :get-field-validation="() => 'none'"
+                          @tooth-click="handleToothClick"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -550,6 +565,8 @@ const goBack = () => {
           :tooth-data-b="selectedToothId ? (chartDataB?.[selectedToothId] ?? null) : null"
           :visit-label-a="`Visit ${visitA?.visitNumber}`"
           :visit-label-b="`Visit ${visitB?.visitNumber}`"
+          :visit-date-a="formatDate(visitA?.visitDate)"
+          :visit-date-b="formatDate(visitB?.visitDate)"
           @close="selectedToothId = null"
         />
       </div>
