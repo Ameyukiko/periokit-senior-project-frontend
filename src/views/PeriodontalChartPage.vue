@@ -520,6 +520,33 @@ const chartEditable = computed(
 // Patient-identity fields stay locked on existing visits
 const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
+// Edit / Cancel / Save keep their place beside Diagnosis until the button row
+// scrolls up under the sticky sub-nav (which ends at ~105px), and only then
+// break out and follow the page, so Save is never scrolled away from.
+const buttonRowRef = ref<HTMLElement | null>(null)
+const actionsFloating = ref(false)
+
+const updateActionsFloating = () => {
+  const rect = buttonRowRef.value?.getBoundingClientRect()
+  actionsFloating.value = !!rect && rect.bottom < 110
+}
+
+// The row itself never leaves the flow, so measuring it cannot flip-flop the
+// way measuring the buttons would once they go fixed.
+onMounted(() => {
+  window.addEventListener('scroll', updateActionsFloating, { passive: true })
+  window.addEventListener('resize', updateActionsFloating)
+  updateActionsFloating()
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateActionsFloating)
+  window.removeEventListener('resize', updateActionsFloating)
+})
+
+const actionButtonShape = computed(() =>
+  actionsFloating.value ? 'px-4 py-2.5 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
+)
+
 // Keep the store's read-only guard in sync with the editable state.
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
 // The diagnosis worksheet follows whichever visit is on screen.
@@ -667,7 +694,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </section>
 
       <template v-else>
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+        <div ref="buttonRowRef" class="flex flex-wrap items-center justify-between gap-4 mb-3">
           <button
             class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
             :class="selectedToothId !== null ? 'xl:ml-18' : 'xl:ml-63'"
@@ -694,36 +721,43 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- Edit button: existing visit, not yet in edit mode -->
-            <button
-              v-if="isExistingVisit && !editMode"
-              @click="handleEditVisit"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
-            >
-              <Pencil class="w-3.5 h-3.5" /> Edit
-            </button>
+            <!-- Beside Diagnosis at the top of the page, bottom right once the
+                 row scrolls away. z-40 keeps the floating state under the
+                 virtual numpad (z-200) and the mobile tooth sidebar (z-150). -->
+            <div :class="actionsFloating ? 'fixed bottom-6 right-2 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2'">
+              <!-- Edit button: existing visit, not yet in edit mode -->
+              <button
+                v-if="isExistingVisit && !editMode"
+                @click="handleEditVisit"
+                class="flex items-center gap-1.5 bg-white border border-amber-400 text-amber-600 font-bold text-[11px] hover:bg-amber-50 transition-colors"
+                :class="actionButtonShape"
+              >
+                <Pencil class="w-3.5 h-3.5" /> Edit
+              </button>
 
-            <!-- Cancel edit: discard unsaved edits -->
-            <button
-              v-if="isExistingVisit && editMode"
-              @click="handleCancelEditClick"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
-            >
-              <X class="w-3.5 h-3.5" /> Cancel
-            </button>
+              <!-- Cancel edit: discard unsaved edits -->
+              <button
+                v-if="isExistingVisit && editMode"
+                @click="handleCancelEditClick"
+                class="flex items-center gap-1.5 bg-white border border-red-300 text-red-600 font-bold text-[11px] hover:bg-red-50 transition-colors"
+                :class="actionButtonShape"
+              >
+                <X class="w-3.5 h-3.5" /> Cancel
+              </button>
 
-            <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
-            <button
-              v-if="chartEditable"
-              @click="handleSaveClick"
-              :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="(isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700'"
-            >
-              <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
-              <Save v-else class="w-3.5 h-3.5" />
-              {{ isSaving ? 'Saving...' : 'Save Chart' }}
-            </button>
+              <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
+              <button
+                v-if="chartEditable"
+                @click="handleSaveClick"
+                :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)"
+                class="flex items-center gap-1.5 font-bold text-[11px] transition-colors"
+                :class="[actionButtonShape, (isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700']"
+              >
+                <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
+                <Save v-else class="w-3.5 h-3.5" />
+                {{ isSaving ? 'Saving...' : 'Save Chart' }}
+              </button>
+            </div>
           </div>
         </div>
 
