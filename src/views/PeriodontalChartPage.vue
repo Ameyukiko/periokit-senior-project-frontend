@@ -546,7 +546,7 @@ onUnmounted(() => {
 })
 
 const actionButtonShape = computed(() =>
-  actionsFloating.value ? 'px-4 py-2.5 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
+  actionsFloating.value ? 'p-3 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
 )
 
 // Keep the store's read-only guard in sync with the editable state.
@@ -726,15 +726,17 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- Beside Diagnosis at the top of the page, bottom right once the
                  row scrolls away. z-40 keeps the floating state under the
                  virtual numpad (z-200) and the mobile tooth sidebar (z-150). -->
-            <div :class="actionsFloating ? 'fixed bottom-6 right-2 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2'">
+            <div :class="actionsFloating ? 'fixed bottom-8 right-8 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2'">
               <!-- Edit button: existing visit, not yet in edit mode -->
               <button
                 v-if="isExistingVisit && !editMode"
                 @click="handleEditVisit"
                 class="flex items-center gap-1.5 bg-white border border-amber-400 text-amber-600 font-bold text-[11px] hover:bg-amber-50 transition-colors"
                 :class="actionButtonShape"
+                aria-label="Edit"
+                title="Edit"
               >
-                <Pencil class="w-3.5 h-3.5" /> Edit
+                <Pencil class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Edit</span>
               </button>
 
               <!-- Cancel edit: discard unsaved edits -->
@@ -743,21 +745,25 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 @click="handleCancelEditClick"
                 class="flex items-center gap-1.5 bg-white border border-red-300 text-red-600 font-bold text-[11px] hover:bg-red-50 transition-colors"
                 :class="actionButtonShape"
+                aria-label="Cancel"
+                title="Cancel"
               >
-                <X class="w-3.5 h-3.5" /> Cancel
+                <X class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Cancel</span>
               </button>
 
               <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
               <button
                 v-if="chartEditable"
                 @click="handleSaveClick"
+                aria-label="Save Chart"
+                title="Save Chart"
                 :disabled="isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)"
                 class="flex items-center gap-1.5 font-bold text-[11px] transition-colors"
                 :class="[actionButtonShape, (isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700']"
               >
                 <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
                 <Save v-else class="w-3.5 h-3.5" />
-                {{ isSaving ? 'Saving...' : 'Save Chart' }}
+                <span v-if="!actionsFloating">{{ isSaving ? 'Saving...' : 'Save Chart' }}</span>
               </button>
             </div>
           </div>

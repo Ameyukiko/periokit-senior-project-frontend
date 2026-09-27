@@ -421,12 +421,12 @@ onUnmounted(() => {
 })
 
 const actionButtonShape = computed(() =>
-  actionsFloating.value ? 'px-4 py-2.5 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
+  actionsFloating.value ? 'p-3 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
 )
 // Discard runs a size above the rest: it is the one button in the stack that
 // throws work away, so it should not be the easiest one to miss.
 const discardButtonShape = computed(() =>
-  actionsFloating.value ? 'px-5 py-3 rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
+  actionsFloating.value ? 'p-3.5 rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
 )
 // Floating, the buttons sit at the bottom of the page, so their tooltips have
 // to open upwards or they would be drawn off screen.
@@ -497,7 +497,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           v-if="hasChart && !isLoading && !loadFailed"
           :class="
             actionsFloating
-              ? 'fixed bottom-6 right-2 z-40 flex flex-col items-end gap-2'
+              ? 'fixed bottom-8 right-8 z-40 flex flex-col items-end gap-2'
               : 'flex flex-wrap items-center justify-end gap-2'
           "
         >
@@ -514,7 +514,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               @click="confirmationDialog = 'discard'"
             >
               <RotateCcw class="w-4 h-4 text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
-              <span>Discard</span>
+              <span v-if="!actionsFloating">Discard</span>
             </button>
           </Transition>
 
@@ -523,9 +523,10 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               type="button"
               class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] hover:bg-slate-50 transition-colors"
               :class="actionButtonShape"
+              aria-label="Edit"
               @click="handleEdit"
             >
-              <Pencil class="w-3.5 h-3.5" /> Edit
+              <Pencil class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Edit</span>
             </button>
             <span
               class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
@@ -542,9 +543,11 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
             type="button"
             class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 font-bold text-[11px] hover:bg-slate-50 transition-colors"
             :class="actionButtonShape"
+            aria-label="Cancel"
+            title="Cancel"
             @click="handleCancelEditClick"
           >
-            <X class="w-3.5 h-3.5" /> Cancel
+            <X class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Cancel</span>
           </button>
 
           <span v-if="editable" class="relative group inline-flex">
@@ -558,11 +561,12 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
                   : 'bg-blue-600 text-white hover:bg-blue-700',
               ]"
+              aria-label="Save Chart"
               @click="handleSaveClick"
             >
               <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
               <Save v-else class="w-3.5 h-3.5" />
-              {{ isSaving ? 'Saving...' : 'Save Chart' }}
+              <span v-if="!actionsFloating">{{ isSaving ? 'Saving...' : 'Save Chart' }}</span>
             </button>
             <span
               class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
