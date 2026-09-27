@@ -301,6 +301,21 @@ export const getKtwWarningStyle = (id: ToothId, _surface: Surface): KtwWarningPo
   return KTW_WARNING_BASE_POSITIONS[isUpperTooth(id) ? 'upper' : 'lower']
 }
 
+// Mobility grade sits on the crown: bottom of upper teeth, top of lower teeth
+const MOBILITY_MARKER_POSITIONS: Record<'upper' | 'lower', KtwWarningPosition> = {
+  upper: { top: '85%', left: '50%' },
+  lower: { top: '15%', left: '50%' }
+}
+
+export const getMobilityMarkerStyle = (id: ToothId): KtwWarningPosition => {
+  return MOBILITY_MARKER_POSITIONS[isUpperTooth(id) ? 'upper' : 'lower']
+}
+
+export const getMobilityGrade = (tooth: ToothData): number => {
+  if (tooth.extracted || tooth.implant) return 0
+  return parseInt(tooth.mo, 10) || 0
+}
+
 // Check if KTW warning should be displayed (KTW < 2mm and has a value)
 // Uses parseFloat to support decimal values like 1.5, 1.9
 export const shouldShowKtwWarning = (ktwValue: string): boolean => {
