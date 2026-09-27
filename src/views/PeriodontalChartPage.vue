@@ -528,7 +528,9 @@ const actionsFloating = ref(false)
 
 const updateActionsFloating = () => {
   const rect = buttonRowRef.value?.getBoundingClientRect()
-  actionsFloating.value = !!rect && rect.bottom < 110
+  // Phones and tablets keep the buttons in the row; only desktop floats them
+  const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
+  actionsFloating.value = desktop && !!rect && rect.bottom < 110
 }
 
 // The row itself never leaves the flow, so measuring it cannot flip-flop the
