@@ -546,8 +546,9 @@ onUnmounted(() => {
 })
 
 const actionButtonShape = computed(() =>
-  actionsFloating.value ? 'p-3 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
+  actionsFloating.value ? 'p-4 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm'
 )
+const actionIconSize = computed(() => (actionsFloating.value ? 'w-5 h-5' : 'w-3.5 h-3.5'))
 
 // Keep the store's read-only guard in sync with the editable state.
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
@@ -736,7 +737,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 aria-label="Edit"
                 title="Edit"
               >
-                <Pencil class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Edit</span>
+                <Pencil :class="actionIconSize" /><span v-if="!actionsFloating">Edit</span>
               </button>
 
               <!-- Cancel edit: discard unsaved edits -->
@@ -748,7 +749,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 aria-label="Cancel"
                 title="Cancel"
               >
-                <X class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Cancel</span>
+                <X :class="actionIconSize" /><span v-if="!actionsFloating">Cancel</span>
               </button>
 
               <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
@@ -761,8 +762,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 class="flex items-center gap-1.5 font-bold text-[11px] transition-colors"
                 :class="[actionButtonShape, (isSaving || (isExistingVisit && editMode && !chartStore.isDirty && !diagnosisStore.isDirty)) ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-700']"
               >
-                <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
-                <Save v-else class="w-3.5 h-3.5" />
+                <Loader2 v-if="isSaving" class="animate-spin" :class="actionIconSize" />
+                <Save v-else :class="actionIconSize" />
                 <span v-if="!actionsFloating">{{ isSaving ? 'Saving...' : 'Save Chart' }}</span>
               </button>
             </div>

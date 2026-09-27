@@ -393,12 +393,13 @@ onUnmounted(() => {
 })
 
 const actionButtonShape = computed(() =>
-  actionsFloating.value ? 'p-3 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
+  actionsFloating.value ? 'p-4 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
 )
+const actionIconSize = computed(() => (actionsFloating.value ? 'w-5 h-5' : 'w-3.5 h-3.5'))
 // Discard runs a size above the rest: it is the one button in the stack that
 // throws work away, so it should not be the easiest one to miss.
 const discardButtonShape = computed(() =>
-  actionsFloating.value ? 'p-3.5 rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
+  actionsFloating.value ? 'p-[18px] rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
 )
 // Floating, the buttons sit at the bottom of the page, so their tooltips have
 // to open upwards or they would be drawn off screen.
@@ -477,28 +478,37 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                used to be a fixed button of its own, which landed on top of this
                group once the group started floating too. -->
           <Transition name="fade">
-            <button
-              v-if="editable && diagnosisStore.hasChanges"
-              type="button"
-              class="flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-sm border border-slate-200/90 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50/80 font-semibold text-xs hover:shadow-md transition-all duration-150 cursor-pointer opacity-85 hover:opacity-100 group"
-              :class="discardButtonShape"
-              title="Discard changes and restore chart defaults"
-              @click="confirmationDialog = 'discard'"
-            >
-              <RotateCcw class="w-4 h-4 text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
-              <span v-if="!actionsFloating">Discard</span>
-            </button>
+            <span v-if="editable && diagnosisStore.hasChanges" class="relative group inline-flex">
+              <button
+                type="button"
+                class="flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-sm border border-slate-200/90 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50/80 font-semibold text-xs hover:shadow-md transition-all duration-150 cursor-pointer opacity-85 hover:opacity-100"
+                :class="discardButtonShape"
+                aria-label="Discard"
+                @click="confirmationDialog = 'discard'"
+              >
+                <RotateCcw :class="actionsFloating ? 'w-5 h-5' : 'w-4 h-4'" class="text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
+                <span v-if="!actionsFloating">Discard</span>
+              </button>
+              <span
+                class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+                :class="actionTooltipPlacement"
+              >
+                <span class="absolute right-4 w-2 h-2 bg-slate-800 rotate-45" :class="actionTooltipArrow"></span>
+                <span class="block font-bold text-white mb-1">Discard changes</span>
+                Throws away unsaved edits and restores the chart defaults.
+              </span>
+            </span>
           </Transition>
 
           <span v-if="isExistingVisit && !editable" class="relative group inline-flex">
             <button
               type="button"
-              class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] hover:bg-slate-50 transition-colors"
+              class="flex items-center gap-1.5 bg-white border border-amber-400 text-amber-600 font-bold text-[11px] hover:bg-amber-50 transition-colors"
               :class="actionButtonShape"
               aria-label="Edit"
               @click="handleEdit"
             >
-              <Pencil class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Edit</span>
+              <Pencil :class="actionIconSize" /><span v-if="!actionsFloating">Edit</span>
             </button>
             <span
               class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
@@ -513,13 +523,13 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           <button
             v-if="isExistingVisit && editable"
             type="button"
-            class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 font-bold text-[11px] hover:bg-slate-50 transition-colors"
+            class="flex items-center gap-1.5 bg-white border border-red-300 text-red-600 font-bold text-[11px] hover:bg-red-50 transition-colors"
             :class="actionButtonShape"
             aria-label="Cancel"
             title="Cancel"
             @click="handleCancelEditClick"
           >
-            <X class="w-3.5 h-3.5" /><span v-if="!actionsFloating">Cancel</span>
+            <X :class="actionIconSize" /><span v-if="!actionsFloating">Cancel</span>
           </button>
 
           <span v-if="editable" class="relative group inline-flex">
@@ -536,8 +546,8 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               aria-label="Save Chart"
               @click="handleSaveClick"
             >
-              <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
-              <Save v-else class="w-3.5 h-3.5" />
+              <Loader2 v-if="isSaving" class="animate-spin" :class="actionIconSize" />
+              <Save v-else :class="actionIconSize" />
               <span v-if="!actionsFloating">{{ isSaving ? 'Saving...' : 'Save Chart' }}</span>
             </button>
             <span
