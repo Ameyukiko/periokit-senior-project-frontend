@@ -1,119 +1,114 @@
 <script setup lang="ts">
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/vue'
 import { Check } from 'lucide-vue-next'
-import { computed, nextTick, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { COUNTRY_NAMES } from '@/domain/chart/chart.constants'
 
-const props = defineProps<{
+defineProps<{
   disabled?: boolean
 }>()
 
-// Free text stays allowed: older visits hold values like "Thai" that are not
-// country names, and they must still read back unchanged.
 const model = defineModel<string>({ default: '' })
 
-const open = ref(false)
-const highlighted = ref(0)
-const listRef = ref<HTMLElement | null>(null)
+// What is typed is kept apart from the chosen value, as Headless UI expects;
+// the model only changes when an option is picked.
+const query = ref('')
+
+// Free text stays allowed through a "Use …" option: older visits hold values
+// like "Thai" that are not country names, and they must still be enterable.
+const customValue = computed(() => {
+  const text = query.value.trim()
+  if (!text) return null
+  return COUNTRY_NAMES.some(name => name.toLowerCase() === text.toLowerCase()) ? null : text
+})
 
 // Names that start with what was typed come first, then any that contain it.
 const matches = computed(() => {
-  const query = model.value.trim().toLowerCase()
-  if (!query) return COUNTRY_NAMES
-  const starts = COUNTRY_NAMES.filter(name => name.toLowerCase().startsWith(query))
+  const q = query.value.trim().toLowerCase()
+  if (!q) return COUNTRY_NAMES
+  const starts = COUNTRY_NAMES.filter(name => name.toLowerCase().startsWith(q))
   const contains = COUNTRY_NAMES.filter(
-    name => !name.toLowerCase().startsWith(query) && name.toLowerCase().includes(query),
+    name => !name.toLowerCase().startsWith(q) && name.toLowerCase().includes(q),
   )
   return [...starts, ...contains]
 })
 
-const show = () => {
-  if (props.disabled) return
-  open.value = true
-  highlighted.value = 0
-}
+// Headless UI (v1) leaves placement to us. The list is teleported to <body> so
+// the header card (overflow-hidden) cannot clip it, and pinned to the input
+// with fixed coordinates: below it, or above when the screen ends first.
+const LIST_HEIGHT = 108 // three rows; matches max-h-[108px]
+const anchorRef = ref<HTMLElement | null>(null)
+const listStyle = ref<Record<string, string>>({})
 
-const choose = (name: string) => {
-  model.value = name
-  open.value = false
-}
-
-const scrollToHighlighted = async () => {
-  await nextTick()
-  listRef.value?.querySelector('[data-highlighted="true"]')?.scrollIntoView({ block: 'nearest' })
-}
-
-const onKeydown = (event: KeyboardEvent) => {
-  if (!open.value && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-    show()
-    return
-  }
-  if (!open.value) return
-
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    highlighted.value = Math.min(highlighted.value + 1, matches.value.length - 1)
-    scrollToHighlighted()
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    highlighted.value = Math.max(highlighted.value - 1, 0)
-    scrollToHighlighted()
-  } else if (event.key === 'Enter') {
-    const name = matches.value[highlighted.value]
-    if (name) {
-      event.preventDefault()
-      choose(name)
-    }
-  } else if (event.key === 'Escape') {
-    open.value = false
+const placeList = () => {
+  const rect = anchorRef.value?.getBoundingClientRect()
+  if (!rect) return
+  const roomBelow = window.innerHeight - rect.bottom >= LIST_HEIGHT + 8
+  listStyle.value = {
+    ...(roomBelow
+      ? { top: `${rect.bottom + 4}px` }
+      : { bottom: `${window.innerHeight - rect.top + 4}px` }),
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
   }
 }
 
-const onInput = () => {
-  open.value = true
-  highlighted.value = 0
+const onType = (event: Event) => {
+  query.value = (event.target as HTMLInputElement).value
+  placeList()
 }
+
+onMounted(() => {
+  window.addEventListener('scroll', placeList, true)
+  window.addEventListener('resize', placeList)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', placeList, true)
+  window.removeEventListener('resize', placeList)
+})
 </script>
 
 <template>
-  <div class="relative w-full">
-    <input
-      v-model="model"
-      type="text"
-      autocomplete="off"
-      placeholder="Type to search"
-      :disabled="disabled"
-      class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
-      @focus="show"
-      @input="onInput"
-      @keydown="onKeydown"
-      @blur="open = false"
-    />
+  <!-- Headless UI opens the list only once typing starts, not on focus. -->
+  <Combobox v-model="model" :disabled="disabled">
+    <div ref="anchorRef" class="relative w-full">
+      <ComboboxInput
+        autocomplete="off"
+        :display-value="(value: unknown) => String(value ?? '')"
+        class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
+        @change="onType"
+      />
 
-    <!-- mousedown.prevent keeps focus in the input, so the blur above does not
-         close the list before the click on an option lands. -->
-    <div
-      v-if="open"
-      ref="listRef"
-      class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto p-2 space-y-0.5"
-      @mousedown.prevent
-    >
-      <div v-if="matches.length === 0" class="px-2 py-3 text-center text-[13px] text-slate-500">
-        No country found — what you typed is kept
-      </div>
-      <button
-        v-for="(name, index) in matches"
-        :key="name"
-        type="button"
-        tabindex="-1"
-        :data-highlighted="index === highlighted"
-        class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left text-[13px] transition-colors"
-        :class="index === highlighted ? 'bg-blue-50 text-[#0052ff] font-bold' : 'text-slate-700 hover:bg-slate-50'"
-        @mouseenter="highlighted = index"
-        @click="choose(name)"
-      >
-        <span class="truncate">{{ name }}</span>
-        <Check v-if="name === model" class="w-3.5 h-3.5 shrink-0 text-[#0052ff]" />
-      </button>
+      <Teleport to="body">
+        <ComboboxOptions
+          class="fixed bg-white border border-slate-200 rounded-xl shadow-xl z-[210] max-h-[108px] overflow-y-auto p-2 space-y-0.5 outline-none"
+          :style="listStyle"
+        >
+          <ComboboxOption
+            v-for="name in matches"
+            :key="name"
+            v-slot="{ active, selected }"
+            :value="name"
+            as="template"
+          >
+            <li
+              class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left text-[13px] cursor-pointer list-none transition-colors"
+              :class="active ? 'bg-blue-50 text-[#0052ff] font-bold' : 'text-slate-700'"
+            >
+              <span class="truncate">{{ name }}</span>
+              <Check v-if="selected" class="w-3.5 h-3.5 shrink-0 text-[#0052ff]" />
+            </li>
+          </ComboboxOption>
+          <ComboboxOption v-if="customValue" v-slot="{ active }" :value="customValue" as="template">
+            <li
+              class="w-full px-2 py-1.5 rounded-lg text-left text-[13px] cursor-pointer list-none truncate transition-colors"
+              :class="active ? 'bg-blue-50 text-[#0052ff] font-bold' : 'text-slate-500'"
+            >
+              Use "{{ customValue }}"
+            </li>
+          </ComboboxOption>
+        </ComboboxOptions>
+      </Teleport>
     </div>
-  </div>
+  </Combobox>
 </template>
