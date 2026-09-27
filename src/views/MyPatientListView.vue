@@ -178,10 +178,10 @@ const handleNewPatient = () => {
               <tr>
                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-32">HN</th>
                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider">NAME</th>
-                <th scope="col" class="px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-24">AGE</th>
-                <th scope="col" class="px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-32">GENDER</th>
-                <th scope="col" class="px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-40">DATE</th>
-                <th scope="col" class="px-6 py-4 text-right text-[11px] font-bold text-slate-600 uppercase tracking-wider w-32"></th>
+                <th scope="col" class="hidden sm:table-cell px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-24">AGE</th>
+                <th scope="col" class="hidden sm:table-cell px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-32">GENDER</th>
+                <th scope="col" class="hidden sm:table-cell px-6 py-4 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider w-40">DATE</th>
+                <th scope="col" class="hidden sm:table-cell px-6 py-4 text-right text-[11px] font-bold text-slate-600 uppercase tracking-wider w-32"></th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-100">
@@ -195,16 +195,16 @@ const handleNewPatient = () => {
                     <Skeleton variant="text" width="120px" />
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                   <Skeleton variant="text" width="40px" />
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                   <Skeleton variant="text" width="50px" />
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                   <Skeleton variant="text" width="80px" />
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right">
                   <div class="inline-flex justify-end w-full">
                     <Skeleton variant="rounded" width="70px" height="28px" custom-class="rounded-full" />
                   </div>
@@ -236,16 +236,16 @@ const handleNewPatient = () => {
                     <span class="text-sm font-medium text-slate-800 group-hover:text-[#0052ff] transition-colors">{{ patient.firstName }} {{ patient.lastName }}</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                   {{ patient.age ?? '-' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                   {{ patient.gender || '-' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                   {{ formatDate(patient.lastVisitDate) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     @click.stop="goToHistory(patient.id)"
                     class="inline-flex items-center justify-center px-4 py-1.5 border border-blue-200 text-[#0052ff] rounded-full text-xs font-bold hover:bg-blue-50 transition-colors bg-white shadow-sm"

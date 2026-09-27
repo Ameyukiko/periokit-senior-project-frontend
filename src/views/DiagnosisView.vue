@@ -1025,7 +1025,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 <select
                   v-model="inputs.directEvidence"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not available</option>
                   <option v-for="option in DIRECT_OPTIONS" :key="option" :value="option">
@@ -1096,7 +1096,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 <select
                   :value="diagnosisStore.phenotype ?? ''"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                   @change="selectPhenotype(($event.target as HTMLSelectElement).value)"
                 >
                   <option value="">
@@ -1115,7 +1115,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 <select
                   v-model="inputs.smoking"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in SMOKING_OPTIONS" :key="option" :value="option">
@@ -1131,7 +1131,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 <select
                   v-model="inputs.diabetes"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in DIABETES_OPTIONS" :key="option" :value="option">

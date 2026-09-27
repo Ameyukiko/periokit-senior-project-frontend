@@ -696,7 +696,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </section>
 
       <template v-else>
-        <div ref="buttonRowRef" class="flex flex-wrap items-center justify-between gap-4 mb-3">
+        <div ref="buttonRowRef" class="flex flex-wrap items-center sm:justify-between gap-2 sm:gap-4 mb-3">
           <button
             class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 flex items-center gap-1.5 shadow-sm hover:bg-slate-50 transition-all duration-500"
             :class="selectedToothId !== null ? 'xl:ml-18' : 'xl:ml-63'"
@@ -705,7 +705,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <FileText class="w-3.5 h-3.5" /> Overview
           </button>
 
-          <div class="flex flex-wrap items-center gap-2 xl:mr-50">
+          <div class="flex flex-wrap items-center gap-2 xl:mr-50 max-sm:contents">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#9333ea]/30 text-[#9333ea] rounded-lg font-bold text-[11px] shadow-sm hover:bg-purple-50 transition-colors"
               @click="handleOpenDiagnosis"
@@ -726,7 +726,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             <!-- Beside Diagnosis at the top of the page, bottom right once the
                  row scrolls away. z-40 keeps the floating state under the
                  virtual numpad (z-200) and the mobile tooth sidebar (z-150). -->
-            <div :class="actionsFloating ? 'fixed bottom-8 right-8 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2'">
+            <div :class="actionsFloating ? 'fixed bottom-8 right-8 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2 max-sm:contents'">
               <!-- Edit button: existing visit, not yet in edit mode -->
               <button
                 v-if="isExistingVisit && !editMode"

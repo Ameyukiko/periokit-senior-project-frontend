@@ -208,7 +208,7 @@ const goBack = () => {
           <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
           BACK
         </button>
-        <h1 class="text-3xl font-black text-slate-900 mx-auto absolute left-1/2 -translate-x-1/2">
+        <h1 class="text-xl sm:text-3xl font-black text-slate-900 whitespace-nowrap mx-auto absolute left-1/2 -translate-x-1/2">
           Compare Charts
         </h1>
       </div>
