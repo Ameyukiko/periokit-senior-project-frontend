@@ -2,6 +2,7 @@
 import { Activity } from 'lucide-vue-next'
 import { computed, type WritableComputedRef } from 'vue'
 import type { PatientInfo, ChartSummary, PdBreakdown } from '@/domain/chart/chart.types'
+import CountrySelect from './CountrySelect.vue'
 
 const props = defineProps<{
   patientInfo: PatientInfo
@@ -145,7 +146,7 @@ const sortedPdBreakdown = computed(() => {
         </div>
         <div class="col-span-2 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2 xl:ml-6">
           <span class="text-[14px] font-bold text-black whitespace-nowrap shrink-0">Nationality:</span>
-          <input v-model="localPatientInfo.nationality" type="text" :disabled="props.patientFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
+          <CountrySelect v-model="localPatientInfo.nationality" :disabled="props.patientFieldsDisabled" />
         </div>
         <div class="col-span-1 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2 xl:justify-end">
           <span class="text-[14px] font-bold text-black whitespace-nowrap shrink-0">Gender:</span>
