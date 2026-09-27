@@ -99,7 +99,7 @@ const emit = defineEmits<{
             <!-- Mobility grade on the crown (buccal row only, one value per tooth) -->
             <span
               v-if="surface === 'buccal' && getMobilityGrade(chartData[id]) > 0"
-              class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2 text-lg font-black text-yellow-400 [-webkit-text-stroke:0.5px_#92400e] drop-shadow-sm"
+              class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2 text-sm font-black text-amber-500 [-webkit-text-stroke:1px_#78350f] drop-shadow-sm"
               :style="getMobilityMarkerStyle(id)"
             >{{ getMobilityGrade(chartData[id]) }}</span>
           </div>
