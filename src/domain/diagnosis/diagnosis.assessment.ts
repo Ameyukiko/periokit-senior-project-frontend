@@ -38,7 +38,6 @@ export function deriveDiagnosisAssessment(
   const age = recordedAge ?? inputs.ageYears ?? null
   const ageFromRecord = recordedAge !== null
   const boneLoss = inputs.boneLossPercent
-  const estimatedBoneLoss = findings.estimatedBoneLossPercent
   const teethLost = inputs.teethLostToPerio
 
   const complexity = complexityFindings(
@@ -109,7 +108,6 @@ export function deriveDiagnosisAssessment(
     age,
     ageFromRecord,
     boneLoss,
-    estimatedBoneLoss,
     teethLost,
     complexity,
     stageReasons,

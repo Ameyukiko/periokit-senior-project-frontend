@@ -16,7 +16,6 @@ const emptyInputs = (): DiagnosisInputs => ({
 
 const emptyFindings = (): ChartFindings => ({
   meetsCaseDefinition: false,
-  estimatedBoneLossPercent: null,
   interdentalCal: null,
   probingDepth: null,
   furcation: null,
@@ -43,7 +42,6 @@ describe('Diagnosis assessment', () => {
     }
     const findings: ChartFindings = {
       ...emptyFindings(),
-      estimatedBoneLossPercent: 38,
       interdentalCal: { value: 5, toothId: 11, site: 'MB' },
       probingDepth: { value: 6, toothId: 21, site: 'DB' },
       furcation: { grade: 2, toothId: 16 },
@@ -63,7 +61,6 @@ describe('Diagnosis assessment', () => {
       age: 60,
       ageFromRecord: true,
       boneLoss: 40,
-      estimatedBoneLoss: 38,
       teethLost: 2,
       finalStage: 'IV',
       suggestedExtent: 'molar-incisor',

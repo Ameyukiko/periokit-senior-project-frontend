@@ -50,7 +50,6 @@ import {
   type StageRow,
 } from '@/domain/diagnosis/diagnosis.types'
 import { boneLossBand as boneLossBandOf } from '@/domain/diagnosis/diagnosis.rules'
-import { boneLossWorking } from '@/domain/diagnosis/root-length'
 import type { ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -322,18 +321,6 @@ const toothLossHint = computed(() => {
 
 const boneLossBand = computed(() => boneLossBandOf(diagnosisStore.boneLoss))
 
-// What the chart works out for the same site, and the arithmetic behind it.
-// Offered under the field rather than poured into it: the attachment loss this
-// is derived from already carries the CAL row of the staging table, and a
-// severity taken as the worst row would count that one reading twice.
-const boneLossEstimate = computed(() => {
-  const percent = diagnosisStore.estimatedBoneLoss
-  const site = findings.value.interdentalCal
-  if (percent === null || !site) return null
-
-  return { percent, sum: boneLossWorking(site.value, site.toothId, percent) }
-})
-
 // Field tooltips, laid out rather than written as a paragraph: the answer in
 // bold, the sentence behind it, then the caveats one to a bullet.
 const FROM_CHART = 'Edit the chart to change it'
@@ -359,25 +346,10 @@ const TOOTH_LOSS_TOOLTIP = {
   points: ['Counts towards the stage only where perio is the known cause', 'Enter the number yourself'],
 }
 
-// The sum itself, in the tooltip the field already carries an icon for. It was
-// a `title` on the hint line before, where nothing said it was there to hover.
-// Formula first, then the same formula with this patient's numbers in it.
-const boneLossTooltip = computed(() => ({
+const BONE_LOSS_TOOLTIP = {
   title: 'Read off the X-ray',
   body: 'Bone lost at the worst site, as a percentage of the root length.',
-  points: boneLossEstimate.value
-    ? [
-        // The formula before the arithmetic: the doctor is being offered a
-        // number they did not measure, so what it is made of comes first.
-        '%RBL = interdental CAL ÷ root length × 100 (TAP 2023 worksheet)',
-        `Estimate below: ${boneLossEstimate.value.sum}`,
-        "That uses an average root length for the tooth, not this patient's",
-      ]
-    : [],
-}))
-
-const useBoneLossEstimate = () => {
-  inputs.boneLossPercent = boneLossEstimate.value?.percent ?? null
+  points: [],
 }
 
 const hasChart = computed(() => chartStore.hasChartData)
@@ -782,7 +754,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
             <DiagnosisField
               label="Radiographic bone loss"
               class="xl:pl-6"
-              :tooltip="boneLossTooltip"
+              :tooltip="BONE_LOSS_TOOLTIP"
               :readonly="!editable"
             >
               <input
@@ -808,22 +780,6 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
 
               <template #hint>
                 <span v-if="boneLossBand" class="truncate">{{ boneLossBand }}</span>
-                <!-- Offered rather than filled in, so taking it is a decision
-                     rather than a number that was already there. Once taken it
-                     counts as the doctor's figure. The sum behind it is in the
-                     tooltip above. -->
-                <template v-else-if="boneLossEstimate">
-                  <span class="truncate">Chart estimates {{ boneLossEstimate.percent }}%</span>
-                  <button
-                    v-if="editable"
-                    type="button"
-                    class="shrink-0 font-bold text-[#0052ff] hover:underline"
-                    title="Use the chart's estimate until the radiograph has been read"
-                    @click="useBoneLossEstimate"
-                  >
-                    Use
-                  </button>
-                </template>
                 <span v-else>Read from the X-ray, at the worst site</span>
               </template>
             </DiagnosisField>
