@@ -97,6 +97,14 @@
             </div>
           </div>
 
+          <!-- Mobility Section -->
+          <div class="mt-2 pt-2 border-t border-amber-100">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-black text-yellow-600 drop-shadow-sm">Yellow number</span>
+              <span class="text-[8px] font-medium text-slate-400">= Mobility grade</span>
+            </div>
+          </div>
+
           <!-- Red numbers Section -->
           <div class="mt-1.5 pt-1.5 border-t border-red-100">
             <div class="flex items-center gap-1">
@@ -160,7 +168,15 @@
           </div>
         </div>
 
-        <!-- Section 4: Red numbers -->
+        <!-- Section 4: Mobility -->
+        <div class="border-t border-amber-100 pt-3 mt-3">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-black text-yellow-600 drop-shadow-sm">Yellow number</span>
+            <span class="text-[9px] font-bold text-slate-400">= Mobility grade</span>
+          </div>
+        </div>
+
+        <!-- Section 5: Red numbers -->
         <div class="border-t border-red-100 pt-3 mt-3">
           <div class="flex items-center gap-1.5">
             <span class="text-[10px] font-bold text-red-600">Red numbers</span>
