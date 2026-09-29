@@ -12,6 +12,9 @@ import {
   calculateToothPiPercentage
 } from '../../utils/calculations'
 import { isUpperTooth } from '@/domain/chart/chart.rules'
+import { FMX_SLOTS } from '@/domain/xray/xray.constants'
+import type { XrayImageObject } from '@/domain/xray/xray.types'
+import { useXrayBoardStore, xrayBoardKey } from '@/stores/xray-board'
 
 
 const prognosisModalType = ref<'MN' | 'KC' | null>(null)
@@ -23,9 +26,69 @@ const props = defineProps<{
   toothId: number | string | null
   toothData: any
   readonly?: boolean
+  patientId?: string | null
+  visitId?: string | null
 }>()
 
 const emit = defineEmits(['close', 'update-note'])
+
+// --- X-rays mounted in an FMX slot that covers this tooth ---
+const xrayBoard = useXrayBoardStore()
+const previewFilm = ref<{ url: string; label: string; rotation: number } | null>(null)
+
+// Same key the X-ray tab uses, so a board already open there is reused as-is
+// (loadBoard returns early on a matching key) rather than read again.
+watch(
+  () => [props.patientId, props.visitId] as const,
+  ([patientId, visitId]) => {
+    if (visitId === undefined) return
+    xrayBoard.loadBoard(xrayBoardKey(patientId ?? null, visitId ?? null), visitId ?? null)
+  },
+  { immediate: true },
+)
+
+const toothXrays = computed(() => {
+  const tooth = Number(props.toothId)
+  if (!tooth) return []
+  const filmsBySlot = new Map<string, XrayImageObject>()
+  for (const object of xrayBoard.objects) {
+    if (object.objectType === 'image' && object.slotCode) filmsBySlot.set(object.slotCode, object)
+  }
+  return FMX_SLOTS
+    .filter(slot => slot.teeth?.includes(tooth) && filmsBySlot.has(slot.code))
+    .map(slot => {
+      const film = filmsBySlot.get(slot.code)!
+      return {
+        code: slot.code,
+        label: slot.label,
+        rotation: film.rotation,
+        url: xrayBoard.failedAssets.has(film.assetId) ? null : xrayBoard.imageUrls[film.assetId] ?? null,
+      }
+    })
+})
+
+// One film at a time, swiped (or scrolled) sideways — scroll-snap does the paging.
+const xrayTrack = ref<HTMLElement | null>(null)
+const xrayIndex = ref(0)
+
+const onXrayScroll = () => {
+  const track = xrayTrack.value
+  if (!track || !track.clientWidth) return
+  xrayIndex.value = Math.round(track.scrollLeft / track.clientWidth)
+}
+
+const goToXray = (index: number) => {
+  const track = xrayTrack.value
+  if (!track) return
+  const target = Math.max(0, Math.min(index, toothXrays.value.length - 1))
+  track.scrollTo({ left: target * track.clientWidth, behavior: 'smooth' })
+}
+
+// A new tooth starts on its first film.
+watch(() => props.toothId, () => {
+  xrayIndex.value = 0
+  xrayTrack.value?.scrollTo({ left: 0 })
+})
 
 // Reset editing state when switching teeth
 watch(() => props.toothId, () => {
@@ -145,6 +208,81 @@ const analysisData = computed(() => {
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
 
+      <!-- X-ray (films mounted in an FMX slot covering this tooth) -->
+      <section>
+        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">X-ray</h3>
+        <div v-if="xrayBoard.isLoading" class="h-24 rounded-2xl bg-slate-50 border border-slate-100 animate-pulse"></div>
+        <div v-else-if="toothXrays.length">
+          <div class="relative group/xray">
+            <div
+              ref="xrayTrack"
+              class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-2xl items-center"
+              @scroll.passive="onXrayScroll"
+            >
+              <button
+                v-for="film in toothXrays"
+                :key="film.code"
+                type="button"
+                class="w-full shrink-0 snap-center overflow-hidden disabled:cursor-default"
+                :disabled="!film.url"
+                @click="film.url && (previewFilm = { url: film.url, label: film.label, rotation: film.rotation })"
+              >
+                <img
+                  v-if="film.url"
+                  :src="film.url"
+                  :alt="film.label"
+                  draggable="false"
+                  class="block w-full h-auto select-none"
+                  :style="{ transform: `rotate(${film.rotation}deg)` }"
+                />
+                <span v-else class="aspect-4/3 grid place-items-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Unavailable</span>
+              </button>
+            </div>
+
+            <!-- Arrows for mouse users; touch just swipes -->
+            <template v-if="toothXrays.length > 1">
+              <button
+                v-if="xrayIndex > 0"
+                type="button"
+                class="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-full bg-white/80 text-slate-700 shadow opacity-0 group-hover/xray:opacity-100 transition-opacity"
+                @click="goToXray(xrayIndex - 1)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <button
+                v-if="xrayIndex < toothXrays.length - 1"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-full bg-white/80 text-slate-700 shadow opacity-0 group-hover/xray:opacity-100 transition-opacity"
+                @click="goToXray(xrayIndex + 1)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-black/50 text-white text-[9px] font-black">
+                {{ xrayIndex + 1 }}/{{ toothXrays.length }}
+              </span>
+            </template>
+          </div>
+
+          <div class="mt-2.5 flex items-center justify-between gap-3">
+            <p class="text-[10px] font-bold text-slate-400 truncate">{{ toothXrays[xrayIndex]?.label }}</p>
+            <div v-if="toothXrays.length > 1" class="flex gap-1.5 shrink-0">
+              <button
+                v-for="(film, i) in toothXrays"
+                :key="film.code"
+                type="button"
+                class="h-1.5 rounded-full transition-all"
+                :class="i === xrayIndex ? 'w-4 bg-[#0052ff]' : 'w-1.5 bg-slate-200 hover:bg-slate-300'"
+                :aria-label="film.label"
+                @click="goToXray(i)"
+              ></button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="py-5 rounded-2xl bg-slate-50/50 border border-dashed border-slate-200 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          No X-ray in slot
+        </div>
+      </section>
+
       <!-- Analysis Summary -->
       <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <h3 class="text-[13px] font-black text-slate-800 mb-6">
@@ -187,22 +325,6 @@ const analysisData = computed(() => {
             >
               {{ analysisData?.prognosisMN || 'N/A' }}
             </span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
-            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
-          </div>
-          <div class="flex justify-between items-center pt-2">
-            <span class="text-[11px] font-bold text-slate-400">Buccal-Keratinized</span>
-            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.buccalKTW }} mm</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">{{ innerSurfaceLabel }}-Keratinized</span>
-            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.innerSurfaceKTW }} mm</span>
-          </div>
-          <div v-if="!toothData.implant" class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">Furcation</span>
-            <span class="text-[11px] font-black text-slate-700">{{ getFurLabel(analysisData?.furcation) }}</span>
           </div>
         </div>
       </section>
@@ -378,6 +500,28 @@ const analysisData = computed(() => {
 
       </section>
 
+      <!-- Clinical Findings -->
+      <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
+        <div class="space-y-5">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
+            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            <span class="text-[11px] font-bold text-slate-400">Buccal-Keratinized</span>
+            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.buccalKTW }} mm</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">{{ innerSurfaceLabel }}-Keratinized</span>
+            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.innerSurfaceKTW }} mm</span>
+          </div>
+          <div v-if="!toothData.implant" class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">Furcation</span>
+            <span class="text-[11px] font-black text-slate-700">{{ getFurLabel(analysisData?.furcation) }}</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Note / Remark -->
       <section v-if="toothData.note && !isEditingNote" class="bg-yellow-50/50 border border-yellow-100 rounded-3xl p-6 shadow-sm group relative">
         <div class="flex justify-between items-start mb-3">
@@ -551,6 +695,24 @@ const analysisData = computed(() => {
         </div>
       </div>
     </Transition>
+  </Teleport>
+
+  <!-- X-ray Preview -->
+  <Teleport to="body">
+    <div
+      v-if="previewFilm"
+      class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 p-6 bg-slate-900/80 backdrop-blur-sm"
+      @click="previewFilm = null"
+    >
+      <img
+        :src="previewFilm.url"
+        :alt="previewFilm.label"
+        class="max-w-full max-h-[80vh] object-contain rounded-xl"
+        :style="{ transform: `rotate(${previewFilm.rotation}deg)` }"
+        @click.stop
+      />
+      <p class="text-xs font-bold text-white/80 uppercase tracking-widest">{{ previewFilm.label }}</p>
+    </div>
   </Teleport>
 
   <!-- Cancel Note Editing Confirmation Modal -->

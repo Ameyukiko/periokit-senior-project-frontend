@@ -872,6 +872,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             :tooth-id="selectedToothId"
             :tooth-data="selectedToothData"
             :readonly="!chartEditable"
+            :patient-id="xrayPatientId"
+            :visit-id="xrayVisitId"
             @close="selectedToothId = null"
             @update-note="handleUpdateNote"
           />

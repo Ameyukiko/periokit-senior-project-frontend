@@ -6,6 +6,8 @@ defineProps<{
   toothId: string | number | null;
   toothData: any;
   readonly?: boolean;
+  patientId?: string | null;
+  visitId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +35,8 @@ const emit = defineEmits<{
           :toothId="toothId"
           :toothData="toothData"
           :readonly="readonly"
+          :patientId="patientId ?? null"
+          :visitId="visitId ?? null"
           @close="emit('close')"
           @update-note="($event) => emit('update-note', $event)"
         />
