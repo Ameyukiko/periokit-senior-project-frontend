@@ -19,7 +19,7 @@ import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
 import { useVisitSave } from '@/composables/useVisitSave'
 import { useVisitLoad } from '@/composables/useVisitLoad'
 import { useVisitTabs } from '@/composables/useVisitTabs'
-import { useXrayLeaveGuard } from '@/composables/useXrayLeaveGuard'
+import { useXrayLeaveGuard, XRAY_LEAVE_WARNING } from '@/composables/useXrayLeaveGuard'
 import type { ToothId } from '@/domain/chart/chart.types'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -908,18 +908,6 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @cancel="cancelCloseTab"
           />
 
-          <!-- Unsaved X-ray Board Warning -->
-          <ConfirmModal
-            :show="showXrayLeaveWarningModal"
-            title="Leave without saving?"
-            message="<span class='text-slate-500 font-normal'>Any unsaved changes will be lost.</span>"
-            confirm-text="Leave"
-            cancel-text="Stay"
-            type="danger"
-            @confirm="confirmLeaveXray"
-            @cancel="cancelLeaveXray"
-          />
-
           <!-- Draft Recovery Modal -->
           <ConfirmModal
             :show="showDraftRecoveryModal"
@@ -948,5 +936,18 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
         </div>
       </template>
     </main>
+
+    <!-- Unsaved X-ray Board Warning. Outside <main> so it can still open while
+         the X-ray tab is showing, which is where an unsaved board usually is. -->
+    <ConfirmModal
+      :show="showXrayLeaveWarningModal"
+      :title="XRAY_LEAVE_WARNING.title"
+      :message="XRAY_LEAVE_WARNING.message"
+      :confirm-text="XRAY_LEAVE_WARNING.confirmText"
+      :cancel-text="XRAY_LEAVE_WARNING.cancelText"
+      type="danger"
+      @confirm="confirmLeaveXray"
+      @cancel="cancelLeaveXray"
+    />
   </div>
 </template>

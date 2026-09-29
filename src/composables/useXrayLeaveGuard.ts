@@ -15,6 +15,20 @@ import { useXrayBoardStore } from '@/stores/xray-board'
  * The route hooks stay with the page: what counts as "the same board" is the
  * page's own question, and this answers only what to do once it is asked.
  */
+/**
+ * What the question says. It names the X-ray board outright: the chart and the
+ * diagnosis sit on the same pages, and "unsaved changes" alone leaves the doctor
+ * guessing which of the three it means.
+ */
+export const XRAY_LEAVE_WARNING = {
+  title: 'Unsaved X-ray board',
+  message:
+    "<span class='text-slate-800 font-bold text-lg block mb-1'>The X-ray board has unsaved changes.</span>" +
+    "<span class='text-slate-500 font-normal'>Save it on the X-ray tab first, or those films and notes may be lost.</span>",
+  confirmText: 'Leave',
+  cancelText: 'Stay',
+} as const
+
 export function useXrayLeaveGuard() {
   const router = useRouter()
   const xrayStore = useXrayBoardStore()

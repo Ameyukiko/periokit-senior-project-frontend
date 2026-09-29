@@ -31,6 +31,7 @@ import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
 import { useVisitSave } from '@/composables/useVisitSave'
 import { useDiagnosisVisitContext } from '@/composables/useDiagnosisVisitContext'
 import { useVisitLoad } from '@/composables/useVisitLoad'
+import { useXrayLeaveGuard, XRAY_LEAVE_WARNING } from '@/composables/useXrayLeaveGuard'
 import {
   DIABETES_LABEL,
   DIRECT_EVIDENCE_LABEL,
@@ -113,11 +114,28 @@ const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
   })
 }
 
+// The X-ray board of this visit stays in its store while the doctor is here, so
+// an unsaved one is asked about on the way out just as the chart page asks.
+const {
+  showLeaveWarning: showXrayLeaveWarning,
+  hasUnsavedBoard,
+  isBypassing,
+  confirmLeave: confirmLeaveXray,
+  cancelLeave: cancelLeaveXray,
+  askBeforeLeaving,
+} = useXrayLeaveGuard()
+
 onBeforeRouteLeave(to => {
   // Edit mode belongs to the visit, and the chart and Diagnosis pages are two
   // halves of the same visit. Stepping outside both locks it again.
   if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
-  return true
+  // Back to this visit's own chart is back to the board itself — nothing to lose.
+  const toSameVisitChart =
+    to.name === 'chart' &&
+    (to.query.visitId ?? null) === (chartQuery.value.visitId ?? null) &&
+    (to.query.patientId ?? null) === (chartQuery.value.patientId ?? null)
+  if (isBypassing() || toSameVisitChart || !hasUnsavedBoard()) return true
+  return askBeforeLeaving(to)
 })
 
 /**
@@ -1252,6 +1270,17 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
       type="danger"
       @confirm="confirmDiscard"
       @cancel="closeConfirmation"
+    />
+
+    <ConfirmModal
+      :show="showXrayLeaveWarning"
+      :title="XRAY_LEAVE_WARNING.title"
+      :message="XRAY_LEAVE_WARNING.message"
+      :confirm-text="XRAY_LEAVE_WARNING.confirmText"
+      :cancel-text="XRAY_LEAVE_WARNING.cancelText"
+      type="danger"
+      @confirm="confirmLeaveXray"
+      @cancel="cancelLeaveXray"
     />
   </div>
 </template>
