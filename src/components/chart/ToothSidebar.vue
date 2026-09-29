@@ -289,6 +289,11 @@ const analysisData = computed(() => {
           Analysis Summary
         </h3>
         <div class="space-y-5">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
+            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
+          </div>
+
           <!-- Prognosis K&C Row -->
           <div
             @click="prognosisModalType = 'KC'"
@@ -504,10 +509,6 @@ const analysisData = computed(() => {
       <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <div class="space-y-5">
           <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
-            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
-          </div>
-          <div class="flex justify-between items-center pt-2">
             <span class="text-[11px] font-bold text-slate-400">Buccal-Keratinized</span>
             <span class="text-[11px] font-black text-slate-700">{{ analysisData?.buccalKTW }} mm</span>
           </div>
