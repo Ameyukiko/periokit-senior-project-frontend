@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -50,7 +50,6 @@ import {
   type StageRow,
 } from '@/domain/diagnosis/diagnosis.types'
 import { boneLossBand as boneLossBandOf } from '@/domain/diagnosis/diagnosis.rules'
-import { boneLossWorking } from '@/domain/diagnosis/root-length'
 import type { ToothId } from '@/domain/chart/chart.types'
 
 const route = useRoute()
@@ -322,18 +321,6 @@ const toothLossHint = computed(() => {
 
 const boneLossBand = computed(() => boneLossBandOf(diagnosisStore.boneLoss))
 
-// What the chart works out for the same site, and the arithmetic behind it.
-// Offered under the field rather than poured into it: the attachment loss this
-// is derived from already carries the CAL row of the staging table, and a
-// severity taken as the worst row would count that one reading twice.
-const boneLossEstimate = computed(() => {
-  const percent = diagnosisStore.estimatedBoneLoss
-  const site = findings.value.interdentalCal
-  if (percent === null || !site) return null
-
-  return { percent, sum: boneLossWorking(site.value, site.toothId, percent) }
-})
-
 // Field tooltips, laid out rather than written as a paragraph: the answer in
 // bold, the sentence behind it, then the caveats one to a bullet.
 const FROM_CHART = 'Edit the chart to change it'
@@ -359,24 +346,10 @@ const TOOTH_LOSS_TOOLTIP = {
   points: ['Counts towards the stage only where perio is the known cause', 'Enter the number yourself'],
 }
 
-// The sum itself, in the tooltip the field already carries an icon for. It was
-// a `title` on the hint line before, where nothing said it was there to hover.
-const boneLossTooltip = computed(() => ({
+const BONE_LOSS_TOOLTIP = {
   title: 'Read off the X-ray',
   body: 'Bone lost at the worst site, as a percentage of the root length.',
-  points: boneLossEstimate.value
-    ? [
-        // The formula before the arithmetic: the doctor is being offered a
-        // number they did not measure, so what it is made of comes first.
-        '%RBL = interdental CAL ÷ root length × 100 (TAP 2023 worksheet)',
-        `Estimate below: ${boneLossEstimate.value.sum}`,
-        "That uses an average root length for the tooth, not this patient's",
-      ]
-    : [],
-}))
-
-const useBoneLossEstimate = () => {
-  inputs.boneLossPercent = boneLossEstimate.value?.percent ?? null
+  points: [],
 }
 
 const hasChart = computed(() => chartStore.hasChartData)
@@ -394,6 +367,46 @@ const stageMeaning = computed(() =>
 // The grade always has a value — TAP 2023 starts every case at Grade B — so this
 // line reads what that grade means rather than asking for rows first.
 const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
+
+// Edit / Cancel / Save keep their place in the header row until it scrolls up
+// under the sticky sub-nav (which ends at ~105px), then break out and follow
+// the page — the same behaviour the chart page carries. The row is measured
+// rather than the buttons, which leave the flow once they go fixed.
+const buttonRowRef = ref<HTMLElement | null>(null)
+const actionsFloating = ref(false)
+
+const updateActionsFloating = () => {
+  const rect = buttonRowRef.value?.getBoundingClientRect()
+  // Phones and tablets keep the buttons in the row; only desktop floats them
+  const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
+  actionsFloating.value = desktop && !!rect && rect.bottom < 110
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', updateActionsFloating, { passive: true })
+  window.addEventListener('resize', updateActionsFloating)
+  updateActionsFloating()
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateActionsFloating)
+  window.removeEventListener('resize', updateActionsFloating)
+})
+
+const actionButtonShape = computed(() =>
+  actionsFloating.value ? 'p-4 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
+)
+const actionIconSize = computed(() => (actionsFloating.value ? 'w-5 h-5' : 'w-3.5 h-3.5'))
+// Discard runs a size above the rest: it is the one button in the stack that
+// throws work away, so it should not be the easiest one to miss.
+const discardButtonShape = computed(() =>
+  actionsFloating.value ? 'p-[18px] rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
+)
+// Floating, the buttons sit at the bottom of the page, so their tooltips have
+// to open upwards or they would be drawn off screen.
+const actionTooltipPlacement = computed(() =>
+  actionsFloating.value ? 'bottom-full mb-2' : 'top-full mt-2',
+)
+const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' : '-top-1'))
 </script>
 
 <template>
@@ -433,7 +446,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
     </div>
 
     <main class="max-w-320 mx-auto px-4 py-6 flex flex-col gap-5">
-      <div class="flex flex-wrap items-center justify-between gap-3 -mb-2">
+      <div ref="buttonRowRef" class="flex flex-wrap items-start justify-between gap-3 -mb-2">
         <!-- Out of every state, including the ones with nothing to show. Same
              pill as the one Visit History goes back to My Patients with. The
              page title rides alongside it: the Result below is the heading that
@@ -455,20 +468,53 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
              Both tooltips hang off the right edge so they open inwards. -->
         <div
           v-if="hasChart && !isLoading && !loadFailed"
-          class="flex flex-wrap items-center justify-end gap-2"
+          :class="
+            actionsFloating
+              ? 'fixed bottom-8 right-8 z-40 flex flex-col items-end gap-2'
+              : 'flex flex-wrap items-center justify-end gap-2'
+          "
         >
+          <!-- Discard sits at the top of the stack, above Cancel and Save. It
+               used to be a fixed button of its own, which landed on top of this
+               group once the group started floating too. -->
+          <Transition name="fade">
+            <span v-if="editable && diagnosisStore.hasChanges" class="relative group inline-flex">
+              <button
+                type="button"
+                class="flex items-center gap-2 bg-white/90 hover:bg-white backdrop-blur-sm border border-slate-200/90 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50/80 font-semibold text-xs hover:shadow-md transition-all duration-150 cursor-pointer opacity-85 hover:opacity-100"
+                :class="discardButtonShape"
+                aria-label="Discard"
+                @click="confirmationDialog = 'discard'"
+              >
+                <RotateCcw :class="actionsFloating ? 'w-5 h-5' : 'w-4 h-4'" class="text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
+                <span v-if="!actionsFloating">Discard</span>
+              </button>
+              <span
+                class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+                :class="actionTooltipPlacement"
+              >
+                <span class="absolute right-4 w-2 h-2 bg-slate-800 rotate-45" :class="actionTooltipArrow"></span>
+                <span class="block font-bold text-white mb-1">Discard changes</span>
+                Throws away unsaved edits and restores the chart defaults.
+              </span>
+            </span>
+          </Transition>
+
           <span v-if="isExistingVisit && !editable" class="relative group inline-flex">
             <button
               type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+              class="flex items-center gap-1.5 bg-white border border-amber-400 text-amber-600 font-bold text-[11px] hover:bg-amber-50 transition-colors"
+              :class="actionButtonShape"
+              aria-label="Edit"
               @click="handleEdit"
             >
-              <Pencil class="w-3.5 h-3.5" /> Edit
+              <Pencil :class="actionIconSize" /><span v-if="!actionsFloating">Edit</span>
             </button>
             <span
-              class="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+              class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+              :class="actionTooltipPlacement"
             >
-              <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
+              <span class="absolute right-4 w-2 h-2 bg-slate-800 rotate-45" :class="actionTooltipArrow"></span>
               <span class="block font-bold text-white mb-1">Saved and read-only</span>
               Unlocks both this diagnosis and the periodontal chart for editing.
             </span>
@@ -477,32 +523,38 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
           <button
             v-if="isExistingVisit && editable"
             type="button"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors"
+            class="flex items-center gap-1.5 bg-white border border-red-300 text-red-600 font-bold text-[11px] hover:bg-red-50 transition-colors"
+            :class="actionButtonShape"
+            aria-label="Cancel"
+            title="Cancel"
             @click="handleCancelEditClick"
           >
-            <X class="w-3.5 h-3.5" /> Cancel
+            <X :class="actionIconSize" /><span v-if="!actionsFloating">Cancel</span>
           </button>
 
           <span v-if="editable" class="relative group inline-flex">
             <button
               type="button"
               :disabled="isSaving || nothingToSave"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-md transition-colors"
-              :class="
+              class="flex items-center gap-1.5 font-bold text-[11px] transition-colors"
+              :class="[
+                actionButtonShape,
                 isSaving || nothingToSave
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-50'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              "
+                  : 'bg-blue-600 text-white hover:bg-blue-700',
+              ]"
+              aria-label="Save Chart"
               @click="handleSaveClick"
             >
-              <Loader2 v-if="isSaving" class="w-3.5 h-3.5 animate-spin" />
-              <Save v-else class="w-3.5 h-3.5" />
-              {{ isSaving ? 'Saving...' : 'Save Chart' }}
+              <Loader2 v-if="isSaving" class="animate-spin" :class="actionIconSize" />
+              <Save v-else :class="actionIconSize" />
+              <span v-if="!actionsFloating">{{ isSaving ? 'Saving...' : 'Save Chart' }}</span>
             </button>
             <span
-              class="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+              class="hidden group-hover:block group-focus-within:block absolute right-0 z-30 w-72 p-3 rounded-xl bg-slate-800 text-white shadow-xl text-[11px] font-normal leading-relaxed text-left"
+              :class="actionTooltipPlacement"
             >
-              <span class="absolute -top-1 right-4 w-2 h-2 bg-slate-800 rotate-45"></span>
+              <span class="absolute right-4 w-2 h-2 bg-slate-800 rotate-45" :class="actionTooltipArrow"></span>
               <span class="block font-bold text-white mb-1">One Save, one visit</span>
               Saves both the periodontal chart and diagnosis for this visit.
             </span>
@@ -712,7 +764,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
             <DiagnosisField
               label="Radiographic bone loss"
               class="xl:pl-6"
-              :tooltip="boneLossTooltip"
+              :tooltip="BONE_LOSS_TOOLTIP"
               :readonly="!editable"
             >
               <input
@@ -738,22 +790,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
               <template #hint>
                 <span v-if="boneLossBand" class="truncate">{{ boneLossBand }}</span>
-                <!-- Offered rather than filled in, so taking it is a decision
-                     rather than a number that was already there. Once taken it
-                     counts as the doctor's figure. The sum behind it is in the
-                     tooltip above. -->
-                <template v-else-if="boneLossEstimate">
-                  <span class="truncate">Chart estimates {{ boneLossEstimate.percent }}%</span>
-                  <button
-                    v-if="editable"
-                    type="button"
-                    class="shrink-0 font-bold text-[#0052ff] hover:underline"
-                    title="Use the chart's estimate until the radiograph has been read"
-                    @click="useBoneLossEstimate"
-                  >
-                    Use
-                  </button>
-                </template>
                 <span v-else>Read from the X-ray, at the worst site</span>
               </template>
             </DiagnosisField>
@@ -999,7 +1035,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
                 <select
                   v-model="inputs.directEvidence"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not available</option>
                   <option v-for="option in DIRECT_OPTIONS" :key="option" :value="option">
@@ -1070,7 +1106,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
                 <select
                   :value="diagnosisStore.phenotype ?? ''"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                   @change="selectPhenotype(($event.target as HTMLSelectElement).value)"
                 >
                   <option value="">
@@ -1089,7 +1125,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
                 <select
                   v-model="inputs.smoking"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in SMOKING_OPTIONS" :key="option" :value="option">
@@ -1105,7 +1141,7 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
                 <select
                   v-model="inputs.diabetes"
                   :disabled="!editable"
-                  :class="`${QUIET} text-right`"
+                  :class="`${QUIET} text-right min-w-0`"
                 >
                   <option :value="null">Not recorded</option>
                   <option v-for="option in DIABETES_OPTIONS" :key="option" :value="option">
@@ -1183,24 +1219,6 @@ const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
         </section>
       </template>
     </main>
-
-    <!-- Floating Discard Changes Button -->
-    <Transition name="fade">
-      <div
-        v-if="hasChart && !isLoading && !loadFailed && editable && diagnosisStore.hasChanges"
-        class="fixed bottom-4 right-4 z-40"
-      >
-        <button
-          type="button"
-          class="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/90 hover:bg-white backdrop-blur-sm border border-slate-200/90 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50/80 rounded-full font-semibold text-xs shadow-sm hover:shadow-md transition-all duration-150 cursor-pointer opacity-85 hover:opacity-100 group"
-          title="Discard changes and restore chart defaults"
-          @click="confirmationDialog = 'discard'"
-        >
-          <RotateCcw class="w-3.5 h-3.5 text-slate-400 group-hover:text-red-500 transition-transform duration-150 group-hover:-rotate-45" />
-          <span>Discard</span>
-        </button>
-      </div>
-    </Transition>
 
     <!-- Says out loud what the button beneath it already says: one Save, one
          visit. Same wording as the chart page's, because it is the same act. -->

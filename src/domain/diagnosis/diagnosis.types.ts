@@ -35,12 +35,6 @@ export interface ChartFindings {
    * see are still the doctor's to weigh.
    */
   meetsCaseDefinition: boolean
-  /**
-   * Bone loss worked out from attachment loss against an average root length,
-   * standing in for the radiograph the app does not hold. Null when the chart
-   * records no interdental attachment loss to work from.
-   */
-  estimatedBoneLossPercent: number | null
   interdentalCal: SiteFinding | null
   probingDepth: SiteFinding | null
   furcation: ToothFinding | null

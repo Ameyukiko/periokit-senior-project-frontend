@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getFurImage, getFurMarkerStyle, getToothColumnWidth, getToothImage, getToothImageTopOffset, getKtwWarningStyle, shouldShowKtwWarning } from '@/domain/chart/chart.image'
+import { getFurImage, getFurMarkerStyle, getToothColumnWidth, getToothImage, getToothImageTopOffset, getKtwWarningStyle, getMobilityGrade, getMobilityMarkerStyle, shouldShowKtwWarning } from '@/domain/chart/chart.image'
 import PdLineChartLayer from './PdLineChartLayer.vue'
 import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
 
@@ -96,6 +96,12 @@ const emit = defineEmits<{
                 <span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-amber-900">K</span>
               </div>
             </div>
+            <!-- Mobility grade on the crown (buccal row only, one value per tooth) -->
+            <span
+              v-if="surface === 'buccal' && getMobilityGrade(chartData[id]) > 0"
+              class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2 text-sm font-black text-yellow-600 drop-shadow-sm"
+              :style="getMobilityMarkerStyle(id)"
+            >{{ getMobilityGrade(chartData[id]) }}</span>
           </div>
         </div>
         <div v-if="gIdx !== arch.length - 1" :class="groupGapClass"></div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { filterNumericInput, getFieldKey, isAbnormalValue, exceedsAbsoluteLimit, getFieldDisplayName, MOBILITY_VALID_VALUES } from "../../utils/validation";
 
 interface Props {
@@ -31,6 +31,31 @@ const showWarning = ref(false);
 const warningMessage = ref("");
 const isFocused = ref(false);
 const isHovered = ref(false);
+let justFocused = false;
+
+// Select the existing value on focus so the next keystroke overwrites it
+const handleFocus = async (event: FocusEvent) => {
+  isFocused.value = true;
+  const input = event.target as HTMLInputElement;
+  await nextTick();
+  if (document.activeElement === input) input.select();
+};
+
+// A click that focuses the input must not let its mouseup clear that selection
+const handleMouseDown = (event: MouseEvent) => {
+  justFocused = document.activeElement !== event.target;
+};
+
+const handleMouseUp = (event: MouseEvent) => {
+  if (!justFocused) return;
+  justFocused = false;
+  event.preventDefault();
+};
+
+const handleBlur = () => {
+  isFocused.value = false;
+  justFocused = false;
+};
 
 const isRecessionUnderMinusTen = computed(() => {
   if (props.inputType !== "numeric" || !props.value) return false;
@@ -179,8 +204,10 @@ const containerClasses = computed(() => ({
         :disabled="disabled"
         :readonly="readonly"
         @input="handleInput"
-        @focus="isFocused = true"
-        @blur="isFocused = false"
+        @focus="handleFocus"
+        @blur="handleBlur"
+        @mousedown="handleMouseDown"
+        @mouseup="handleMouseUp"
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
         :data-tooth="toothNumber"

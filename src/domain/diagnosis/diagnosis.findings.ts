@@ -2,7 +2,6 @@ import type { ChartData, Surface, ToothId } from '@/domain/chart/chart.types'
 import { getSiteLabel } from '@/domain/chart/chart.mapper'
 import { calculateBopPercentage, calculatePiPercentage } from '@/domain/chart/chart.calculations'
 import type { ChartFindings, SiteFinding, ToothFinding } from './diagnosis.types'
-import { estimateBoneLossPercent } from './root-length'
 
 const SURFACES: Surface[] = ['buccal', 'lingual']
 
@@ -139,12 +138,6 @@ export const collectChartFindings = (chartData: ChartData): ChartFindings => {
 
   return {
     meetsCaseDefinition: hasNonAdjacentPair(interdentalTeeth) || facialTeeth.length >= 2,
-    // Stands in for a radiograph the app does not hold. Overridden the moment
-    // the doctor enters a figure measured off the film.
-    estimatedBoneLossPercent: estimateBoneLossPercent(
-      interdentalCal?.value ?? null,
-      interdentalCal?.toothId ?? null,
-    ),
     interdentalCal,
     probingDepth: worstSite(chartData, 'pd', ALL_SITES),
     furcation: worstFurcation(chartData),

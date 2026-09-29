@@ -282,7 +282,7 @@ function confirmCancelEdit() {
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div class="flex items-center gap-2.5 px-5 py-2.5">
+    <div class="flex flex-wrap items-center gap-2.5 px-5 py-2.5">
       <span
         class="inline-flex shrink-0 items-center rounded-[9px] border-[1.5px] px-3 py-0.5 text-[12.5px] font-medium whitespace-nowrap"
         :class="
@@ -296,9 +296,11 @@ function confirmCancelEdit() {
       >
         {{ badgeLabel }}
       </span>
-      <span class="truncate text-[13px] text-slate-500">{{ hint }}</span>
+      <span class="min-w-0 flex-1 truncate text-[13px] text-slate-500">{{ hint }}</span>
 
-      <div class="ml-auto flex shrink-0 items-center gap-2">
+      <!-- On a phone the chips drop to their own row; beside the hint they ran off
+           the right edge and took the layout picker with them. -->
+      <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2 max-sm:w-full">
         <button
           class="xray-chip px-2.5"
           title="Toggle light / dark canvas"
@@ -310,7 +312,9 @@ function confirmCancelEdit() {
 
         <!-- Gone rather than greyed on a read-only board: the slots it switches
              on are not drawn there either, so the chip would toggle nothing. -->
-        <div v-if="editable" ref="layoutMenu" class="relative">
+        <!-- z-60 lifts the menu over the canvas toolbar (z-50), which comes later
+             in the page and used to cover the bottom of the list. -->
+        <div v-if="editable" ref="layoutMenu" class="relative z-60">
           <button
             class="xray-chip"
             :class="{ 'is-on': layout }"
@@ -410,13 +414,14 @@ function confirmCancelEdit() {
       />
 
       <XrayBoardToolbar
-        class="absolute top-3.5 left-1/2 z-50 -translate-x-1/2"
+        class="absolute top-3.5 left-1/2 z-50 max-w-[calc(100%-28px)] -translate-x-1/2"
         @upload="openFilePicker"
         @delete="requestDelete"
       />
       <XrayNotePanel class="absolute top-[78px] right-3.5 z-50" />
       <XrayZoomBar class="absolute bottom-3.5 left-3.5 z-50" />
-      <XrayShortcutsCard class="absolute right-3.5 bottom-3.5 z-50" />
+      <!-- Keyboard shortcuts mean nothing on a phone, and the card sits on the zoom bar there -->
+      <XrayShortcutsCard class="absolute right-3.5 bottom-3.5 z-50 max-sm:hidden" />
       <XrayUploadQueue class="absolute bottom-3.5 left-1/2 z-50 -translate-x-1/2" />
 
       <div

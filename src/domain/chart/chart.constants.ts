@@ -1,3 +1,5 @@
+import countries from 'i18n-iso-countries'
+import enCountries from 'i18n-iso-countries/langs/en.json'
 import type { SiteIndex } from './chart.types'
 
 export const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -34,3 +36,12 @@ export const CHART_LEGEND_ITEMS = {
   CAL: 'Level in mm',
   Ext: 'Extracted tooth'
 }
+
+countries.registerLocale(enCountries)
+
+export const COUNTRY_NAMES: string[] = [
+  'Thailand',
+  ...Object.values(countries.getNames('en', { select: 'official' }))
+    .filter(name => name !== 'Thailand')
+    .sort((a, b) => a.localeCompare(b)),
+]

@@ -103,9 +103,6 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
   // field instead, for the doctor to accept or ignore.
   const boneLoss = selectAssessment('boneLoss')
 
-  /** What the chart makes of the worst interdental site, offered as a prompt. */
-  const estimatedBoneLoss = selectAssessment('estimatedBoneLoss')
-
   // Note C under TAP 2023 table 5: tooth loss counts towards the stage only
   // where it is known for certain to have been periodontitis that took the
   // tooth. The chart records the gap, never the cause, so its tally is offered
@@ -164,7 +161,6 @@ export const useDiagnosisStore = defineStore('diagnosis', () => {
     age,
     ageFromRecord,
     boneLoss,
-    estimatedBoneLoss,
     teethLost,
     complexity,
     stage,

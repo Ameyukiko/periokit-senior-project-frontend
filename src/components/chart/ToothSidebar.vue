@@ -145,6 +145,68 @@ const analysisData = computed(() => {
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
 
+      <!-- Analysis Summary -->
+      <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
+        <h3 class="text-[13px] font-black text-slate-800 mb-6">
+          Analysis Summary
+        </h3>
+        <div class="space-y-5">
+          <!-- Prognosis K&C Row -->
+          <div
+            @click="prognosisModalType = 'KC'"
+            class="flex justify-between gap-4 cursor-pointer group"
+          >
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-bold text-slate-400 border-b border-dotted border-slate-300 group-hover:text-[#0052ff] group-hover:border-[#0052ff] transition-all">
+                Prognosis K&C
+              </span>
+              <svg class="text-slate-200 group-hover:text-[#0052ff] transition-colors" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </div>
+            <span
+              class="text-[10px] font-black px-2.5 py-1 rounded-lg transition-all"
+              :class="getPrognosisColorKC(analysisData?.prognosisKC)"
+            >
+              {{ analysisData?.prognosisKC || 'N/A' }}
+            </span>
+          </div>
+
+          <!-- Prognosis M&N Row -->
+          <div
+            @click="prognosisModalType = 'MN'"
+            class="flex justify-between gap-4 cursor-pointer group"
+          >
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-bold text-slate-400 border-b border-dotted border-slate-300 group-hover:text-[#0052ff] group-hover:border-[#0052ff] transition-all">
+                Prognosis M&N
+              </span>
+              <svg class="text-slate-200 group-hover:text-[#0052ff] transition-colors" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </div>
+            <span
+              class="text-[10px] font-black px-2.5 py-1 rounded-lg transition-all"
+              :class="getPrognosisColorMN(analysisData?.prognosisMN)"
+            >
+              {{ analysisData?.prognosisMN || 'N/A' }}
+            </span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
+            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            <span class="text-[11px] font-bold text-slate-400">Buccal-Keratinized</span>
+            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.buccalKTW }} mm</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">{{ innerSurfaceLabel }}-Keratinized</span>
+            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.innerSurfaceKTW }} mm</span>
+          </div>
+          <div v-if="!toothData.implant" class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-400">Furcation</span>
+            <span class="text-[11px] font-black text-slate-700">{{ getFurLabel(analysisData?.furcation) }}</span>
+          </div>
+        </div>
+      </section>
+
       <!-- PD Section -->
       <section :class="{ 'bg-slate-800/30 opacity-70 pointer-events-none': toothData.extracted }">
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">PD</h3>
@@ -314,68 +376,6 @@ const analysisData = computed(() => {
         </div>
 
 
-      </section>
-
-      <!-- Analysis Summary -->
-      <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
-        <h3 class="text-[13px] font-black text-slate-800 mb-6">
-          Analysis Summary
-        </h3>
-        <div class="space-y-5">
-          <!-- Prognosis K&C Row -->
-          <div
-            @click="prognosisModalType = 'KC'"
-            class="flex justify-between gap-4 cursor-pointer group"
-          >
-            <div class="flex items-center gap-1.5">
-              <span class="text-[11px] font-bold text-slate-400 border-b border-dotted border-slate-300 group-hover:text-[#0052ff] group-hover:border-[#0052ff] transition-all">
-                Prognosis K&C
-              </span>
-              <svg class="text-slate-200 group-hover:text-[#0052ff] transition-colors" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            </div>
-            <span
-              class="text-[10px] font-black px-2.5 py-1 rounded-lg transition-all"
-              :class="getPrognosisColorKC(analysisData?.prognosisKC)"
-            >
-              {{ analysisData?.prognosisKC || 'N/A' }}
-            </span>
-          </div>
-
-          <!-- Prognosis M&N Row -->
-          <div
-            @click="prognosisModalType = 'MN'"
-            class="flex justify-between gap-4 cursor-pointer group"
-          >
-            <div class="flex items-center gap-1.5">
-              <span class="text-[11px] font-bold text-slate-400 border-b border-dotted border-slate-300 group-hover:text-[#0052ff] group-hover:border-[#0052ff] transition-all">
-                Prognosis M&N
-              </span>
-              <svg class="text-slate-200 group-hover:text-[#0052ff] transition-colors" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            </div>
-            <span
-              class="text-[10px] font-black px-2.5 py-1 rounded-lg transition-all"
-              :class="getPrognosisColorMN(analysisData?.prognosisMN)"
-            >
-              {{ analysisData?.prognosisMN || 'N/A' }}
-            </span>
-          </div>
-          <div class="flex justify-between items-center pt-2">
-            <span class="text-[11px] font-bold text-slate-400">Buccal-Keratinized</span>
-            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.buccalKTW }} mm</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">{{ innerSurfaceLabel }}-Keratinized</span>
-            <span class="text-[11px] font-black text-slate-700">{{ analysisData?.innerSurfaceKTW }} mm</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">Mobility</span>
-            <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
-          </div>
-          <div v-if="!toothData.implant" class="flex justify-between items-center">
-            <span class="text-[11px] font-bold text-slate-400">Furcation</span>
-            <span class="text-[11px] font-black text-slate-700">{{ getFurLabel(analysisData?.furcation) }}</span>
-          </div>
-        </div>
       </section>
 
       <!-- Note / Remark -->
