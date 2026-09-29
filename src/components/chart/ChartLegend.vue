@@ -11,8 +11,9 @@
 </script>
 
 <template>
+  <!-- self-start: a stretched flex item fills the whole row, leaving sticky no room to move -->
   <aside :class="[
-    'flex flex-col gap-3 sticky top-24 transition-all duration-500',
+    'flex flex-col gap-3 self-start sticky top-32 transition-all duration-500',
     isSidebarOpen ? 'w-14 z-150' : 'w-60 z-0'
   ]">
     <!-- Collapsed Icon Mode with Toggle -->
