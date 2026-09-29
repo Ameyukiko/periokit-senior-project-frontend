@@ -303,8 +303,8 @@ export const getKtwWarningStyle = (id: ToothId, _surface: Surface): KtwWarningPo
 
 // Mobility grade sits on the crown: bottom of upper teeth, top of lower teeth
 const MOBILITY_MARKER_POSITIONS: Record<'upper' | 'lower', KtwWarningPosition> = {
-  upper: { top: '70%', left: '50%' },
-  lower: { top: '30%', left: '50%' }
+  upper: { top: '73%', left: '50%' },
+  lower: { top: '29%', left: '50%' }
 }
 
 export const getMobilityMarkerStyle = (id: ToothId): KtwWarningPosition => {
