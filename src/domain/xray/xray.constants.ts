@@ -11,6 +11,9 @@ export const FIT_PADDING = 40
 
 export const HISTORY_MAX = 30
 
+/** Must match SaveXrayBoardInput validation and the JSONB CHECK constraint. */
+export const XRAY_BOARD_MAX_OBJECTS = 100
+
 /** Longest side an added image gets on the board, before the user resizes it. */
 export const IMAGE_MAX_LONG_SIDE = 420
 /**

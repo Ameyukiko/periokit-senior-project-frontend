@@ -1,4 +1,4 @@
-import { NOTE_DEFAULT_COLOR, NOTE_FONT } from './xray.constants'
+import { NOTE_DEFAULT_COLOR, NOTE_FONT, XRAY_BOARD_MAX_OBJECTS } from './xray.constants'
 import type {
   XrayBoardObjectInput,
   XrayBoardResponse,
@@ -16,9 +16,15 @@ export function normalizeXrayZIndex(boardObjects: XrayObject[]): XrayObject[] {
 
 /** Maps the API shape into the discriminated union used by the board. */
 export function mapXrayBoardResponse(board: XrayBoardResponse): XrayObject[] {
+  if (board.objects.length > XRAY_BOARD_MAX_OBJECTS) {
+    throw new Error('The X-ray board contains too many objects')
+  }
   const assets = new Map(board.assets.map(asset => [asset.id, asset]))
 
   return board.objects.map(object => {
+    if (object.objectType !== 'image' && object.objectType !== 'note') {
+      throw new Error('The X-ray board contains an unknown object type')
+    }
     const base = {
       id: object.id,
       zIndex: object.zIndex,
@@ -29,7 +35,7 @@ export function mapXrayBoardResponse(board: XrayBoardResponse): XrayObject[] {
       rotation: object.rotation,
     }
 
-    if (object.objectType !== 'image') {
+    if (object.objectType === 'note') {
       return {
         ...base,
         objectType: 'note',

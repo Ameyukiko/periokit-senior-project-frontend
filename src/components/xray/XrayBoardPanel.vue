@@ -159,6 +159,7 @@ const errorDetail = computed(() => {
  * chance to notice that the film they just added is not in the count (SRS-311).
  */
 const saveSummary = computed(() => {
+  if (!objects.value.length) return 'This X-ray board will be cleared.'
   const images = objects.value.filter(object => object.objectType === 'image').length
   const notes = objects.value.length - images
   const parts: string[] = []
@@ -186,7 +187,7 @@ const dialogOpen = computed(
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
   if (!canUpload.value) return 'Save the visit first to upload films'
-  if (isEmpty.value) return 'Add at least one X-ray first'
+  if (isEmpty.value) return saved.value ? 'Clear this board' : 'Add at least one X-ray first'
   return 'Save this board'
 })
 

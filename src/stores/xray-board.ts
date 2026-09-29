@@ -8,6 +8,7 @@ import {
   NOTE_DEFAULT_COLOR,
   NOTE_DEFAULT_SIZE,
   NOTE_FONT,
+  XRAY_BOARD_MAX_OBJECTS,
   XRAY_PREF_KEYS,
 } from '@/domain/xray/xray.constants'
 import {
@@ -225,7 +226,8 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       editable.value &&
       // A board belongs to a visit, and the draft tab has no visit to belong to.
       canUpload.value &&
-      objects.value.length > 0 &&
+      // An existing board may be saved empty to clear it and orphan its assets.
+      (objects.value.length > 0 || saved.value) &&
       // Saving mid-batch writes half the films and marks the board clean, which
       // is the same silent loss that blocking uploads during a save prevents.
       !isAddingFiles.value,
@@ -329,6 +331,22 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
 
     const picked = Array.from(files)
     if (!picked.length) return
+
+    const available = XRAY_BOARD_MAX_OBJECTS - objects.value.length
+    if (available <= 0) {
+      notifications.warning(
+        'The board is full',
+        `A board can contain up to ${XRAY_BOARD_MAX_OBJECTS} images and notes.`,
+      )
+      return
+    }
+    if (picked.length > available) {
+      notifications.warning(
+        'Some images were not added',
+        `Only ${available} more ${available === 1 ? 'object fits' : 'objects fit'} on this board.`,
+      )
+      picked.splice(available)
+    }
 
     batchOrigin = { x: worldX, y: worldY }
     await uploads.add(picked)
@@ -435,6 +453,13 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
   const isAddingFiles = uploads.isAdding
 
   function addNote(worldX: number, worldY: number, preset?: Partial<XrayNoteObject>) {
+    if (objects.value.length >= XRAY_BOARD_MAX_OBJECTS) {
+      notifications.warning(
+        'The board is full',
+        `A board can contain up to ${XRAY_BOARD_MAX_OBJECTS} images and notes.`,
+      )
+      return null
+    }
     const note: XrayNoteObject = {
       id: uid(),
       zIndex: topZIndex() + 1,
@@ -686,7 +711,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       )
       return false
     }
-    if (!objects.value.length) {
+    if (!objects.value.length && !saved.value) {
       notifications.error('Add at least one X-ray before saving')
       return false
     }

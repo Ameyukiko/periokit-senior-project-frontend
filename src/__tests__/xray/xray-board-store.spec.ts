@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getByVisit: vi.fn(),
+  save: vi.fn(),
   notifyError: vi.fn(),
   notifySuccess: vi.fn(),
   notifyWarning: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock('@/services/api/xray.api', () => ({
   xrayApi: {
     getByVisit: mocks.getByVisit,
     refreshUrls: vi.fn(),
-    save: vi.fn(),
+    save: mocks.save,
   },
   xrayAssetApi: { upload: vi.fn() },
   toBoardFailure: vi.fn(() => ({ title: 'Save failed', detail: '' })),
@@ -39,6 +40,7 @@ describe('X-ray board store interface', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mocks.getByVisit.mockReset()
+    mocks.save.mockReset()
   })
 
   afterEach(() => {
@@ -49,6 +51,7 @@ describe('X-ray board store interface', () => {
     const board = useXrayBoardStore()
     await board.loadBoard('patient::new', null)
     const note = board.addNote(100, 100)
+    if (!note) throw new Error('Expected the note to be added')
 
     expect(board.finishNoteEditing()).toBe(true)
     expect(board.editingNoteId).toBeNull()
@@ -61,6 +64,7 @@ describe('X-ray board store interface', () => {
     const board = useXrayBoardStore()
     await board.loadBoard('patient::new', null)
     const note = board.addNote(100, 100)
+    if (!note) throw new Error('Expected the note to be added')
     const original = { posX: note.posX, posY: note.posY, rotation: note.rotation }
 
     expect(board.updateObjectGeometry(note.id, { posX: 20, posY: 30, rotation: 45 })).toBe(true)
@@ -124,5 +128,62 @@ describe('X-ray board store interface', () => {
     expect(board.isRetrying).toBe(false)
     expect(board.retryFailed).toBe(false)
     expect(board.editable).toBe(true)
+  })
+
+  it('saves an existing board after its last object is removed', async () => {
+    const savedBoard = {
+      id: 'board-1',
+      visitId: 'visit-1',
+      status: 'saved' as const,
+      savedAt: '2026-09-30T00:00:00.000Z',
+      assets: [],
+      objects: [
+        {
+          id: 'note-1',
+          objectType: 'note' as const,
+          zIndex: 0,
+          posX: 0,
+          posY: 0,
+          width: 180,
+          height: 120,
+          rotation: 0,
+          assetId: null,
+          slotCode: null,
+          noteText: 'Remove me',
+          noteColor: '#fde68a',
+          noteFontSize: 14,
+        },
+      ],
+    }
+    const clearedBoard = { ...savedBoard, objects: [], savedAt: '2026-09-30T00:01:00.000Z' }
+    mocks.getByVisit.mockResolvedValue({ data: { xrayBoardByVisit: savedBoard } })
+    mocks.save.mockResolvedValue({ data: { saveXrayBoard: clearedBoard } })
+    const board = useXrayBoardStore()
+
+    await board.loadBoard('patient::visit-1', 'visit-1')
+    board.startEdit()
+    board.select('note-1')
+    board.removeSelected()
+
+    expect(board.isEmpty).toBe(true)
+    expect(board.isDirty).toBe(true)
+    expect(board.canSave).toBe(true)
+    await expect(board.saveBoard()).resolves.toBe(true)
+    expect(mocks.save).toHaveBeenCalledWith({ visitId: 'visit-1', objects: [] })
+  })
+
+  it('does not add more than 100 objects to a board', async () => {
+    const board = useXrayBoardStore()
+    await board.loadBoard('patient::new', null)
+
+    for (let index = 0; index < 100; index += 1) board.addNote(index, index)
+
+    expect(board.objects).toHaveLength(100)
+    expect(board.addNote(101, 101)).toBeNull()
+    expect(board.objects).toHaveLength(100)
+    expect(mocks.notifyWarning).toHaveBeenCalledWith(
+      'The board is full',
+      'A board can contain up to 100 images and notes.',
+    )
   })
 })

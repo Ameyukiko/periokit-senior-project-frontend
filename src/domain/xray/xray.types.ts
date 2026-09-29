@@ -3,6 +3,10 @@
 // board maps 1:1 onto the API response once the backend lands — SRS-169 forbids
 // touching geometry on load, and a rename is a transformation.
 
+export type XrayObjectType = 'image' | 'note'
+export type XrayBoardStatus = 'draft' | 'saved'
+export type XrayAssetStatus = 'pending' | 'active' | 'orphaned' | 'cleanup_failed'
+
 export interface XrayObjectBase {
   id: string
   /**
@@ -98,7 +102,7 @@ export interface XrayAssetResponse {
   naturalWidth: number
   naturalHeight: number
   /** pending | active | orphaned | cleanup_failed */
-  status: string
+  status: XrayAssetStatus
   /** Minted per request — never stored, on the server or here (SRS-185, SRS-187). */
   signedUrl: string
   urlExpiresAt: string
@@ -106,8 +110,7 @@ export interface XrayAssetResponse {
 
 export interface XrayBoardObjectResponse {
   id: string
-  /** image | note */
-  objectType: string
+  objectType: XrayObjectType
   zIndex: number
   posX: number
   posY: number
@@ -124,8 +127,7 @@ export interface XrayBoardObjectResponse {
 export interface XrayBoardResponse {
   id: string
   visitId: string
-  /** draft | saved */
-  status: string
+  status: XrayBoardStatus
   savedAt: string | null
   objects: XrayBoardObjectResponse[]
   /** Every asset on the visit, including any no object points at yet. */
@@ -228,7 +230,7 @@ export interface XrayUploadItem {
 
 /** No `id`: a save is replace-all, so the server has no old rows to match. */
 export interface XrayBoardObjectInput {
-  objectType: string
+  objectType: XrayObjectType
   zIndex: number
   posX: number
   posY: number
