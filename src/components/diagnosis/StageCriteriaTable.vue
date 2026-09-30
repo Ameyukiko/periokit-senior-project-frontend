@@ -34,8 +34,19 @@ const emit = defineEmits<{
   mark: [row: StageRow, stage: StageId]
 }>()
 
+/**
+ * Rows whose answer is a chart measurement. Correcting one means correcting the
+ * chart, so the band is never ticked here — only a tick an older visit already
+ * carries can still be taken off, so it is not stuck overriding the chart.
+ */
+const CHART_ROWS: StageRow[] = ['cal']
+const isChartRow = (row: StageRow) => CHART_ROWS.includes(row)
+
+const canClick = (row: StageRow, stage: StageId) =>
+  !props.readonly && (!isChartRow(row) || props.marks[row] === stage)
+
 const mark = (row: StageRow, stage: StageId) => {
-  if (props.readonly) return
+  if (!canClick(row, stage)) return
   emit('mark', row, stage)
 }
 
@@ -125,22 +136,28 @@ const lossChip = computed(() => {
 // Read-only keeps every one of those colours — the answer is still the answer
 // on a visit nobody is editing. What goes is the invitation to click: no
 // pointer, no dashed "open" border, no hover.
-const cellClass = (row: StageRow, stage: StageId) => [
-  CELL_BASE,
-  props.readonly ? 'cursor-default' : 'cursor-pointer',
-  !props.readonly && props.marks[row] !== stage && props.resolved[row] !== stage && CELL_OPEN,
-  props.marks[row] === stage
-    ? CELL_TICKED
-    : props.resolved[row] === stage
-      ? CELL_ANSWERED
-      : props.resolved[row] === null && props.stage === stage
-        ? props.readonly
-          ? CELL_IN_COLUMN
-          : `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
-        : props.readonly
-          ? 'text-black'
-          : CELL_IDLE,
-]
+//
+// A row read from the chart is drawn the same way: it shows its answer but
+// does not offer itself.
+const cellClass = (row: StageRow, stage: StageId) => {
+  const locked = props.readonly || isChartRow(row)
+  return [
+    CELL_BASE,
+    canClick(row, stage) ? 'cursor-pointer' : 'cursor-default',
+    !locked && props.marks[row] !== stage && props.resolved[row] !== stage && CELL_OPEN,
+    props.marks[row] === stage
+      ? CELL_TICKED
+      : props.resolved[row] === stage
+        ? CELL_ANSWERED
+        : props.resolved[row] === null && props.stage === stage
+          ? locked
+            ? CELL_IN_COLUMN
+            : `${CELL_IN_COLUMN} hover:bg-[#FECE44]/45`
+          : locked
+            ? 'text-black'
+            : CELL_IDLE,
+  ]
+}
 </script>
 
 <template>
@@ -234,7 +251,7 @@ const cellClass = (row: StageRow, stage: StageId) => [
             Interdental CAL
             <span class="block text-[10px] font-normal text-slate-700">at site of greatest loss</span>
             <span v-if="cal === null && !marks.cal" class="block mt-1 text-[10px] font-bold text-red-600">
-              Needs your input
+              Record in the chart
             </span>
           </th>
           <td
