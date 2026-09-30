@@ -407,7 +407,13 @@ onBeforeRouteLeave(to => {
   // and the chart and Diagnosis pages are two halves of that work. Stepping
   // outside both locks it again, so no visit is ever found already unlocked.
   if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
-  if (isBypassing() || !hasUnsavedBoard()) return true
+  // Diagnosis for the same visit loses nothing: the board stays in the store, and
+  // Diagnosis asks in turn if the doctor heads anywhere else from there.
+  const toSameVisitDiagnosis =
+    to.name === 'diagnosis' &&
+    (to.query.visitId ?? null) === xrayVisitId.value &&
+    (to.query.patientId ?? null) === xrayPatientId.value
+  if (isBypassing() || toSameVisitDiagnosis || !hasUnsavedBoard()) return true
   return askBeforeLeaving(to)
 })
 
@@ -422,8 +428,8 @@ const {
 } = useVisitTabs({ navigate, guard: guardUnsavedXray, enterNewVisitState })
 
 // Open the AAP/EFP staging and grading worksheet for the visit on screen.
-// Pushed through the router rather than `navigate`, so an unsaved X-ray board
-// gets the same question here as it does for every other way off this page.
+// Pushed through the router rather than `navigate`; the route guard lets it
+// through without asking, since the X-ray board survives the round trip.
 const handleOpenDiagnosis = () => {
   const patientId = currentPatientId.value || (route.query.patientId as string | undefined)
   const visitId = activeVisitId.value || (route.query.visitId as string | undefined)
