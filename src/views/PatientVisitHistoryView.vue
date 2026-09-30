@@ -237,19 +237,24 @@ const goBack = () => {
   router.push({ name: 'my-patients' })
 }
 
-// Reset patient info when leaving the page
+// Reset patient info when leaving the page. Assigned directly rather than via
+// updatePatientInfo: that marks the chart dirty, and the chart page would then
+// keep this blank header as an unsaved draft instead of loading the patient.
+// An unsaved draft that really is open keeps its header.
 onUnmounted(() => {
-  chartStore.updatePatientInfo({
-    hn: '',
-    patientName: '',
-    age: null,
-    gender: '',
-    nationality: '',
-    date: new Date().toISOString().split('T')[0],
-    doctor: chartStore.patientInfo?.doctor || '',
-    studentId: chartStore.patientInfo?.studentId || '',
-    visitPhase: 'before_hygienic'
-  })
+  if (!chartStore.isDirty) {
+    chartStore.patientInfo = {
+      hn: '',
+      patientName: '',
+      age: null,
+      gender: '',
+      nationality: '',
+      date: new Date().toISOString().split('T')[0],
+      doctor: chartStore.patientInfo?.doctor || '',
+      studentId: chartStore.patientInfo?.studentId || '',
+      visitPhase: 'before_hygienic'
+    }
+  }
 
   // Clear visits from visitStore
   visitStore.visits = []
