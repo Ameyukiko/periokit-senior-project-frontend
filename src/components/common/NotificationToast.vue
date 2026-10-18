@@ -66,17 +66,6 @@ const getContainerClass = (type: string) => {
             {{ notification.description }}
           </p>
 
-
-
-
-
-
-
-          <div v-if="notification.type === 'error' && notification.description" class="flex items-center gap-4 mt-3">
-            <button @click.stop="notificationStore.remove(notification.id)" class="text-[14px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
-              Dismiss
-            </button>
-          </div>
         </div>
 
         <button

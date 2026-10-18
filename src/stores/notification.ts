@@ -14,10 +14,12 @@ export interface Notification {
 export const useNotificationStore = defineStore("notification", () => {
   const notifications = ref<Notification[]>([]);
 
+  const DEFAULT_DURATION = 500;
+
   const show = (
     message: string,
     type: NotificationType = "info",
-    duration: number = 1000,
+    duration: number = DEFAULT_DURATION,
     description?: string,
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -40,13 +42,13 @@ export const useNotificationStore = defineStore("notification", () => {
   };
 
   const success = (message: string, description?: string, duration?: number) =>
-    show(message, "success", duration || 3000, description);
+    show(message, "success", duration ?? DEFAULT_DURATION, description);
   const error = (message: string, description?: string, duration?: number) =>
-    show(message, "error", duration || 3000, description);
+    show(message, "error", duration ?? DEFAULT_DURATION, description);
   const info = (message: string, description?: string, duration?: number) =>
-    show(message, "info", duration || 3000, description);
+    show(message, "info", duration ?? DEFAULT_DURATION, description);
   const warning = (message: string, description?: string, duration?: number) =>
-    show(message, "warning", duration || 3000, description);
+    show(message, "warning", duration ?? DEFAULT_DURATION, description);
 
   return {
     notifications,
