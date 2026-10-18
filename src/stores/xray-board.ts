@@ -555,10 +555,10 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
     if (!object || object.objectType !== 'image') return 'none'
 
     const slot = findSlotAt(
-    object.posX + object.width / 2,
-    object.posY + object.height / 2,
-    visibleSlots.value,
-  )
+      object.posX + object.width / 2,
+      object.posY + object.height / 2,
+      visibleSlots.value,
+    )
     if (!slot) {
       object.slotCode = null
       return 'none'
@@ -836,7 +836,7 @@ export const useXrayBoardStore = defineStore('xrayBoard', () => {
       const failure = toBoardFailure(error)
 
 
-      notifications.error(failure.title, failure.detail, 8000)
+      notifications.error(failure.title, failure.detail)
       return false
     } finally {
       isSaving.value = false

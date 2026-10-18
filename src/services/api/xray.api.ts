@@ -125,14 +125,10 @@ export const xrayApi = {
 
 
 
-
-
-
-
-
 export interface XrayBoardFailure {
   title: string
   detail: string
+  canRetry: boolean
 }
 
 
@@ -144,20 +140,43 @@ function graphqlCode(error: unknown): string | null {
 }
 
 export function toBoardFailure(error: unknown): XrayBoardFailure {
+  switch (graphqlCode(error)) {
+    case 'UNAUTHENTICATED':
+      return {
+        title: 'You have been signed out',
+        detail: 'Sign in again, then open this board. Nothing on it was lost.',
+        canRetry: false,
+      }
+    case 'NOT_FOUND':
+      return {
+        title: 'This visit is no longer there',
+        detail: 'It may have been removed in another tab. Close it and open the visit again.',
+        canRetry: false,
+      }
 
 
-  if (graphqlCode(error) === 'UNAUTHENTICATED') {
-    return { title: 'Your session expired. Please sign in again.', detail: '' }
+
+    case 'FORBIDDEN':
+      return {
+        title: 'One of the films no longer belongs to this visit',
+        detail: 'Load the board again to see what is really on it. Nothing has been saved.',
+        canRetry: false,
+      }
+    case 'BAD_USER_INPUT':
+      return {
+        title: 'The board could not be saved',
+        detail: 'Something on it is outside what the server accepts. Nothing has been changed.',
+        canRetry: false,
+      }
+
+
+    default:
+      return {
+        title: 'Could not reach the server',
+        detail: 'Nothing on the board was lost. Check your connection and try again.',
+        canRetry: true,
+      }
   }
-
-
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return {
-      title: 'Save failed: you appear to be offline.',
-      detail: 'Nothing on the board was lost.',
-    }
-  }
-  return { title: 'Save failed. Please try again.', detail: 'Nothing on the board was lost.' }
 }
 
 
