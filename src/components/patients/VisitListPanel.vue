@@ -52,9 +52,9 @@ const viewAllPatients = () => {
 
 const newPatient = () => {
   emit('update:open', false)
-  // A bare /chart otherwise resumes an unsaved draft rather than blanking it —
-  // that is how the doctor walks back from the Diagnosis page. This button asks
-  // for a chart for somebody not on file yet, so it says so by clearing first.
+
+
+
   chartStore.resetChart()
   router.push('/chart')
 }
@@ -64,7 +64,7 @@ const navigateTo = (path: string) => {
   router.push(path)
 }
 
-// Search
+
 const searchQuery = ref('')
 const searchResults = ref<Patient[]>([])
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -119,7 +119,7 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 }
 
-// Compare features state
+
 const compareFirstVisitId = ref<string | null>(null)
 const compareSecondVisitId = ref<string | null>(null)
 
@@ -147,7 +147,7 @@ watch(() => props.open, async (newVal) => {
         try {
           const patient = await patientApi.getById(routePatientId)
           if (patient) fetchedPatientName.value = `${patient.firstName} ${patient.lastName}`.trim()
-        } catch { /* silent */ }
+        } catch {              }
       }
     }
   } else {
@@ -160,15 +160,15 @@ watch(() => props.open, async (newVal) => {
   }
 })
 
-/**
- * The chart page asks before leaving a board with unsaved films, and "Stay"
- * aborts the navigation. Closing this list on the way out would take it away
- * from someone who has just said they want to stay in it — so the drawer waits
- * to hear that the move actually happened.
- *
- * Only an *aborted* navigation counts as staying: clicking the visit already
- * open comes back as `duplicated`, and closing is the right answer there.
- */
+
+
+
+
+
+
+
+
+
 const closeUnlessAborted = (failure: unknown) => {
   if (!isNavigationFailure(failure, NavigationFailureType.aborted)) {
     emit('update:open', false)
@@ -184,8 +184,8 @@ const switchPatient = async (patient: Patient) => {
 }
 
 const viewChart = async (visitId: string) => {
-  // Each destination page owns the query-to-visit workflow, so the drawer only
-  // changes the route and never starts a competing chart request.
+
+
   const patientId = route.query.patientId || patientVisits.value.find(v => v.id === visitId)?.patientId
   const failure = await router.replace({
     query: patientId
@@ -206,17 +206,17 @@ const handleCompareClick = (visit: Visit) => {
 
 const toggleVisitSelection = (visitId: string) => {
   if (compareFirstVisitId.value === visitId) {
-    // Deselect first visit, shift second visit to first if present
+
     compareFirstVisitId.value = compareSecondVisitId.value
     compareSecondVisitId.value = null
   } else if (compareSecondVisitId.value === visitId) {
-    // Deselect second visit
+
     compareSecondVisitId.value = null
   } else if (!compareFirstVisitId.value) {
-    // Set as first selection
+
     compareFirstVisitId.value = visitId
   } else {
-    // Set as second selection
+
     compareSecondVisitId.value = visitId
   }
 }
@@ -255,7 +255,7 @@ const formatDate = (dateString: string | null) => {
 </script>
 
 <template>
-  <!-- Overlay -->
+
   <Teleport to="body">
     <div
       class="fixed inset-0 z-50 flex"
@@ -267,12 +267,12 @@ const formatDate = (dateString: string | null) => {
         @click="emit('update:open', false)"
       ></div>
 
-      <!-- Drawer -->
+
       <div
         class="relative w-full sm:w-[340px] max-w-sm bg-white h-full shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out"
         :class="open ? 'translate-x-0' : '-translate-x-full'"
       >
-      <!-- Header -->
+
       <div class="px-4 py-4 flex items-center justify-between border-b border-slate-200 shrink-0">
         <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 max-w-[250px] truncate">
           Patient - {{ patientDisplayName }}
@@ -282,7 +282,7 @@ const formatDate = (dateString: string | null) => {
         </button>
       </div>
 
-      <!-- Navigation (Mobile Only) -->
+
       <div class="md:hidden p-4 border-b border-slate-200 shrink-0 space-y-2 bg-slate-50">
         <button @click="navigateTo('/chart')" class="w-full py-2 flex items-center gap-3 text-slate-700 font-bold hover:text-[#0052ff] transition-colors">
           <Activity class="w-5 h-5" /> Periodontal Chart
@@ -292,7 +292,7 @@ const formatDate = (dateString: string | null) => {
         </button>
       </div>
 
-      <!-- Actions -->
+
       <div class="p-4 space-y-3 border-b border-slate-200 shrink-0">
         <button @click="viewAllPatients" class="w-full py-2 flex justify-center items-center gap-2 border border-[#0052ff] text-[#0052ff] rounded-xl font-medium hover:bg-blue-50 transition-colors shadow-sm">
           <Users class="w-4 h-4" /> View All Patients
@@ -302,33 +302,33 @@ const formatDate = (dateString: string | null) => {
         </button>
       </div>
 
-      <!-- Search -->
+
       <div class="p-4 border-b border-slate-200 shrink-0 relative" ref="searchContainerRef">
         <div class="relative z-20">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search class="w-4 h-4 text-slate-400" />
           </div>
-          <input 
-            v-model="searchQuery" 
+          <input
+            v-model="searchQuery"
             @input="onSearchInput"
             @focus="onSearchFocus"
-            type="text" 
-            class="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#0052ff] focus:border-transparent transition-all outline-none placeholder:text-slate-400" 
+            type="text"
+            class="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#0052ff] focus:border-transparent transition-all outline-none placeholder:text-slate-400"
             placeholder="Search patients..."
           />
         </div>
 
-        <!-- Search Results Dropdown -->
-        <div 
-          v-if="showSearchDropdown" 
+
+        <div
+          v-if="showSearchDropdown"
           class="absolute left-4 right-4 top-[calc(100%-8px)] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto"
         >
           <div v-if="searchQuery.trim() !== '' && searchResults.length === 0" class="p-4 text-center text-sm text-slate-500">
             No patients found
           </div>
           <div v-else class="p-2 space-y-1">
-            <div 
-              v-for="patient in searchResults" 
+            <div
+              v-for="patient in searchResults"
               :key="patient.id"
               class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group"
               @click="switchPatient(patient)"
@@ -343,8 +343,8 @@ const formatDate = (dateString: string | null) => {
                     <div class="text-[11px] text-slate-500 mt-0.5">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
                   </div>
                </div>
-               
-               <button 
+
+               <button
                  @click.stop="switchPatient(patient)"
                  class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] font-bold hover:border-[#0052ff] hover:text-[#0052ff] transition-colors shrink-0 shadow-sm opacity-0 group-hover:opacity-100"
                >
@@ -355,9 +355,9 @@ const formatDate = (dateString: string | null) => {
         </div>
       </div>
 
-      <!-- Content Area -->
+
       <div class="flex-1 overflow-y-auto bg-slate-50 p-4">
-        <!-- Inline Search / Recent Patients (Only for MyPatients view) -->
+
         <div v-if="isInlineSearch || sortedVisits.length === 0" class="space-y-3">
           <div v-if="searchResults.length === 0" class="text-center py-8">
             <p class="text-slate-500 text-sm">No patients found</p>
@@ -378,7 +378,7 @@ const formatDate = (dateString: string | null) => {
               <div class="text-xs text-slate-500 mt-0.5">Age: {{ patient.age ?? '-' }} | {{ patient.gender?.charAt(0) || '-' }}</div>
               <div class="text-xs text-slate-500 mt-0.5">Latest date : {{ formatDate(patient.lastVisitDate) }}</div>
             </div>
-            <button 
+            <button
               @click="switchPatient(patient)"
               class="px-4 py-1.5 border border-[#0052ff] text-[#0052ff] rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors shrink-0 bg-white shadow-sm"
             >
@@ -387,7 +387,7 @@ const formatDate = (dateString: string | null) => {
           </div>
         </div>
 
-        <!-- Visits List (For Chart and History views) -->
+
         <div v-else>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
@@ -404,7 +404,7 @@ const formatDate = (dateString: string | null) => {
             </button>
           </div>
 
-          <!-- Compare Mode Banner in Drawer -->
+
           <div v-if="compareFirstVisitId" class="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col gap-2 shadow-xs animate-in fade-in slide-in-from-top-4 duration-300">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-blue-700">
@@ -416,14 +416,14 @@ const formatDate = (dateString: string | null) => {
                 </template>
               </span>
               <div class="flex items-center gap-2 shrink-0">
-                <button 
+                <button
                   v-if="compareSecondVisitId"
                   @click="executeCompare"
                   class="text-[10px] font-bold bg-[#0052ff] hover:bg-blue-700 text-white px-2.5 py-1 rounded-md transition-colors shadow-xs"
                 >
                   Start Compare
                 </button>
-                <button 
+                <button
                   @click="cancelCompareSelection"
                   class="p-1 hover:bg-blue-100 rounded-full text-blue-500 hover:text-blue-700 transition-colors"
                   title="Cancel compare mode"
@@ -472,28 +472,28 @@ const formatDate = (dateString: string | null) => {
                 </div>
               </div>
               <div class="flex gap-2">
-                <!-- If in compare select mode -->
+
                 <div v-if="compareFirstVisitId" class="w-full">
-                  <!-- Selected first visit -->
-                  <button 
-                    v-if="visit.id === compareFirstVisitId" 
+
+                  <button
+                    v-if="visit.id === compareFirstVisitId"
                     @click="toggleVisitSelection(visit.id)"
                     class="w-full py-2 bg-blue-50 border border-blue-200 text-[#0052ff] font-bold text-xs rounded-xl shadow-xs hover:bg-blue-100 hover:border-blue-300 transition-colors text-center block"
                     title="Click to deselect"
                   >
                     Selected (Visit #{{ visit.visitNumber }})
                   </button>
-                  <!-- Selected second visit -->
-                  <button 
-                    v-else-if="visit.id === compareSecondVisitId" 
+
+                  <button
+                    v-else-if="visit.id === compareSecondVisitId"
                     @click="toggleVisitSelection(visit.id)"
                     class="w-full py-2 bg-blue-50 border border-blue-200 text-[#0052ff] font-bold text-xs rounded-xl shadow-xs hover:bg-blue-100 hover:border-blue-300 transition-colors text-center block"
                     title="Click to deselect"
                   >
                     Selected (Visit #{{ visit.visitNumber }})
                   </button>
-                  <!-- Other visits -->
-                  <button 
+
+                  <button
                     v-else
                     @click="toggleVisitSelection(visit.id)"
                     class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors shadow-sm text-center border border-slate-200 block"
@@ -501,15 +501,15 @@ const formatDate = (dateString: string | null) => {
                     Select to Compare
                   </button>
                 </div>
-                <!-- Normal mode -->
+
                 <div v-else class="flex gap-2 w-full">
-                  <button 
+                  <button
                     @click="viewChart(visit.id)"
                     class="flex-1 py-1.5 bg-[#0052ff] text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors text-center shadow-sm"
                   >
                     view chart
                   </button>
-                  <button 
+                  <button
                     @click="handleCompareClick(visit)"
                     class="flex-1 py-1.5 border border-[#0052ff] text-[#0052ff] rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors text-center shadow-sm"
                   >
@@ -519,7 +519,7 @@ const formatDate = (dateString: string | null) => {
               </div>
             </div>
 
-            
+
             <div v-if="!sortedVisits.length" class="text-center py-8">
                <User class="w-10 h-10 text-slate-300 mx-auto mb-2" />
                <p class="text-slate-500 font-medium text-sm">No visits found</p>

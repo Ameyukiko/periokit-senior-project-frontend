@@ -18,13 +18,13 @@ import {
 export const STAGE_IDS: StageId[] = ['I', 'II', 'III', 'IV']
 export const GRADE_IDS: GradeId[] = ['A', 'B', 'C']
 
-// ── Stage: computed from the numbers, and overridable ─────────────────────────
-// Each helper answers "which columns of the AAP/EFP table does this one number
-// belong in", and a number can belong in more than one — interdental CAL of
-// 6 mm reads as Stage III and Stage IV alike. `autoStageMarks` settles that by
-// taking the lower band of the pair: what separates III from IV is tooth loss
-// and complexity, which have rows of their own and can only raise the stage.
-// A band the doctor ticks by hand wins over the one the numbers land in.
+
+
+
+
+
+
+
 
 export const stagesForCal = (mm: number | null): StageId[] => {
   if (mm === null || mm <= 0) return []
@@ -40,11 +40,11 @@ export const stagesForBoneLoss = (percent: number | null): StageId[] => {
   return ['III', 'IV']
 }
 
-/**
- * The band a %RBL figure reads as, in the words the field carries under it.
- * Built off `stagesForBoneLoss` rather than repeating its 15 / 33 cut-offs, so
- * the line under the field can never disagree with the row in the table.
- */
+
+
+
+
+
 export const boneLossBand = (percent: number | null): string => {
   const [stage] = stagesForBoneLoss(percent)
   if (!stage) return ''
@@ -60,11 +60,11 @@ export const stagesForToothLoss = (count: number | null): StageId[] => {
   return ['IV']
 }
 
-/**
- * Complexity features, in the column each one belongs to. Complexity can raise
- * the stage but never lower it, so these read as "and this is also true of the
- * patient" rather than as an answer.
- */
+
+
+
+
+
 export const complexityFindings = (
   probingDepth: number | null,
   furcation: number | null,
@@ -97,12 +97,12 @@ const worseStage = (a: StageId | null, b: StageId | null): StageId | null => {
   return STAGE_IDS.indexOf(a) >= STAGE_IDS.indexOf(b) ? a : b
 }
 
-/**
- * The complexity band the measurements themselves read as. This cannot be taken
- * off `complexityFindings`, which lists a probing depth in every column it fits
- * so the table can show it there: 3 mm belongs under Stage I *and* Stage II,
- * and only the lowest of those is the complexity the patient actually has.
- */
+
+
+
+
+
+
 export const complexityStage = (
   probingDepth: number | null,
   furcation: number | null,
@@ -121,14 +121,14 @@ export const complexityStage = (
   return stage
 }
 
-/** Of the bands a number fits, the lowest — complexity raises it from there. */
+
 const lowestBand = (stages: StageId[]): StageId | null => stages[0] ?? null
 
-/**
- * Where the measurements put each row of the staging table, so the doctor does
- * not have to tick what the numbers already say. Rows with nothing recorded stay
- * null, and `assessStage` treats a hand-ticked band as the answer instead.
- */
+
+
+
+
+
 export const autoStageMarks = (
   cal: number | null,
   boneLossPercent: number | null,
@@ -148,13 +148,13 @@ const SEVERITY_ROWS: { row: StageRow; label: string }[] = [
 ]
 
 export interface StageAssessment {
-  /** null until at least one severity row has a number or a tick. */
+
   stage: StageId | null
   severity: StageId | null
   complexity: StageId | null
   reasons: string[]
   missing: string[]
-  /** The band each row settled on, whether the numbers or the doctor put it there. */
+
   resolved: Record<StageRow, StageId | null>
 }
 
@@ -165,13 +165,13 @@ const NO_MARKS: Record<StageRow, StageId | null> = {
   complexity: null,
 }
 
-/**
- * The stage the table adds up to. Each row takes the doctor's tick if there is
- * one and the band its measurement falls in otherwise; severity is then the
- * worst band across the three severity rows, and complexity can raise that,
- * never lower it (AAP/EFP 2017). A table with no numbers and no ticks yields no
- * stage at all.
- */
+
+
+
+
+
+
+
 export const assessStage = (
   marks: Record<StageRow, StageId | null>,
   auto: Record<StageRow, StageId | null> = NO_MARKS,
@@ -230,19 +230,19 @@ export const assessStage = (
   return { stage, severity, complexity, reasons, missing, resolved }
 }
 
-// ── Extent: counted off the chart ─────────────────────────────────────────────
 
-// FDI numbering puts the position in the second digit: 1–2 incisors, 3 canine,
-// 4–5 premolars, 6–8 molars.
+
+
+
 const isMolar = (toothId: ToothId) => toothId % 10 >= 6
 const isIncisor = (toothId: ToothId) => toothId % 10 <= 2
 
-/**
- * The extent the affected teeth read as. TAP 2023 puts the pattern as "molars
- * and/or incisors" — the affected teeth being confined to those, not both
- * groups having to be involved — and otherwise splits on 30% of the teeth.
- * Null when the chart has no affected tooth to count.
- */
+
+
+
+
+
+
 export const suggestExtent = (
   affectedToothIds: ToothId[],
   affectedPercentage: number,
@@ -254,7 +254,7 @@ export const suggestExtent = (
   return affectedPercentage >= 30 ? 'generalized' : 'localized'
 }
 
-/** Where each measured number falls, criterion by criterion. */
+
 export const stageSummary = (
   cal: number | null,
   boneLoss: number | null,
@@ -288,9 +288,9 @@ export const stageSummary = (
   return lines
 }
 
-// ── Grade: computed, and overridable ──────────────────────────────────────────
-// Every case starts at Grade B. Primary criteria move it to A or C; risk
-// factors can only shift it upward, never down.
+
+
+
 
 const DIRECT_GRADE: Record<DirectEvidence, GradeId> = {
   'no-loss': 'A',
@@ -316,17 +316,17 @@ const DIABETES_GRADE: Record<Diabetes, GradeId> = {
   'hba1c-gte-7': 'C',
 }
 
-/**
- * The one case phenotype the chart can settle on its own. TAP 2023 names the
- * molar / incisor pattern in the Grade C cell itself, as a clinical pattern
- * suggestive of rapid progression, and the extent already counts it off the
- * chart.
- *
- * Nothing else is read here. The table gives the other two bands in words —
- * "heavy biofilm deposit with low levels of destruction", "destruction
- * commensurate with biofilm deposits" — and no plaque score to divide them at,
- * so weighing destruction against biofilm stays a judgement the doctor makes.
- */
+
+
+
+
+
+
+
+
+
+
+
 export const suggestPhenotype = (extent: ExtentId | null): Phenotype | null =>
   extent === 'molar-incisor' ? 'exceeds' : null
 
@@ -351,23 +351,23 @@ const worse = (a: GradeId | null, b: GradeId | null): GradeId | null => {
 
 export interface GradeCriteria {
   directEvidence: DirectEvidence | null
-  /** Read off the radiograph. Null until it has been, never estimated. */
+
   boneLossPercent: number | null
   ageYears: number | null
   phenotype: Phenotype | null
-  /** True when the phenotype above was read off the chart rather than answered. */
+
   phenotypeFromChart?: boolean
   smoking: Smoking | null
   diabetes: Diabetes | null
 }
 
 export interface GradeAssessment {
-  /**
-   * Always a grade. TAP 2023 and AAP/EFP both start every case at Grade B and
-   * ask for evidence to move it to A or C, so a table nobody has answered reads
-   * as Grade B rather than as no grade at all. `missing` is what says the
-   * evidence has not been looked for yet.
-   */
+
+
+
+
+
+
   grade: GradeId
   ratio: number | null
   ratioGrade: GradeId | null
@@ -392,10 +392,10 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
   const reasons: string[] = []
   const missing: string[] = []
 
-  // TAP 2023, the note under table 6: start every patient at Grade B, then move
-  // it down to A or up to C on the evidence in the table. Direct evidence wins
-  // whenever it exists — radiographs 5 years apart beat any estimate made from
-  // a single visit.
+
+
+
+
   let primary: GradeId = 'B'
   if (directGrade) {
     primary = directGrade
@@ -416,9 +416,9 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
         `The case phenotype ${phenotypeSource} (${PHENOTYPE_LABEL[phenotype!].toLowerCase()}) reads as Grade ${phenotypeGrade}.`,
       )
     }
-    // Asked for while the only evidence of progression is the chart's own: the
-    // molar / incisor pattern fills the table, but it is not an answer to the
-    // question the row puts.
+
+
+
     const answeredIndirect = worse(
       ratioGrade,
       criteria.phenotypeFromChart ? null : phenotypeGrade,
@@ -452,18 +452,18 @@ export const assessGrade = (criteria: GradeCriteria): GradeAssessment => {
     missing.push('diabetes')
   }
 
-  // TAP 2023: assume Grade B and look for the evidence that moves the case to A
-  // or C. An unanswered table is therefore a Grade B case, not an ungraded one —
-  // `missing` above is what says the evidence has not been looked for yet.
+
+
+
   if (!directGrade && !ratioGrade && !phenotypeGrade) {
     reasons.push(
       'No evidence of progression recorded yet, so the case stays at the default Grade B. Direct evidence, % bone loss ÷ age or the case phenotype moves it from there.',
     )
   }
 
-  // Modifiers raise the grade the primary criteria arrived at; they never pull
-  // it back down (TAP 2023: "หากผู้ป่วยมีปัจจัยเสี่ยงเพิ่มเติม … ให้สามารถปรับ
-  // เพิ่ม grade ได้"), which is why this is `worse` and not an average.
+
+
+
   const grade = worse(primary, modifier) as GradeId
 
   return { grade, ratio, ratioGrade, primary, modifier, reasons, missing }

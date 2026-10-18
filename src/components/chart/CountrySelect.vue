@@ -10,19 +10,19 @@ defineProps<{
 
 const model = defineModel<string>({ default: '' })
 
-// What is typed is kept apart from the chosen value, as Headless UI expects;
-// the model only changes when an option is picked.
+
+
 const query = ref('')
 
-// Free text stays allowed through a "Use …" option: older visits hold values
-// like "Thai" that are not country names, and they must still be enterable.
+
+
 const customValue = computed(() => {
   const text = query.value.trim()
   if (!text) return null
   return COUNTRY_NAMES.some(name => name.toLowerCase() === text.toLowerCase()) ? null : text
 })
 
-// Names that start with what was typed come first, then any that contain it.
+
 const matches = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return COUNTRY_NAMES
@@ -33,10 +33,10 @@ const matches = computed(() => {
   return [...starts, ...contains]
 })
 
-// Headless UI (v1) leaves placement to us. The list is teleported to <body> so
-// the header card (overflow-hidden) cannot clip it, and pinned to the input
-// with fixed coordinates: below it, or above when the screen ends first.
-const LIST_HEIGHT = 108 // three rows; matches max-h-[108px]
+
+
+
+const LIST_HEIGHT = 108
 const anchorRef = ref<HTMLElement | null>(null)
 const listStyle = ref<Record<string, string>>({})
 
@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- Headless UI opens the list only once typing starts, not on focus. -->
+
   <Combobox v-model="model" :disabled="disabled">
     <div ref="anchorRef" class="relative w-full">
       <ComboboxInput

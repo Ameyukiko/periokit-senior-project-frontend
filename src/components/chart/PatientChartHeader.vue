@@ -8,9 +8,9 @@ const props = defineProps<{
   patientInfo: PatientInfo
   summary: ChartSummary
   showValidation?: boolean
-  // Patient-identity fields (HN/name/age/gender/nationality) — locked on saved visits.
+
   patientFieldsDisabled?: boolean
-  // Visit-level fields (date/phase/doctor/doctor id) — locked unless editing.
+
   visitFieldsDisabled?: boolean
 }>()
 
@@ -18,31 +18,31 @@ const emit = defineEmits<{
   'update:patientInfo': [value: PatientInfo]
 }>()
 
-// Create writable computed refs for each field that emit updates
+
 const localPatientInfo = computed({
   get: () => props.patientInfo,
   set: (value: PatientInfo) => emit('update:patientInfo', value)
 }) as WritableComputedRef<PatientInfo>
 
-// Method to update visit phase (creates new object to avoid frozen object error)
+
 const updateVisitPhase = (phase: string, checked: boolean) => {
-	// For checkbox-style single selection: if checked, set the phase; if unchecked, clear it
+
 	emit('update:patientInfo', {
 		...props.patientInfo,
 		visitPhase: checked ? phase : ''
 	} as PatientInfo)
 }
 
-// Method to update gender (creates new object to avoid frozen object error)
+
 const updateGender = (gender: string, checked: boolean) => {
-	// For checkbox-style single selection: if checked, set the gender; if unchecked, clear it
+
 	emit('update:patientInfo', {
 		...props.patientInfo,
 		gender: checked ? gender : ''
 	} as PatientInfo)
 }
 
-// Sort PD breakdown by depth (5, 6, 7, ...)
+
 const sortedPdBreakdown = computed(() => {
   const breakdown: PdBreakdown = props.summary.pdBreakdown || {}
   return Object.entries(breakdown)
@@ -108,7 +108,7 @@ const sortedPdBreakdown = computed(() => {
       </div>
 
       <div class="grid grid-cols-2 xl:grid-cols-12 gap-y-3 xl:gap-y-4 gap-x-3 xl:gap-x-5 items-center">
-        <!-- Row 3 -->
+
         <div class="col-span-2 xl:col-span-3 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-black whitespace-nowrap shrink-0">Date:</span>
           <input v-model="localPatientInfo.date" type="date" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
@@ -122,7 +122,7 @@ const sortedPdBreakdown = computed(() => {
           <input v-model="localPatientInfo.studentId" type="text" :disabled="props.visitFieldsDisabled" class="bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-[14px] w-full outline-none focus:ring-2 focus:ring-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100" />
         </div>
 
-        <!-- Row 4 -->
+
         <div class="col-span-2 xl:col-span-4 flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-2">
           <span class="text-[14px] font-bold text-black whitespace-nowrap shrink-0">Patient:</span>
           <input
@@ -164,16 +164,16 @@ const sortedPdBreakdown = computed(() => {
       </div>
     </div>
 
-    <!-- Mini Summary Bar -->
+
     <div class="px-6 py-3 bg-linear-to-r from-slate-50 to-white border-t border-slate-100">
       <div class="flex items-center gap-3 overflow-x-auto">
-        <!-- Full-mouth Summary Label -->
+
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
           <Activity class="w-3.5 h-3.5 text-blue-500" />
           <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
         </div>
 
-        <!-- Teeth Badge -->
+
         <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
           <span class="text-[11px] font-black text-slate-600">
@@ -181,7 +181,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- Implants Badge -->
+
         <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
           <span class="text-[11px] font-black text-violet-600">
@@ -189,7 +189,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- BoP Badge -->
+
         <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
           <span class="text-[11px] font-black text-rose-600">
@@ -197,7 +197,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- PI Badge -->
+
         <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
           <span class="text-[11px] font-black text-blue-600">
@@ -205,7 +205,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- Mobility Badge -->
+
         <div v-if="props.summary.mobilityCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
           <span class="text-[11px] font-black text-amber-600">
@@ -213,7 +213,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- Furcation Badge -->
+
         <div v-if="props.summary.furcationCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
           <span class="text-[11px] font-black text-purple-600">
@@ -221,7 +221,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- Keratinized Badge -->
+
         <div v-if="props.summary.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
           <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
           <span class="text-[11px] font-black text-teal-600">
@@ -229,7 +229,7 @@ const sortedPdBreakdown = computed(() => {
           </span>
         </div>
 
-        <!-- PD Breakdown -->
+
         <template v-for="item in sortedPdBreakdown" :key="item.depth">
           <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
             <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>

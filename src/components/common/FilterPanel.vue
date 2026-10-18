@@ -31,14 +31,14 @@ const emit = defineEmits<{
   'apply': []
 }>()
 
-// Local state
+
 const activePopover = ref<'main' | FilterType | null>(null)
 const tempValues = ref<Record<string, any>>({})
 
-// Chips are teleported into a slot the parent owns (full-width row below the
-// header). Only enable the teleport once mounted so the target exists. If the
-// host page provides no #active-filter-chips slot, fall back to rendering the
-// chips in place so the component stays self-contained.
+
+
+
+
 const isReady = ref(false)
 const hasChipsSlot = ref(false)
 onMounted(() => {
@@ -46,17 +46,17 @@ onMounted(() => {
   hasChipsSlot.value = !!document.getElementById('active-filter-chips')
 })
 
-// Initialize temp values from modelValue
+
 watch(() => props.modelValue, (newVal) => {
   tempValues.value = { ...newVal }
 }, { immediate: true, deep: true })
 
-// Helper to get current filter key safely
+
 const getCurrentKey = (): FilterType => {
   return activePopover.value as FilterType
 }
 
-// Helper to set date value
+
 const setDateValue = (field: 'from' | 'to', value: string) => {
   const key = getCurrentKey()
   if (!tempValues.value[key]) {
@@ -65,7 +65,7 @@ const setDateValue = (field: 'from' | 'to', value: string) => {
   tempValues.value[key][field] = value
 }
 
-// Computed helpers
+
 const hasActiveFilters = computed(() => {
   return props.configs.some(c => isFilterActive(c.type))
 })
@@ -93,9 +93,9 @@ const getFilterValue = (type: FilterType) => {
   return props.modelValue[type]
 }
 
-// A filter counts as "active" only when it holds a real value.
-// Object-typed values (date range / sort) are always truthy, so we must
-// inspect their inner values instead of relying on truthiness.
+
+
+
 const isFilterActive = (type: FilterType) => {
   const value = props.modelValue[type]
   if (value === null || value === undefined || value === '') return false
@@ -111,7 +111,7 @@ const getFilterDisplay = (type: FilterType) => {
 
   if (!value) return config?.label || type
 
-  // Handle combined sort + date range
+
   if (config?.isSort && config?.isDateRange && typeof value === 'object') {
     const parts = []
     if (value.sort) {
@@ -126,7 +126,7 @@ const getFilterDisplay = (type: FilterType) => {
     return parts.length > 0 ? parts.join(', ') : config.label
   }
 
-  // Handle date range only
+
   if (config?.isDateRange && !config?.isSort) {
     if (value.from || value.to) {
       const from = value.from || '...'
@@ -136,7 +136,7 @@ const getFilterDisplay = (type: FilterType) => {
     return config.label
   }
 
-  // Handle sort only
+
   if (config?.isSort && !config?.isDateRange) {
     if (config.sortLabels) {
       if (value === 'asc' || value?.includes('asc')) return config.sortLabels.asc
@@ -149,13 +149,13 @@ const getFilterDisplay = (type: FilterType) => {
     return config.label
   }
 
-  // Handle select options
+
   if (config?.options) {
     const option = config.options.find(o => o.value === value)
     return option?.label || value
   }
 
-  // Handle search
+
   if (config?.isSearch) {
     return value
   }
@@ -231,7 +231,7 @@ const getColorClasses = (color: string) => {
 
 <template>
   <div class="filter-panel">
-    <!-- Filter Button -->
+
     <div class="relative">
       <button
         @click="openMain"
@@ -245,13 +245,13 @@ const getColorClasses = (color: string) => {
         </div>
       </button>
 
-      <!-- Unified Filter Menu -->
+
       <div
         v-if="activePopover"
         class="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden flex flex-col origin-top-left sm:origin-top-right"
         @click.stop
       >
-        <!-- Main Menu -->
+
         <div v-if="activePopover === 'main'" class="py-2 flex-1">
           <div class="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Add Filter</div>
           <button
@@ -271,9 +271,9 @@ const getColorClasses = (color: string) => {
           </button>
         </div>
 
-        <!-- Sub Menus -->
+
         <div v-else class="flex flex-col flex-1 max-h-[400px] overflow-y-auto">
-          <!-- Header -->
+
           <div class="flex items-center px-2 py-2 border-b border-slate-100 bg-slate-50 sticky top-0">
             <button @click="activePopover = 'main'" class="p-1 rounded hover:bg-slate-200 text-slate-500 transition-colors">
               <ChevronLeft class="w-4 h-4"/>
@@ -283,9 +283,9 @@ const getColorClasses = (color: string) => {
             </span>
           </div>
 
-          <!-- Content Options -->
+
           <div class="p-2 space-y-1">
-            <!-- Select Options -->
+
             <template v-if="getConfig(activePopover as FilterType)?.options">
               <button
                 v-for="option in getConfig(activePopover as FilterType)?.options"
@@ -303,7 +303,7 @@ const getColorClasses = (color: string) => {
               </button>
             </template>
 
-            <!-- Search Input -->
+
             <template v-if="getConfig(activePopover as FilterType)?.isSearch">
               <div class="px-2 py-2">
                 <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Search</p>
@@ -317,7 +317,7 @@ const getColorClasses = (color: string) => {
               </div>
             </template>
 
-            <!-- Combined Sort + Date Range (sort only — date range inputs removed) -->
+
             <template v-if="getConfig(activePopover as FilterType)?.isSort && getConfig(activePopover as FilterType)?.isDateRange">
               <div class="space-y-1">
                 <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">Sort by Date</p>
@@ -348,7 +348,7 @@ const getColorClasses = (color: string) => {
               </div>
             </template>
 
-            <!-- Date Range Only -->
+
             <template v-else-if="getConfig(activePopover as FilterType)?.isDateRange">
               <div class="pt-2 mt-1 space-y-1.5">
                 <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">Date Range</p>
@@ -375,7 +375,7 @@ const getColorClasses = (color: string) => {
               </div>
             </template>
 
-            <!-- Sort Only -->
+
             <template v-else-if="getConfig(activePopover as FilterType)?.isSort">
              <button
                 @click="toggleSort(activePopover as FilterType, (activePopover + '_asc') as string)"
@@ -389,7 +389,7 @@ const getColorClasses = (color: string) => {
                 {{ getConfig(activePopover as FilterType)?.sortLabels?.asc ?? 'Ascending' }}
                 <div v-if="tempValues[activePopover] === (activePopover + '_asc')" class="w-1.5 h-1.5 rounded-full bg-current"></div>
               </button>
-              
+
               <button
                 @click="toggleSort(activePopover as FilterType, (activePopover + '_desc') as string)"
                 class="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 rounded flex items-center justify-between transition-colors"
@@ -406,7 +406,7 @@ const getColorClasses = (color: string) => {
           </div>
         </div>
 
-        <!-- Global Apply Button -->
+
         <div class="p-2 border-t border-slate-100 bg-white">
           <button @click="applyFilter" class="w-full py-1.5 text-sm font-medium text-white bg-[#0052ff] hover:bg-blue-700 rounded-md transition-colors shadow-sm">
             Apply Filters
@@ -415,7 +415,7 @@ const getColorClasses = (color: string) => {
       </div>
     </div>
 
-    <!-- Active Filter Chips (rendered into the parent-owned full-width row) -->
+
     <Teleport to="#active-filter-chips" :disabled="!hasChipsSlot" v-if="isReady">
       <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2">
         <template v-for="config in configs" :key="config.type">

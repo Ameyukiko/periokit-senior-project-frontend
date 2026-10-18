@@ -26,14 +26,14 @@ const emit = defineEmits<{
   (e: "validate", state: "valid" | "invalid" | "none"): void;
 }>();
 
-// Warning state
+
 const showWarning = ref(false);
 const warningMessage = ref("");
 const isFocused = ref(false);
 const isHovered = ref(false);
 let justFocused = false;
 
-// Select the existing value on focus so the next keystroke overwrites it
+
 const handleFocus = async (event: FocusEvent) => {
   isFocused.value = true;
   const input = event.target as HTMLInputElement;
@@ -41,7 +41,7 @@ const handleFocus = async (event: FocusEvent) => {
   if (document.activeElement === input) input.select();
 };
 
-// A click that focuses the input must not let its mouseup clear that selection
+
 const handleMouseDown = (event: MouseEvent) => {
   justFocused = document.activeElement !== event.target;
 };
@@ -72,37 +72,37 @@ const clearWarning = () => {
   }, 3000);
 };
 
-// Critical PD value (>4) - PD values greater than 4 are red
+
 const isCriticalValue = computed(() => {
   if (props.inputType !== "numeric") return false;
   const fieldKeyInfo = getFieldKey(props.fieldName);
-  // Only apply to PD field
+
   if (fieldKeyInfo !== "pd") return false;
   const val = parseFloat(String(props.value));
   return !isNaN(val) && val > 4;
 });
 
-// Low KTW value (< 2mm) - KTW values less than 2 are red (high risk of gingival recession)
+
 const isLowKtw = computed(() => {
   if (props.inputType !== "numeric") return false;
   const fieldKeyInfo = getFieldKey(props.fieldName);
-  // Only apply to KTW field
+
   if (fieldKeyInfo !== "ktw") return false;
   const val = parseFloat(String(props.value));
   return !isNaN(val) && val > 0 && val < 2;
 });
 
-// Format KTW value - show original string value
+
 const formatKtwValue = (value: any): string => {
   if (value === undefined || value === null) return "";
   return String(value);
 };
 
-// Abnormal value (exceeds normal threshold but within absolute limit)
+
 const isAbnormal = computed(() => {
   if (props.inputType !== "numeric" || !props.value) return false;
   const fieldKeyInfo = getFieldKey(props.fieldName);
-  // CAL should not be styled red
+
   if (fieldKeyInfo === "cal") return false;
   return isAbnormalValue(String(props.value), props.fieldName);
 });
@@ -118,7 +118,7 @@ const handleInput = (event: Event) => {
     const allowDecimal = fieldKeyInfo === "ktw";
     let filteredValue = filterNumericInput(inputValue, allowNegative, allowDecimal);
 
-    // Special validation for Mobility (Miller's Classification: 0-3 only)
+
     if (fieldKeyInfo === "mo" && filteredValue !== "") {
       const numVal = parseInt(filteredValue);
       if (!MOBILITY_VALID_VALUES.includes(numVal)) {
@@ -131,7 +131,7 @@ const handleInput = (event: Event) => {
       }
     }
 
-    // Block values exceeding absolute limit (obviously wrong)
+
     if (filteredValue !== "" && exceedsAbsoluteLimit(filteredValue, props.fieldName)) {
       const absLimit = { pd: 99, rec: 99, cal: 99, mo: 3, ktw: 20, furcation: 3 };
       const limit = absLimit[fieldKeyInfo as keyof typeof absLimit] || 99;
@@ -150,19 +150,19 @@ const handleInput = (event: Event) => {
       return;
     }
 
-    // Check if value is abnormal (exceeds normal range) - just show warning, don't block
+
     if (filteredValue !== "" && isAbnormalValue(filteredValue, props.fieldName)) {
       warningMessage.value = `${getFieldDisplayName(props.fieldName)}: ${filteredValue} (Exceeds threshold)`;
       showWarning.value = true;
       clearWarning();
-      // Continue processing - don't return early
+
     }
 
     if (target.value !== filteredValue) {
       target.value = filteredValue;
     }
 
-    // Normal value - proceed normally
+
     const state: "valid" | "invalid" | "none" =
       filteredValue === "" ? "none" : "valid";
     emit("validate", state);
@@ -195,7 +195,7 @@ const containerClasses = computed(() => ({
     class="relative flex-1 h-full min-h-6 transition-all duration-200 border-r border-slate-100 last:border-r-0 group"
     :class="containerClasses"
   >
-    <!-- Numeric Input -->
+
     <template v-if="inputType === 'numeric'">
       <input
         type="text"
@@ -225,7 +225,7 @@ const containerClasses = computed(() => ({
           readonly ? 'font-bold cursor-default' : 'cursor-text font-medium',
         ]"
       />
-      <!-- Warning Tooltip -->
+
       <Transition
         enter-active-class="transition ease-out duration-200"
         enter-from-class="opacity-0 translate-y-1"
@@ -246,7 +246,7 @@ const containerClasses = computed(() => ({
       </Transition>
     </template>
 
-    <!-- Toggle Input -->
+
     <template v-else-if="inputType === 'toggle'">
       <div
         @click="handleToggle"
@@ -266,7 +266,7 @@ const containerClasses = computed(() => ({
       </div>
     </template>
 
-    <!-- Focus Indicator -->
+
     <div
       v-if="!disabled && !readonly"
       class="absolute inset-0 rounded-sm border border-transparent group-focus-within:border-[#0052ff] group-focus-within:shadow-[0_0_0_1px_#0052ff] pointer-events-none transition-all"

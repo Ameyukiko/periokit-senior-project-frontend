@@ -32,12 +32,12 @@ const props = defineProps<{
 
 const emit = defineEmits(['close', 'update-note'])
 
-// --- X-rays mounted in an FMX slot that covers this tooth ---
+
 const xrayBoard = useXrayBoardStore()
 const previewFilm = ref<{ url: string; label: string; rotation: number } | null>(null)
 
-// Same key the X-ray tab uses, so a board already open there is reused as-is
-// (loadBoard returns early on a matching key) rather than read again.
+
+
 watch(
   () => [props.patientId, props.visitId] as const,
   ([patientId, visitId]) => {
@@ -67,7 +67,7 @@ const toothXrays = computed(() => {
     })
 })
 
-// One film at a time, swiped (or scrolled) sideways — scroll-snap does the paging.
+
 const xrayTrack = ref<HTMLElement | null>(null)
 const xrayIndex = ref(0)
 
@@ -84,19 +84,19 @@ const goToXray = (index: number) => {
   track.scrollTo({ left: target * track.clientWidth, behavior: 'smooth' })
 }
 
-// A new tooth starts on its first film.
+
 watch(() => props.toothId, () => {
   xrayIndex.value = 0
   xrayTrack.value?.scrollTo({ left: 0 })
 })
 
-// Reset editing state when switching teeth
+
 watch(() => props.toothId, () => {
   isEditingNote.value = false
   noteInput.value = ''
 })
 
-// Initialize note input when tooth changes or editing starts
+
 const startEditing = () => {
   noteInput.value = props.toothData.note || ''
   isEditingNote.value = true
@@ -190,7 +190,7 @@ const analysisData = computed(() => {
 
 <template>
   <div v-if="toothId && toothData" class="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-full">
-    <!-- Header -->
+
     <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
       <div>
         <div class="flex items-center gap-3">
@@ -205,10 +205,10 @@ const analysisData = computed(() => {
       </button>
     </div>
 
-    <!-- Content -->
+
     <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
 
-      <!-- X-ray (films mounted in an FMX slot covering this tooth) -->
+
       <section>
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">X-ray</h3>
         <div v-if="xrayBoard.isLoading" class="h-24 rounded-2xl bg-slate-50 border border-slate-100 animate-pulse"></div>
@@ -239,7 +239,7 @@ const analysisData = computed(() => {
               </button>
             </div>
 
-            <!-- Arrows for mouse users; touch just swipes -->
+
             <template v-if="toothXrays.length > 1">
               <button
                 v-if="xrayIndex > 0"
@@ -283,7 +283,7 @@ const analysisData = computed(() => {
         </div>
       </section>
 
-      <!-- Analysis Summary -->
+
       <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <h3 class="text-[13px] font-black text-slate-800 mb-6">
           Analysis Summary
@@ -294,7 +294,7 @@ const analysisData = computed(() => {
             <span class="text-[11px] font-black text-slate-700">{{ toothData.implant ? 'Fixed (0)' : 'Grade ' + (analysisData?.mobility || '0') }}</span>
           </div>
 
-          <!-- Prognosis K&C Row -->
+
           <div
             @click="prognosisModalType = 'KC'"
             class="flex justify-between gap-4 cursor-pointer group"
@@ -313,7 +313,7 @@ const analysisData = computed(() => {
             </span>
           </div>
 
-          <!-- Prognosis M&N Row -->
+
           <div
             @click="prognosisModalType = 'MN'"
             class="flex justify-between gap-4 cursor-pointer group"
@@ -334,11 +334,11 @@ const analysisData = computed(() => {
         </div>
       </section>
 
-      <!-- PD Section -->
+
       <section :class="{ 'bg-slate-800/30 opacity-70 pointer-events-none': toothData.extracted }">
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">PD</h3>
         <div class="grid grid-cols-2 gap-4">
-          <!-- Buccal Card -->
+
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
               <span v-for="(val, i) in analysisData?.buccalPD" :key="i"
@@ -348,7 +348,7 @@ const analysisData = computed(() => {
             </div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buccal (mm)</p>
           </div>
-          <!-- Inner surface card -->
+
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
               <span v-for="(val, i) in analysisData?.innerSurfacePD" :key="i"
@@ -362,11 +362,11 @@ const analysisData = computed(() => {
 
       </section>
 
-      <!-- CAL Section -->
+
       <section :class="{ 'bg-slate-800/30 opacity-70 pointer-events-none': toothData.extracted }">
         <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">CAL</h3>
         <div class="grid grid-cols-2 gap-4">
-          <!-- Buccal Card -->
+
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
               <span v-for="(val, i) in analysisData?.buccalCAL" :key="i" class="text-[#0052ff]">
@@ -375,7 +375,7 @@ const analysisData = computed(() => {
             </div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buccal (mm)</p>
           </div>
-          <!-- Inner surface card -->
+
           <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center group hover:border-[#0052ff]/20 transition-all">
             <div class="text-2xl font-black mb-1 flex items-center justify-center gap-0.5">
               <span v-for="(val, i) in analysisData?.innerSurfaceCAL" :key="i" class="text-[#0052ff]">
@@ -388,11 +388,11 @@ const analysisData = computed(() => {
 
       </section>
 
-      <!-- Visual Indicators Section (Standard 6-Site Hexagonal Diagrams) -->
+
       <section class="grid grid-cols-2 gap-4" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
-        <!-- BoP Diagram -->
+
         <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/bop">
-          <!-- Percentage Badge -->
+
           <div
             v-if="analysisData?.bopPercentage !== '0%'"
             class="absolute top-2.5 right-2.5 px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-black rounded-lg border border-red-100 shadow-sm animate-in fade-in zoom-in duration-300"
@@ -410,8 +410,8 @@ const analysisData = computed(() => {
               </defs>
               <g :clip-path="`url(#squircle-clip-bop-${toothId})`">
                 <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                
-                <!-- Top Half -->
+
+
                 <template v-if="isUpperTooth(toothId)">
                   <path v-if="toothData.buccal.bop[0]" d="M50 50 L0 50 L0 0 Z" fill="#ef4444" />
                   <path v-if="toothData.buccal.bop[1]" d="M50 50 L0 0 L100 0 Z" fill="#ef4444" />
@@ -423,7 +423,7 @@ const analysisData = computed(() => {
                   <path v-if="toothData.lingual.bop[2]" d="M50 50 L100 0 L100 50 Z" fill="#ef4444" />
                 </template>
 
-                <!-- Bottom Half -->
+
                 <template v-if="isUpperTooth(toothId)">
                   <path v-if="toothData.lingual.bop[0]" d="M50 50 L0 50 L0 100 Z" fill="#ef4444" />
                   <path v-if="toothData.lingual.bop[1]" d="M50 50 L0 100 L100 100 Z" fill="#ef4444" />
@@ -435,7 +435,7 @@ const analysisData = computed(() => {
                   <path v-if="toothData.buccal.bop[2]" d="M50 50 L100 100 L100 50 Z" fill="#ef4444" />
                 </template>
 
-                <!-- Divider Lines -->
+
                 <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
                 <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
                 <line x1="0" y1="50" x2="100" y2="50" stroke="#e2e8f0" stroke-width="1.5" />
@@ -446,9 +446,9 @@ const analysisData = computed(() => {
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">BOP (6 Sites)</p>
         </div>
 
-        <!-- Plaque Diagram -->
+
         <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-5 flex flex-col items-center group/pi">
-          <!-- Percentage Badge -->
+
           <div
             v-if="analysisData?.piPercentage !== '0%'"
             class="absolute top-2.5 right-2.5 px-2 py-0.5 bg-blue-50 text-blue-500 text-[9px] font-black rounded-lg border border-blue-100 shadow-sm animate-in fade-in zoom-in duration-300"
@@ -466,8 +466,8 @@ const analysisData = computed(() => {
               </defs>
               <g :clip-path="`url(#squircle-clip-pi-${toothId})`">
                 <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                
-                <!-- Top Half -->
+
+
                 <template v-if="isUpperTooth(toothId)">
                   <path v-if="toothData.buccal.pi[0]" d="M50 50 L0 50 L0 0 Z" fill="#3b82f6" />
                   <path v-if="toothData.buccal.pi[1]" d="M50 50 L0 0 L100 0 Z" fill="#3b82f6" />
@@ -479,7 +479,7 @@ const analysisData = computed(() => {
                   <path v-if="toothData.lingual.pi[2]" d="M50 50 L100 0 L100 50 Z" fill="#3b82f6" />
                 </template>
 
-                <!-- Bottom Half -->
+
                 <template v-if="isUpperTooth(toothId)">
                   <path v-if="toothData.lingual.pi[0]" d="M50 50 L0 50 L0 100 Z" fill="#3b82f6" />
                   <path v-if="toothData.lingual.pi[1]" d="M50 50 L0 100 L100 100 Z" fill="#3b82f6" />
@@ -491,7 +491,7 @@ const analysisData = computed(() => {
                   <path v-if="toothData.buccal.pi[2]" d="M50 50 L100 100 L100 50 Z" fill="#3b82f6" />
                 </template>
 
-                <!-- Divider Lines -->
+
                 <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
                 <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="1.5" />
                 <line x1="0" y1="50" x2="100" y2="50" stroke="#e2e8f0" stroke-width="1.5" />
@@ -505,7 +505,7 @@ const analysisData = computed(() => {
 
       </section>
 
-      <!-- Clinical Findings -->
+
       <section class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm" :class="{ 'bg-slate-900/5 opacity-60 pointer-events-none': toothData.extracted }">
         <div class="space-y-5">
           <div class="flex justify-between items-center">
@@ -523,7 +523,7 @@ const analysisData = computed(() => {
         </div>
       </section>
 
-      <!-- Note / Remark -->
+
       <section v-if="toothData.note && !isEditingNote" class="bg-yellow-50/50 border border-yellow-100 rounded-3xl p-6 shadow-sm group relative">
         <div class="flex justify-between items-start mb-3">
           <h3 class="text-[11px] font-black text-yellow-600 uppercase tracking-[0.15em]">Note</h3>
@@ -539,7 +539,7 @@ const analysisData = computed(() => {
         <p class="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-wrap">{{ toothData.note }}</p>
       </section>
 
-      <!-- Edit Note Form -->
+
       <section v-if="isEditingNote" class="bg-white border border-[#0052ff]/20 rounded-3xl p-6 shadow-xl ring-4 ring-[#0052ff]/5">
         <h3 class="text-[11px] font-black text-[#0052ff] uppercase tracking-[0.15em] mb-4">Clinical Note</h3>
         <textarea
@@ -574,7 +574,7 @@ const analysisData = computed(() => {
 
     </div>
 
-    <!-- Footer Action -->
+
     <div class="p-6 bg-white border-t border-slate-50 mt-auto">
       <button
         v-if="!isEditingNote && !props.readonly"
@@ -588,7 +588,7 @@ const analysisData = computed(() => {
   </div>
 
 
-  <!-- Prognosis Reference Modal -->
+
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-300 ease-out"
@@ -613,7 +613,7 @@ const analysisData = computed(() => {
           </div>
 
           <div class="p-8 space-y-10">
-            <!-- Table 1: McGuire and Nunn -->
+
             <div v-if="prognosisModalType === 'MN'">
               <div class="flex items-center gap-3 mb-5">
                 <span class="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Classification</span>
@@ -653,7 +653,7 @@ const analysisData = computed(() => {
               </div>
             </div>
 
-            <!-- Table 2: Kwok and Caton -->
+
             <div v-if="prognosisModalType === 'KC'">
               <div class="flex items-center gap-3 mb-5">
                 <span class="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Classification</span>
@@ -698,7 +698,7 @@ const analysisData = computed(() => {
     </Transition>
   </Teleport>
 
-  <!-- X-ray Preview -->
+
   <Teleport to="body">
     <div
       v-if="previewFilm"
@@ -716,7 +716,7 @@ const analysisData = computed(() => {
     </div>
   </Teleport>
 
-  <!-- Cancel Note Editing Confirmation Modal -->
+
   <ConfirmModal
     :show="showCancelNoteConfirmModal"
     title="Cancel Editing"

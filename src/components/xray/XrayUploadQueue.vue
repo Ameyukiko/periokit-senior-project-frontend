@@ -4,10 +4,10 @@ import { storeToRefs } from 'pinia'
 import { Check, Loader2, RotateCw, TriangleAlert, X } from 'lucide-vue-next'
 import { useXrayBoardStore } from '@/stores/xray-board'
 
-// The report PER-245 asks for: one row per film, with its own progress, its own
-// reason for failing and its own Retry. A toast per file would be 18 toasts for
-// an 18-film series, which is a stampede rather than a report (SRS-238,
-// SRS-239).
+
+
+
+
 
 const board = useXrayBoardStore()
 const { uploadQueue, isAddingFiles, canUpload } = storeToRefs(board)
@@ -18,7 +18,7 @@ const failed = computed(() => uploadQueue.value.filter(item => item.status === '
 const retryable = computed(() => failed.value.filter(item => item.canRetry))
 const settled = computed(() => done.value + failed.value.length)
 
-/** The film being worked on, counted from one — "Adding 3 of 18". */
+
 const working = computed(() => Math.min(settled.value + 1, total.value))
 
 const title = computed(() => {
@@ -30,24 +30,24 @@ const title = computed(() => {
   return `${done.value} added · ${failed.value.length} not added`
 })
 
-/**
- * How long a clean run's list stays after the last film lands. Long enough to
- * read the count, short enough that it reads as a flash of confirmation rather
- * than something the doctor has to dismiss before carrying on.
- */
+
+
+
+
+
 const CLEAN_HOLD_MS = 1500
 
-// A clean run needs no report — the films themselves are the result, and the
-// board underneath is what the doctor wants to look at. One that lost a film
-// stays: a report nobody had time to read is not a report, and the Retry
-// buttons on it have to still be there to press.
-//
-// The first row's id identifies the batch: a new one picked inside the hold
-// gets its own list, and this timer must not clear that one instead.
-// `immediate` rather than waiting for the flag to flip: a batch that settles
-// inside one flush would never show the watcher a transition, and the list
-// would then sit there for good. Scheduling twice costs nothing — the id check
-// is what decides whether the timer still has anything to clear.
+
+
+
+
+
+
+
+
+
+
+
 watch(
   () => isAddingFiles.value || failed.value.length > 0,
   busy => {
@@ -62,8 +62,8 @@ watch(
 </script>
 
 <template>
-  <!-- Fading out rather than blinking away: a list that vanishes between two
-       frames reads as a glitch, and the doctor looks for what they missed. -->
+
+
   <Transition name="xray-queue">
     <div
       v-if="total"
@@ -98,8 +98,8 @@ watch(
       </div>
     </div>
 
-    <!-- A full-mouth series is 18 rows; the list scrolls rather than covering
-         the board it is reporting on. -->
+
+
     <ul class="max-h-[210px] overflow-y-auto">
       <li
         v-for="item in uploadQueue"
@@ -118,14 +118,14 @@ watch(
           <span class="block truncate text-slate-700" :title="item.fileName">
             {{ item.fileName }}
           </span>
-          <!-- Plain words only, never a code or a stack trace (SRS-238). -->
+
           <span v-if="item.error" class="block truncate text-[11.5px] text-rose-600">
             {{ item.error }}
           </span>
         </span>
 
-        <!-- Bytes only move when there is a server to move them to; on a draft
-             visit the spinner is the whole truth. -->
+
+
         <div
           v-if="item.status === 'uploading' && canUpload"
           class="h-1 w-14 shrink-0 rounded-full bg-slate-200"
@@ -148,8 +148,8 @@ watch(
       </li>
     </ul>
 
-    <!-- A draft visit has nothing server-side to upload to, and a doctor who is
-         told nothing would assume these films are filed. -->
+
+
       <p
         v-if="!canUpload"
         class="border-t border-slate-100 px-3 py-1.5 text-[11.5px] text-slate-500"
@@ -161,8 +161,8 @@ watch(
 </template>
 
 <style scoped>
-/* In fast, out slower — appearing has to keep up with the first file, leaving
-   is the part that should not startle. */
+
+
 .xray-queue-enter-active {
   transition: opacity 120ms ease-out, transform 120ms ease-out;
 }

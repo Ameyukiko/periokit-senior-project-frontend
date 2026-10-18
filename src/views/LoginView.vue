@@ -22,10 +22,10 @@ const errors = reactive({
 const showPassword = ref(false);
 
 onMounted(() => {
-  // Check for logout message
+
   if (router.currentRoute.value.query.logout === "true") {
     notificationStore.success("You have been successfully signed out.");
-    // Clear the query param from URL without reloading
+
     router.replace({ query: {} });
   }
 
@@ -43,20 +43,20 @@ onMounted(() => {
 });
 
 const handleLogin = async () => {
-  // Clear previous errors
+
   errors.email = "";
   errors.password = "";
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  // Simple validation
+
   if (!form.email) {
     errors.email = "Please enter your email";
   } else if (!emailRegex.test(form.email)) {
     errors.email = "Please enter a valid email address";
   }
 
-  // Password validation
+
   if (!form.password) {
     errors.password = "Please enter your password";
   } else if (form.password.length < 6) {
@@ -85,7 +85,7 @@ const handleLogin = async () => {
       localStorage.removeItem("periokit_remember_email");
     }
 
-    // Redirect to my-patients page
+
 
     router.push({ name: "my-patients" });
   } catch (error: any) {
@@ -105,14 +105,14 @@ const handleLogin = async () => {
       <div
         class="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-12 relative overflow-hidden"
       >
-        <!-- Loading Overlay -->
+
         <transition name="fade">
           <div
             v-if="loading"
             class="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all duration-300"
           >
             <div class="flex flex-col items-center gap-4">
-              <!-- Animated loading indicator: a pulsing logo and spinning ring -->
+
               <div class="relative w-20 h-20 flex items-center justify-center">
                 <div class="absolute inset-0 rounded-full border-4 border-[#0052ff]/10 border-t-[#0052ff] animate-spin"></div>
                 <img
@@ -128,7 +128,7 @@ const handleLogin = async () => {
             </div>
           </div>
         </transition>
-        <!-- Logo & Header -->
+
         <div class="mb-10 text-center flex flex-col items-center">
           <img
             src="../assets/mini_Logo_Periokit.png"
@@ -144,7 +144,7 @@ const handleLogin = async () => {
         </div>
 
         <form @submit.prevent="handleLogin" class="space-y-6">
-          <!-- Email -->
+
           <div>
             <label class="block text-[14px] font-bold text-[#1f2937] mb-2"
               >Email</label
@@ -173,7 +173,7 @@ const handleLogin = async () => {
             </p>
           </div>
 
-          <!-- Password -->
+
           <div>
             <label class="block text-[14px] font-bold text-[#1f2937] mb-2"
               >Password</label
@@ -193,7 +193,7 @@ const handleLogin = async () => {
                   errors.password ? 'ring-2 ring-red-500 bg-red-50' : '',
                 ]"
               />
-              <!-- Toggle Password Visibility -->
+
               <button
                 type="button"
                 @click="showPassword = !showPassword"
@@ -211,7 +211,7 @@ const handleLogin = async () => {
             </p>
           </div>
 
-          <!-- Remember Email -->
+
           <div class="flex items-center gap-2">
             <button
               type="button"
@@ -234,7 +234,7 @@ const handleLogin = async () => {
             </button>
           </div>
 
-          <!-- Submit Button -->
+
           <div class="pt-2">
             <button
               type="submit"
@@ -247,7 +247,7 @@ const handleLogin = async () => {
           </div>
         </form>
 
-        <!-- Register Link -->
+
         <div class="mt-8 text-center">
           <p class="text-[14px] text-[#6b7280] font-medium">
             Don't have an account?
@@ -261,7 +261,7 @@ const handleLogin = async () => {
         </div>
       </div>
 
-      <!-- Footer -->
+
       <div class="mt-8 text-center">
         <p class="text-[14px] text-[#9ca3af] font-medium">© 2026 PerioKit.</p>
       </div>

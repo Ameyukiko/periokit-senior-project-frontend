@@ -17,16 +17,16 @@ import {
 } from './criteria-cell'
 
 const props = defineProps<{
-  /** The stage the four rows below arrive at. Read only — the rows are what move it. */
+
   stage: StageId | null
   marks: Record<StageRow, StageId | null>
-  /** The band each row settled on — the doctor's tick, or the one the numbers fall in. */
+
   resolved: Record<StageRow, StageId | null>
   cal: number | null
   boneLossPercent: number | null
   teethLost: number | null
   complexity: Record<StageId, string[]>
-  /** A saved visit nobody has pressed Edit on: the table is read, not ticked. */
+
   readonly?: boolean
 }>()
 
@@ -34,11 +34,11 @@ const emit = defineEmits<{
   mark: [row: StageRow, stage: StageId]
 }>()
 
-/**
- * Rows whose answer is a chart measurement. Correcting one means correcting the
- * chart, so the band is never ticked here — only a tick an older visit already
- * carries can still be taken off, so it is not stuck overriding the chart.
- */
+
+
+
+
+
 const CHART_ROWS: StageRow[] = ['cal']
 const isChartRow = (row: StageRow) => CHART_ROWS.includes(row)
 
@@ -124,21 +124,21 @@ const lossChip = computed(() => {
   return `Patient: ${props.teethLost} ${props.teethLost === 1 ? 'tooth' : 'teeth'}`
 })
 
-// One cell at a time, row by row — the way the printed table is ticked. The band
-// a row settled on reads as a pressed button whichever way it got there, and a
-// cell holding no answer is drawn dashed to say it is open to be ticked.
-//
-// The faint tint down the column the rows add up to is only drawn on rows that
-// have not answered yet: it points an open row at where the rest of the table is
-// heading. Once a row has its band, that row shows that band and nothing else —
-// two shades of yellow on one row read as two answers.
-//
-// Read-only keeps every one of those colours — the answer is still the answer
-// on a visit nobody is editing. What goes is the invitation to click: no
-// pointer, no dashed "open" border, no hover.
-//
-// A row read from the chart is drawn the same way: it shows its answer but
-// does not offer itself.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const cellClass = (row: StageRow, stage: StageId) => {
   const locked = props.readonly || isChartRow(row)
   return [
@@ -162,7 +162,7 @@ const cellClass = (row: StageRow, stage: StageId) => {
 
 <template>
   <div class="flex flex-col gap-2">
-    <!-- Key / Legend -->
+
     <div class="flex items-center justify-end gap-4 px-1 text-[11px]">
       <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Key:</span>
       <div
@@ -203,9 +203,9 @@ const cellClass = (row: StageRow, stage: StageId) => {
                 </span>
               </div>
             </th>
-          <!-- The stage is the answer these four rows add up to, so the column is
-               reported and not offered — the way to move it is to tick the row
-               that reads differently. -->
+
+
+
           <th
             v-for="column in COLUMNS"
             :key="column.id"
@@ -331,9 +331,9 @@ const cellClass = (row: StageRow, stage: StageId) => {
           >
             Local
             <span class="block text-[10px] font-normal text-slate-700">can raise the stage only</span>
-            <!-- Four of the ten features listed across this row are in the
-                 chart; the rest are read off the patient and the radiograph, so
-                 the band suggested here is a floor, not a verdict. -->
+
+
+
             <span class="block mt-1 text-[10px] font-normal text-slate-500 leading-tight">
               Suggested from probing depth, furcation, mobility and teeth remaining. Check the rest
               yourself and tick a band if one fits.

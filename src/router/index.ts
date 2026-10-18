@@ -62,13 +62,13 @@ router.beforeEach((to, _from, next) => {
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
 
   if (requiresAuth && !token) {
-    // If route requires auth and there's no token, redirect to login
+
     next({ name: "login" });
   } else if (requiresGuest && token) {
-    // If route is for guests only and there's a token, redirect to my-patients
+
     next({ name: "my-patients" });
   } else {
-    // Otherwise, proceed
+
     next();
   }
 });

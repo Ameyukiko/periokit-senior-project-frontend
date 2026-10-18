@@ -24,14 +24,14 @@ const patient = ref<Patient | null>(null)
 const visits = ref<Visit[]>([])
 const isLoading = ref(true)
 
-// UI States
+
 const searchInput = ref('')
 const compareAnchorVisitId = ref<string | null>(null)
 const compareSecondVisitId = ref<string | null>(null)
 const page = ref(1)
 const pageSize = ref(10)
 
-// Filter configs
+
 const filterConfigs: FilterConfig[] = [
   {
     type: 'phase',
@@ -54,7 +54,7 @@ const filterConfigs: FilterConfig[] = [
   }
 ]
 
-// Filter values
+
 const filterValues = ref<Record<string, any>>({
   phase: '',
   date: null
@@ -68,7 +68,7 @@ const fetchPatientAndVisits = async () => {
       visitApi.getByPatient(patientId)
     ])
     patient.value = patientData
-    // Sort visits by date descending, then createdAt descending, then ID
+
     visits.value = [...visitsData].sort(
       (a, b) =>
         new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
@@ -76,10 +76,10 @@ const fetchPatientAndVisits = async () => {
         b.id.localeCompare(a.id)
     )
 
-    // Update chartStore patientInfo so VisitListPanel shows correct patient name
+
     await chartStore.loadPatientById(patientId)
 
-    // Load visits into visitStore
+
     await visitStore.loadVisits(patientId)
   } catch (error) {
     console.error('Failed to fetch patient data:', error)
@@ -103,7 +103,7 @@ const handleCompare = (visitId: string) => {
   const visit = visits.value.find(v => v.id === visitId)
   if (!visit?.hasChart) return
 
-  // Toggle off if this visit is already one of the selected ones
+
   if (compareAnchorVisitId.value === visitId) {
     compareAnchorVisitId.value = compareSecondVisitId.value
     compareSecondVisitId.value = null
@@ -115,13 +115,13 @@ const handleCompare = (visitId: string) => {
   }
 
   if (!compareAnchorVisitId.value) {
-    // First selection
+
     compareAnchorVisitId.value = visitId
   } else if (!compareSecondVisitId.value) {
-    // Second selection — wait for explicit "Start Compare"
+
     compareSecondVisitId.value = visitId
   }
-  // Both already chosen: ignore further selections until one is cleared
+
 }
 
 const startCompare = () => {
@@ -187,16 +187,16 @@ const paginatedVisits = computed(() => {
   return filteredVisits.value.slice(start, end)
 })
 
-// Filter Logic
+
 const filteredVisits = computed(() => {
   let result = [...visits.value]
 
-  // Filter by phase
+
   if (filterValues.value.phase) {
     result = result.filter(v => v.phase === filterValues.value.phase)
   }
 
-  // Filter by search input (visit number or date)
+
   if (searchInput.value) {
     const search = searchInput.value.toLowerCase()
     result = result.filter(v =>
@@ -206,7 +206,7 @@ const filteredVisits = computed(() => {
     )
   }
 
-  // Sort by date
+
   const sortOrder = filterValues.value.date
   if (sortOrder === 'date_asc') {
     result.sort(
@@ -216,7 +216,7 @@ const filteredVisits = computed(() => {
         a.id.localeCompare(b.id)
     )
   } else {
-    // Default is desc
+
     result.sort(
       (a, b) =>
         new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
@@ -228,7 +228,7 @@ const filteredVisits = computed(() => {
   return result
 })
 
-// Reset page when filters change
+
 watch(() => filterValues.value, () => {
   page.value = 1
 }, { deep: true })
@@ -237,10 +237,10 @@ const goBack = () => {
   router.push({ name: 'my-patients' })
 }
 
-// Reset patient info when leaving the page. Assigned directly rather than via
-// updatePatientInfo: that marks the chart dirty, and the chart page would then
-// keep this blank header as an unsaved draft instead of loading the patient.
-// An unsaved draft that really is open keeps its header.
+
+
+
+
 onUnmounted(() => {
   if (!chartStore.isDirty) {
     chartStore.patientInfo = {
@@ -256,7 +256,7 @@ onUnmounted(() => {
     }
   }
 
-  // Clear visits from visitStore
+
   visitStore.visits = []
   visitStore.setActiveVisit(null)
 })
@@ -268,7 +268,7 @@ onUnmounted(() => {
     <PatientDrawer v-model:open="drawerOpen" />
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Breadcrumb / Header Area -->
+
       <div class="flex flex-col md:flex-row md:items-start justify-between mb-4 gap-4">
         <div class="min-w-0 md:flex-1">
           <button @click="goBack" class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all mb-3 w-fit">
@@ -281,7 +281,7 @@ onUnmounted(() => {
         </div>
 
         <div class="flex flex-wrap md:flex-nowrap items-center gap-3 md:shrink-0">
-          <!-- Search -->
+
           <div class="relative w-full md:w-80">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search class="h-5 w-5 text-slate-400" />
@@ -294,10 +294,10 @@ onUnmounted(() => {
             />
           </div>
 
-          <!-- Filter Panel -->
+
           <FilterPanel v-model="filterValues" :configs="filterConfigs" />
 
-          <!-- New Visit Button -->
+
           <button
             @click="createNewVisit"
             class="px-4 py-2.5 bg-[#0052ff] text-white rounded-full text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0"
@@ -308,10 +308,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Active filter chips (populated by FilterPanel via teleport) -->
+
       <div id="active-filter-chips" class="empty:mb-0 mb-6"></div>
 
-      <!-- Compare Mode Banner -->
+
       <div v-if="compareAnchorVisitId" class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
         <div class="flex items-center gap-3">
           <AlertCircle class="w-5 h-5 text-[#0052ff]" />
@@ -338,7 +338,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Visit Timeline Card -->
+
       <div class="bg-white shadow-sm rounded-2xl border border-slate-100 overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-100 flex items-baseline gap-2">
           <h2 class="text-lg font-bold text-slate-800">Visit Timeline</h2>
@@ -383,7 +383,7 @@ onUnmounted(() => {
                 : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
             ]"
           >
-            <!-- Visit Info -->
+
             <div class="flex items-start gap-4 mb-4 sm:mb-0">
               <div class="w-12 h-12 rounded-full bg-[#eef4ff] text-[#0052ff] flex items-center justify-center font-bold text-lg shrink-0">
                 {{ visit.visitNumber }}
@@ -410,7 +410,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Actions -->
+
             <div class="flex items-center gap-3 sm:ml-4">
               <button
                 @click="openChart(visit.id)"
@@ -436,7 +436,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Pagination -->
+
         <div v-if="totalPages > 0" class="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-slate-100">
           <div class="w-full flex flex-col sm:flex-row items-center justify-between sm:justify-end gap-4">
             <nav class="relative z-0 inline-flex items-center gap-2" aria-label="Pagination">

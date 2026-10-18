@@ -30,8 +30,8 @@ defineProps<{
   groupGapClass: string
   imageClass?: string
   labelPosition: 'top' | 'bottom'
-  baselineY?: number  // Custom baseline position for PD graph
-  showNumbers?: boolean  // Render a tooth-number row at the arch edge
+  baselineY?: number
+  showNumbers?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +47,7 @@ const emit = defineEmits<{
       <span v-for="letter in label.split('')" :key="letter">{{ letter }}</span>
     </div>
     <div class="flex-1 flex relative">
-      <!-- PD Line Chart Overlay (spans entire arch) -->
+
       <PdLineChartLayer :arch="arch" :chart-data="chartData" :surface="surface" :group-gap-class="groupGapClass" :baseline-y="baselineY" />
 
       <template v-for="(group, gIdx) in arch" :key="gIdx">
@@ -68,7 +68,7 @@ const emit = defineEmits<{
               :class="imageClass"
               :style="getToothImageStyle(id, surface)"
             />
-            <!-- Selection Ring Overlay (renders on top of the graph and grid lines) -->
+
             <div
               v-if="selectedToothId === id"
               class="absolute inset-0 ring-2 ring-[#0052ff] ring-inset rounded-xl pointer-events-none z-35"
@@ -83,7 +83,7 @@ const emit = defineEmits<{
               <img v-if="grade > 0" :src="getFurImage(grade)" class="w-3.5 h-3.5 object-contain hover:scale-110 transition-transform" />
               <div v-else-if="!chartData[id].extracted && !chartData[id].implant" class="w-3 h-3 border border-dashed border-slate-400/50 rounded-full bg-white/70 opacity-0 hover:opacity-100 transition-opacity" title="Add Furcation"></div>
             </div>
-            <!-- KTW Warning Symbol (displayed when KTW < 2mm) -->
+
             <div
               v-if="!chartData[id].extracted && shouldShowKtwWarning(chartData[id][surface].ktw)"
               class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2"
@@ -96,7 +96,7 @@ const emit = defineEmits<{
                 <span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-amber-900">K</span>
               </div>
             </div>
-            <!-- Mobility grade on the crown (buccal row only, one value per tooth) -->
+
             <span
               v-if="surface === 'buccal' && getMobilityGrade(chartData[id]) > 0"
               class="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2 text-sm font-black text-yellow-600 drop-shadow-sm"

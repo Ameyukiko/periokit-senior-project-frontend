@@ -16,21 +16,21 @@ const calculateScale = () => {
     scaledHeight.value = 0
     return
   }
-  
+
   if (containerRef.value && contentRef.value) {
     const containerWidth = containerRef.value.clientWidth
-    // Temporarily remove scale to measure true width
+
     const currentTransform = contentRef.value.style.transform
     contentRef.value.style.transform = 'none'
-    
+
     const contentWidth = contentRef.value.scrollWidth
     const contentHeight = contentRef.value.scrollHeight
-    
-    // Restore transform
+
+
     contentRef.value.style.transform = currentTransform
-    
+
     if (contentWidth > 0 && containerWidth < contentWidth) {
-      // Calculate scale to fit width exactly
+
       scale.value = containerWidth / contentWidth
       scaledHeight.value = contentHeight * scale.value
     } else {
@@ -49,7 +49,7 @@ onMounted(() => {
     })
     resizeObserver.observe(containerRef.value)
   }
-  // Initial calculation
+
   nextTick(calculateScale)
 })
 
@@ -64,8 +64,8 @@ watch(() => props.enableAutoFit, calculateScale)
 
 <template>
   <div ref="containerRef" class="w-full overflow-hidden origin-top-left transition-all duration-300" :style="scaledHeight > 0 ? { height: `${scaledHeight}px` } : {}">
-    <div 
-      ref="contentRef" 
+    <div
+      ref="contentRef"
       class="origin-top-left transition-transform duration-300 min-w-max"
       :style="{ transform: `scale(${scale})` }"
     >

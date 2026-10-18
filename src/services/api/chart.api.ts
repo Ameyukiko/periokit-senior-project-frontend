@@ -58,14 +58,14 @@ export const chartApi = {
     visitId?: string | null
     chartName?: string | null
     teethData: unknown
-    // Patient info
+
     patientHn: string
     patientFirstName: string
     patientLastName: string
     patientAge?: number | null
     patientGender?: string | null
     patientNationality?: string | null
-    // Visit info
+
     visitDate: string
     visitPhase: string
     completeVisit?: boolean

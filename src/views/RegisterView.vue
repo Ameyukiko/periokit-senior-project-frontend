@@ -37,7 +37,7 @@ const handleFileChange = (event: Event) => {
 
 const loading = ref(false);
 
-// Add state to store errors for each field separately
+
 const errors = reactive({
   studentId: "",
   firstName: "",
@@ -51,16 +51,16 @@ const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 
 const register = async () => {
-  // 1. Clear all previous errors first
+
   Object.keys(errors).forEach(
     (key) => (errors[key as keyof typeof errors] = ""),
   );
 
-  // 2. Validate all fields simultaneously
+
   if (!form.firstName) errors.firstName = "Please enter your First Name";
   if (!form.surname) errors.surname = "Please enter your Surname";
 
-  // Email validation
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!form.email) {
     errors.email = "Please enter your Email";
@@ -68,21 +68,21 @@ const register = async () => {
     errors.email = "Please enter a valid email address";
   }
 
-  // Password validation
+
   if (!form.password) {
     errors.password = "Please enter your Password";
   } else if (form.password.length < 6) {
     errors.password = "Password must be at least 6 characters";
   }
 
-  // Confirm Password validation
+
   if (!form.confirmPassword) {
     errors.confirmPassword = "Please confirm your password";
   } else if (form.password !== form.confirmPassword) {
     errors.confirmPassword = "Passwords do not match";
   }
 
-  // 3. Check if there are any errors in any field
+
   const hasErrors = Object.values(errors).some((error) => error !== "");
   if (hasErrors) return;
 
@@ -99,7 +99,7 @@ const register = async () => {
     });
 
     if (!result.success) {
-      // Handle Email already exists or other conflict errors
+
       if (
         result.status === 409 ||
         result.message?.toLowerCase().includes("already exists")
@@ -111,7 +111,7 @@ const register = async () => {
         return;
       }
 
-      // Handle field validation errors from backend (array format)
+
       if (Array.isArray(result.errors)) {
         result.errors.forEach((err: { path?: string; message: string }) => {
           const path = err.path;
@@ -130,7 +130,7 @@ const register = async () => {
 
     notificationStore.success("Registration successful!");
 
-    // Auto login after successful registration
+
     const loginResult = await authStore.login(form.email, form.password);
 
     if (loginResult.success) {
@@ -139,7 +139,7 @@ const register = async () => {
         router.push({ name: "my-patients" });
       }, 1500);
     } else {
-      // If auto-login fails for some reason, redirect to login page as fallback
+
       setTimeout(() => {
         router.push("/login");
       }, 2000);
@@ -167,14 +167,14 @@ const register = async () => {
       <div
         class="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-6 md:p-10 relative overflow-hidden"
       >
-        <!-- Loading Overlay -->
+
         <transition name="fade">
           <div
             v-if="loading"
             class="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all duration-300"
           >
             <div class="flex flex-col items-center gap-4">
-              <!-- Animated loading indicator -->
+
               <div class="relative w-20 h-20 flex items-center justify-center">
                 <div class="absolute inset-0 rounded-full border-4 border-[#0052ff]/10 border-t-[#0052ff] animate-spin"></div>
                 <img
@@ -190,7 +190,7 @@ const register = async () => {
             </div>
           </div>
         </transition>
-        <!-- Logo & Header -->
+
         <div class="mb-6">
           <img
             src="../assets/mini_Logo_Periokit.png"
@@ -206,7 +206,7 @@ const register = async () => {
         </div>
 
         <form @submit.prevent="register" class="space-y-5">
-          <!-- Profile Picture -->
+
           <div class="flex flex-col items-center mb-2">
             <span class="text-[13px] font-bold text-[#1f2937] mb-3"
               >Profile Picture</span
@@ -229,7 +229,7 @@ const register = async () => {
                 <span class="text-[10px] font-medium">Upload</span>
               </div>
 
-              <!-- Overlay on hover when image exists -->
+
               <div
                 v-if="previewUrl"
                 class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
@@ -256,7 +256,7 @@ const register = async () => {
             </button>
           </div>
 
-          <!-- Doctor ID -->
+
           <div>
             <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
               >Doctor ID <span class="text-[#9ca3af] font-normal">(Optional)</span></label
@@ -278,7 +278,7 @@ const register = async () => {
             </p>
           </div>
 
-          <!-- First Name & Surname -->
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
@@ -322,7 +322,7 @@ const register = async () => {
             </div>
           </div>
 
-          <!-- Email -->
+
           <div>
             <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
               >Email</label
@@ -344,7 +344,7 @@ const register = async () => {
             </p>
           </div>
 
-          <!-- Password & Confirm Password -->
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-[13px] font-bold text-[#1f2937] mb-1.5"
@@ -410,7 +410,7 @@ const register = async () => {
             </div>
           </div>
 
-          <!-- Submit Button -->
+
           <div class="pt-2">
             <button
               type="submit"
@@ -423,7 +423,7 @@ const register = async () => {
           </div>
         </form>
 
-        <!-- Login Link -->
+
         <div class="mt-6 text-center">
           <p class="text-[13px] text-[#6b7280]">
             Already have an account?
@@ -437,7 +437,7 @@ const register = async () => {
         </div>
       </div>
 
-      <!-- Footer -->
+
       <div class="mt-4 text-center">
         <p class="text-[12px] text-[#9ca3af]">© 2026 PerioKit.</p>
       </div>

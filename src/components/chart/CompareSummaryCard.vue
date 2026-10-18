@@ -14,11 +14,11 @@ const emit = defineEmits<{
 
 const presentTeeth = computed(() => props.summary.totalTeeth - props.summary.missingTeeth)
 
-// Dynamic overall pocket status computation
+
 const overallStatus = computed(() => {
   const healthy = props.summary.healthDistribution.healthy
   const severe = props.summary.healthDistribution.severe
-  
+
   if (severe > 15) {
     return {
       label: 'Deep Pockets (≥6mm)',
@@ -63,7 +63,7 @@ const toneClass: Record<string, string> = {
 
 <template>
   <div class="w-[400px] xl:w-[480px] bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 xl:p-8 space-y-6 mx-auto xl:mx-0">
-    <!-- Title -->
+
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <p class="text-sm font-black uppercase tracking-widest text-slate-700">Summary</p>
@@ -74,18 +74,18 @@ const toneClass: Record<string, string> = {
       </button>
     </div>
 
-    <!-- Pocket health distribution -->
+
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <p class="text-xs font-black uppercase tracking-wider text-slate-500">Pocket Health</p>
-        <!-- Dynamic Status Badge -->
+
         <div :class="['flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold shadow-xs transition-all', overallStatus.bgClass]">
           <component :is="overallStatus.icon" class="w-3.5 h-3.5" />
           {{ overallStatus.label }}
         </div>
       </div>
-      
-      <!-- Inline percentages bar -->
+
+
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-[10px] font-black text-slate-600 bg-slate-50/50 border border-slate-200/60 rounded-2xl px-4 py-3 mt-1">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
@@ -102,7 +102,7 @@ const toneClass: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Metric tiles -->
+
     <div class="grid grid-cols-3 gap-3">
       <div
         v-for="tile in tiles"

@@ -9,7 +9,7 @@ const board = useXrayBoardStore()
 const { selectedNote, editable, noteColors } = storeToRefs(board)
 
 const colorInput = ref<HTMLInputElement | null>(null)
-// Closing the panel hides it until another note is selected.
+
 const closedFor = ref<string | null>(null)
 
 const note = computed(() => (editable.value ? selectedNote.value : null))

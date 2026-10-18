@@ -26,13 +26,13 @@ const createDefaultPatientInfo = (): PatientInfo => {
     nationality: '',
     gender: '',
     date: new Date().toISOString().split('T')[0],
-    visitPhase: 'before_hygienic' // Default phase
+    visitPhase: 'before_hygienic'
   }
 }
 
 export const usePeriodontalChartStore = defineStore('periodontalChart', {
   state: () => ({
-    // Single active chart for the current visit
+
     chartName: 'New Chart' as string,
     patientInfo: createDefaultPatientInfo(),
     teethData: createInitialChartData(),
@@ -40,13 +40,13 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
     activeSubNav: 'chart' as 'chart' | 'xray' | 'export',
     currentPatientId: null as string | null,
     isDirty: false as boolean,
-    // When true the chart is being viewed (a saved visit, not in edit mode):
-    // all mutating actions become no-ops so the record can't change.
+
+
     readonly: false as boolean,
-    // Whether the doctor has unlocked a saved visit for editing. It lives here
-    // rather than on the chart page because the Diagnosis page is part of the
-    // same visit: a saved visit opens read-only on both, and one Edit unlocks
-    // both. Deliberately left out of `persist` — a reload comes back locked.
+
+
+
+
     editMode: false as boolean,
   }),
 
@@ -94,7 +94,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.isDirty = false
       this.readonly = false
       this.editMode = false
-      // Explicitly clear localStorage so logout wipes any unsaved draft
+
       try { localStorage.removeItem('periodontalChart') } catch (_) {}
     },
 
@@ -180,7 +180,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       if (!tooth || tooth.extracted) return
       tooth.implant = !tooth.implant
 
-      // When Implant toggles, reset the existing mobility/furcation values
+
       tooth.mo = ''
       tooth.fur.buccal = tooth.fur.buccal.map(() => 0)
       tooth.fur.lingual = tooth.fur.lingual.map(() => 0)
@@ -193,7 +193,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       if (!tooth) return
       tooth.extracted = !tooth.extracted
 
-      // Clear ALL clinical data when tooth is extracted (fill black)
+
       if (tooth.extracted) {
         const clearSurfaceData = () => ({
           bop: [false, false, false],
@@ -235,7 +235,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       const visitId = visitStore.activeVisitId === 'new' ? undefined : visitStore.activeVisitId
 
       const { patientInfo } = this
-      // Validate patient info before save (HN and Patient Name are required)
+
       if (!patientInfo.hn) {
         notifStore.error('Please enter HN before saving')
         throw new Error('HN is required')
@@ -276,10 +276,10 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         if (savedChart?.visitId) {
           visitStore.setActiveVisit(savedChart.visitId)
         }
-        // A brand-new patient/visit (saved with no visitId) has no
-        // currentPatientId yet — adopt the one the backend resolved so the
-        // chart page recognises the patient and stays open (instead of falling
-        // back to the "select a patient" empty state).
+
+
+
+
         if (savedChart?.patientId) {
           this.currentPatientId = savedChart.patientId
         }
@@ -287,8 +287,8 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         this.isDirty = false
         notifStore.success('Chart saved successfully')
 
-        // Refresh the visit tab strip so a newly-created visit (or the
-        // hasChart flag of an existing one) shows up immediately.
+
+
         if (this.currentPatientId) {
           const fetchedVisits = await visitStore.loadVisits(this.currentPatientId)
           if (savedChart?.visitId) {
@@ -319,22 +319,22 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       try {
         const { data } = await chartApi.getByVisit(visitId)
         const visitStore = useVisitStore()
-        // A slower response from a visit the user already left must not replace
-        // the active chart or hydrate its diagnosis worksheet.
+
+
         if (visitStore.activeVisitId !== visitId) return
         const chartData = data?.chartByVisit
         const diagnosis = (chartData?.diagnosis ?? null) as DiagnosisResponseDto | null
 
-        // Keep the current patient in sync — covers the post-save reload where
-        // the chart page navigates by visitId alone and would otherwise lose
-        // track of which patient this visit belongs to.
+
+
+
         if (chartData?.patientId) {
           this.currentPatientId = chartData.patientId
         }
 
         if (!chartData || !chartData.teethData) {
-          // New/empty visit: blank the chart but keep the current patient's
-          // header info (same patient — don't wipe HN/name).
+
+
           this.chartName = 'New Chart'
           this.teethData = createInitialChartData()
           this.selectedToothId = null
@@ -384,7 +384,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.currentPatientId = id
       const { patientApi } = await import('@/services/api/patient.api')
       const patient = await patientApi.getById(id)
-      // Keep a slower response from replacing the header of a newer patient.
+
       if (this.currentPatientId !== id) return
       if (patient) {
         const genderRaw = patient.gender || ''

@@ -38,7 +38,7 @@ export const visitApi = {
       fetchPolicy: 'network-only',
     })
     const list: Visit[] = data?.visitsByPatient || []
-    // Compute visitNumber client-side (oldest = 1)
+
     const sorted = [...list].sort(
       (a, b) =>
         new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime() ||

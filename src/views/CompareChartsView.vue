@@ -40,7 +40,7 @@ const showSummaryB = ref(false)
 const fullChartMode = ref(false)
 const drawerOpen = ref(false)
 
-// Scale-to-fit logic for compare chart blocks
+
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartContentRefA = ref<HTMLElement | null>(null)
 const chartScale = ref(1)
@@ -48,13 +48,13 @@ const scaledChartHeight = ref(0)
 
 const getArchNaturalWidth = (groups: number[][]) => {
   const teethWidth = groups.reduce((total, group) => {
-    return total + group.reduce((s, id) => s + getToothColumnWidth(id), 0) + 4 // +4 for group borders
+    return total + group.reduce((s, id) => s + getToothColumnWidth(id), 0) + 4
   }, 0)
-  return 80 + teethWidth + (groups.length - 1) * 16 + 24 // label + gaps + padding
+  return 80 + teethWidth + (groups.length - 1) * 16 + 24
 }
 
 const getChartNaturalWidth = () => {
-  // Full chart renders both arches, so the wider one drives the scale.
+
   if (fullChartMode.value) {
     return Math.max(getArchNaturalWidth(UPPER_ARCH), getArchNaturalWidth(LOWER_ARCH))
   }
@@ -108,7 +108,7 @@ const fetchPatientVisits = async () => {
   if (!patientId) return
   try {
     const data = await visitApi.getByPatient(patientId)
-    // Only visits that have charts
+
     visits.value = data.filter(v => v.hasChart).sort(
       (a, b) => new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime() || a.id.localeCompare(b.id)
     )
@@ -164,7 +164,7 @@ watch([chartDataA, archFilter, fullChartMode], async () => {
   if (chartDataA.value) await updateScaleAndHeight()
 })
 
-// Re-run the comparison automatically whenever either visit selection changes.
+
 watch([selectedVisitIdA, selectedVisitIdB], async () => {
   if (!canCompare.value) return
   selectedToothId.value = null
@@ -214,9 +214,9 @@ const goBack = () => {
       </div>
 
       <div class="flex flex-col xl:flex-row gap-6 max-w-[1600px] mx-auto items-start justify-center transition-all duration-500">
-        <!-- Main container -->
+
         <div :class="['flex-1 w-full space-y-6 transition-all duration-500 min-w-0', fullChartMode ? 'max-w-[1600px]' : 'max-w-7xl']">
-        <!-- Select Visits to Compare -->
+
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
           <h2 class="text-sm font-bold text-slate-800 mb-4">Select Visits to Compare</h2>
           <div class="flex flex-col xl:flex-row items-center gap-4 xl:gap-6 justify-between">
@@ -233,7 +233,7 @@ const goBack = () => {
                 </div>
               </div>
             </div>
-            
+
             <div class="flex items-center justify-center pt-0 xl:pt-5">
               <ArrowRight class="w-6 h-6 text-slate-400 rotate-90 xl:rotate-0" />
             </div>
@@ -254,7 +254,7 @@ const goBack = () => {
           </div>
         </div>
 
-        <!-- Chart Comparison -->
+
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 min-h-[500px]">
           <h2 class="text-sm font-bold text-slate-800 mb-6">Chart Comparison</h2>
 
@@ -273,15 +273,15 @@ const goBack = () => {
               </div>
             </div>
           </div>
-          
+
           <div v-else-if="chartDataA && chartDataB" class="flex gap-6 items-start">
 
-            <!-- Charts column -->
+
             <div class="flex-1 min-w-0 transition-all duration-300">
 
-              <!-- Toolbar -->
+
               <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
-                <!-- Arch Toggle -->
+
                 <div :class="['flex bg-slate-100 p-1 rounded-full border border-slate-200 w-full xl:w-[140px] justify-center shrink-0 transition-opacity', fullChartMode ? 'opacity-30 pointer-events-none' : '']">
                   <button
                     @click="archFilter = 'upper'"
@@ -306,27 +306,27 @@ const goBack = () => {
                 </button>
               </div>
 
-              <!-- Visit panels: stacked in compact mode, side by side in full chart mode -->
+
               <div :class="fullChartMode ? 'flex flex-col xl:flex-row items-start gap-6' : 'space-y-6'">
 
-                <!-- Visit 1 panel -->
+
                 <div class="flex-1 min-w-0 w-full">
                   <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
-                    <!-- Mini Summary Bar -->
+
                     <div
                       v-if="summaryA"
                       @click="showSummaryA = true"
                       class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
                     >
-                      <!-- Scrollable Badges -->
+
                       <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
-                        <!-- Full-mouth Summary Label -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
                           <Activity class="w-3.5 h-3.5 text-blue-500" />
                           <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
                         </div>
 
-                        <!-- Teeth Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
                           <span class="text-[11px] font-black text-slate-600">
@@ -334,7 +334,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Implants Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
                           <span class="text-[11px] font-black text-violet-600">
@@ -342,7 +342,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- BoP Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
                           <span class="text-[11px] font-black text-rose-600">
@@ -350,7 +350,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- PI Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
                           <span class="text-[11px] font-black text-blue-600">
@@ -358,7 +358,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Mobility Badge -->
+
                         <div v-if="summaryA.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
                           <span class="text-[11px] font-black text-amber-600">
@@ -366,7 +366,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Furcation Badge -->
+
                         <div v-if="summaryA.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
                           <span class="text-[11px] font-black text-purple-600">
@@ -374,7 +374,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Keratinized Badge -->
+
                         <div v-if="summaryA.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
                           <span class="text-[11px] font-black text-teal-600">
@@ -382,7 +382,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- PD Breakdown -->
+
                         <template v-for="item in sortedPdBreakdownA" :key="item.depth">
                           <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
                             <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
@@ -393,7 +393,7 @@ const goBack = () => {
                         </template>
                       </div>
 
-                      <!-- Sticky "More" Indicator -->
+
                       <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
                         <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
@@ -406,7 +406,7 @@ const goBack = () => {
                     </button>
                   </div>
 
-                  <!-- Visit 1 -->
+
                   <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
                     <div class="flex justify-center mb-6">
                       <h3 class="text-xl font-medium text-slate-800">Visit {{ visitA?.visitNumber }}</h3>
@@ -429,24 +429,24 @@ const goBack = () => {
                   </div>
                 </div>
 
-                <!-- Visit 2 panel -->
+
                 <div class="flex-1 min-w-0 w-full">
                   <div class="flex flex-col xl:flex-row items-center w-full gap-3 xl:gap-4 mb-4">
-                    <!-- Mini Summary Bar -->
+
                     <div
                       v-if="summaryB"
                       @click="showSummaryB = true"
                       class="flex-1 w-full min-w-0 bg-linear-to-r from-slate-50 to-white border border-slate-200 rounded-xl px-4 py-1.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100 hover:border-[#0052ff]/80 transition-all duration-200 group"
                     >
-                      <!-- Scrollable Badges -->
+
                       <div class="flex items-center gap-3 overflow-x-auto flex-1 pr-2">
-                        <!-- Full-mouth Summary Label -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 whitespace-nowrap">
                           <Activity class="w-3.5 h-3.5 text-blue-500" />
                           <span class="text-[11px] font-bold text-blue-600 uppercase">Summary</span>
                         </div>
 
-                        <!-- Teeth Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-slate-400">Teeth</span>
                           <span class="text-[11px] font-black text-slate-600">
@@ -454,7 +454,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Implants Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 border border-violet-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-violet-400">Implants</span>
                           <span class="text-[11px] font-black text-violet-600">
@@ -462,7 +462,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- BoP Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-rose-400">BoP</span>
                           <span class="text-[11px] font-black text-rose-600">
@@ -470,7 +470,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- PI Badge -->
+
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-blue-400">PI</span>
                           <span class="text-[11px] font-black text-blue-600">
@@ -478,7 +478,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Mobility Badge -->
+
                         <div v-if="summaryB.mobilityCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-amber-400">Mobility</span>
                           <span class="text-[11px] font-black text-amber-600">
@@ -486,7 +486,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Furcation Badge -->
+
                         <div v-if="summaryB.furcationCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-purple-400">Furcation</span>
                           <span class="text-[11px] font-black text-purple-600">
@@ -494,7 +494,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- Keratinized Badge -->
+
                         <div v-if="summaryB.keratinizedLowCount > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 whitespace-nowrap">
                           <span class="text-[10px] font-bold uppercase text-teal-400">KTW &lt;2</span>
                           <span class="text-[11px] font-black text-teal-600">
@@ -502,7 +502,7 @@ const goBack = () => {
                           </span>
                         </div>
 
-                        <!-- PD Breakdown -->
+
                         <template v-for="item in sortedPdBreakdownB" :key="item.depth">
                           <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 whitespace-nowrap">
                             <span class="text-[10px] font-bold uppercase text-rose-400">PD {{ item.depth }}mm</span>
@@ -513,7 +513,7 @@ const goBack = () => {
                         </template>
                       </div>
 
-                      <!-- Sticky "More" Indicator -->
+
                       <div class="shrink-0 flex items-center gap-1 pl-2.5 border-l border-slate-200/80 transition-colors">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-[#0052ff] transition-colors">More</span>
                         <ChevronRight class="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052ff] group-hover:translate-x-0.5 transition-all" />
@@ -526,7 +526,7 @@ const goBack = () => {
                     </button>
                   </div>
 
-                  <!-- Visit 2 -->
+
                   <div class="compare-chart-block bg-white border border-teal-600/80 rounded-[32px] overflow-hidden p-4 xl:p-6 xl:px-8">
                     <div class="flex justify-center mb-6">
                       <h3 class="text-xl font-medium text-slate-800">Visit {{ visitB?.visitNumber }}</h3>
@@ -557,7 +557,7 @@ const goBack = () => {
         </div>
         </div>
 
-        <!-- Combined dual-visit sidebar -->
+
         <CompareSidebarCard
           :open="!!selectedToothId"
           :tooth-id="selectedToothId"
@@ -571,7 +571,7 @@ const goBack = () => {
         />
       </div>
 
-      <!-- Summary Modals -->
+
       <Transition
         enter-active-class="transition-opacity duration-200"
         enter-from-class="opacity-0"
@@ -630,7 +630,7 @@ const goBack = () => {
         </div>
       </Transition>
 
-      <!-- Overview Modals -->
+
       <ChartOverviewModal
         v-if="chartDataA"
         :show="showOverviewA"

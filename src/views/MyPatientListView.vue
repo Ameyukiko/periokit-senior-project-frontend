@@ -19,7 +19,7 @@ const isLoading = ref(false)
 
 const searchInput = ref('')
 
-// Filter configs
+
 const filterConfigs: FilterConfig[] = [
   {
     type: 'date',
@@ -39,7 +39,7 @@ const filterConfigs: FilterConfig[] = [
   }
 ]
 
-// Filter values
+
 const filterValues = ref<Record<string, any>>({
   date: null,
   name: null
@@ -61,7 +61,7 @@ const fetchPatients = async () => {
   }
 }
 
-// Computed: sorted patients (applies across all patients, not just current page)
+
 const sortedPatients = computed(() => {
   const result = [...allPatients.value]
   const dateSort = filterValues.value.date
@@ -80,7 +80,7 @@ const sortedPatients = computed(() => {
         : b.firstName.localeCompare(a.firstName)
       if (cmp !== 0) return cmp
     }
-    // Default: latest visit first
+
     const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
     const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
     return dateB - dateA
@@ -109,7 +109,7 @@ const handleSearch = () => {
   }, 400)
 }
 
-// Reset page when filters change
+
 watch(() => filterValues.value, () => {
   page.value = 1
 }, { deep: true })
@@ -134,12 +134,12 @@ const handleNewPatient = () => {
     <PatientDrawer v-model:open="drawerOpen" />
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Header Area -->
+
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <h1 class="text-3xl font-bold text-slate-900">Patient</h1>
 
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Search -->
+
           <div class="relative w-full md:w-80">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search class="h-5 w-5 text-slate-400" />
@@ -153,10 +153,10 @@ const handleNewPatient = () => {
             />
           </div>
 
-          <!-- Filter Panel -->
+
           <FilterPanel v-model="filterValues" :configs="filterConfigs" @apply="fetchPatients" />
 
-          <!-- New Patient Button -->
+
           <button
             @click="handleNewPatient"
             class="px-4 py-2.5 bg-[#0052ff] text-white rounded-full text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0"
@@ -167,10 +167,10 @@ const handleNewPatient = () => {
         </div>
       </div>
 
-      <!-- Active filter chips (populated by FilterPanel via teleport) -->
+
       <div id="active-filter-chips" class="empty:mb-0 mb-5"></div>
 
-      <!-- Table Card -->
+
       <div class="bg-white shadow-sm rounded-2xl overflow-hidden border border-slate-100">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200">
@@ -258,7 +258,7 @@ const handleNewPatient = () => {
           </table>
         </div>
 
-        <!-- Pagination -->
+
         <div class="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-slate-100">
           <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>

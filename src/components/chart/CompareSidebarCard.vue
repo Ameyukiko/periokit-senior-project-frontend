@@ -96,7 +96,7 @@ const getPrognosisColorKC = (val?: string) => {
     >
       <div class="w-full h-[85vh] xl:h-full bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
 
-        <!-- Header -->
+
         <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
           <div>
             <div class="flex items-center gap-3">
@@ -112,7 +112,7 @@ const getPrognosisColorKC = (val?: string) => {
           </button>
         </div>
 
-        <!-- Visit label headers -->
+
         <div class="grid grid-cols-2 divide-x divide-slate-100 bg-slate-50 border-b border-slate-100 shrink-0">
           <div class="px-4 py-3 text-center">
             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ visitDateA }}</p>
@@ -128,14 +128,14 @@ const getPrognosisColorKC = (val?: string) => {
           </div>
         </div>
 
-        <!-- Content -->
+
         <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-8 scrollbar-hide">
 
-          <!-- Analysis Summary -->
+
           <section>
             <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 text-center">Analysis Summary</h3>
             <div class="grid grid-cols-2 gap-4">
-              <!-- A -->
+
               <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm" :class="{ 'opacity-50 pointer-events-none': toothDataA?.extracted }">
                 <div class="space-y-4">
                   <div @click="prognosisModalType = 'KC'" class="flex justify-between items-center gap-2 cursor-pointer group">
@@ -171,7 +171,7 @@ const getPrognosisColorKC = (val?: string) => {
                 </div>
               </div>
 
-              <!-- B -->
+
               <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm" :class="{ 'opacity-50 pointer-events-none': toothDataB?.extracted }">
                 <div class="space-y-4">
                   <div @click="prognosisModalType = 'KC'" class="flex justify-between items-center gap-2 cursor-pointer group">
@@ -209,11 +209,11 @@ const getPrognosisColorKC = (val?: string) => {
             </div>
           </section>
 
-          <!-- PD Section -->
+
           <section>
             <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 text-center">Probing Depth (mm)</h3>
             <div class="grid grid-cols-2 gap-4">
-              <!-- A -->
+
               <div class="space-y-3" :class="{ 'opacity-50 pointer-events-none': toothDataA?.extracted }">
                 <div class="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm text-center">
                   <div v-if="analysisA" class="text-xl font-black mb-1 flex items-center justify-center gap-0.5">
@@ -230,7 +230,7 @@ const getPrognosisColorKC = (val?: string) => {
                   <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{{ innerSurfaceLabel }}</p>
                 </div>
               </div>
-              <!-- B -->
+
               <div class="space-y-3" :class="{ 'opacity-50 pointer-events-none': toothDataB?.extracted }">
                 <div class="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm text-center">
                   <div v-if="analysisB" class="text-xl font-black mb-1 flex items-center justify-center gap-0.5">
@@ -250,11 +250,11 @@ const getPrognosisColorKC = (val?: string) => {
             </div>
           </section>
 
-          <!-- CAL Section -->
+
           <section>
             <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 text-center">Clinical Attachment Level (mm)</h3>
             <div class="grid grid-cols-2 gap-4">
-              <!-- A -->
+
               <div class="space-y-3" :class="{ 'opacity-50 pointer-events-none': toothDataA?.extracted }">
                 <div class="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm text-center">
                   <div v-if="analysisA" class="text-xl font-black mb-1 flex items-center justify-center gap-0.5 text-[#0052ff]">
@@ -271,7 +271,7 @@ const getPrognosisColorKC = (val?: string) => {
                   <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{{ innerSurfaceLabel }}</p>
                 </div>
               </div>
-              <!-- B -->
+
               <div class="space-y-3" :class="{ 'opacity-50 pointer-events-none': toothDataB?.extracted }">
                 <div class="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm text-center">
                   <div v-if="analysisB" class="text-xl font-black mb-1 flex items-center justify-center gap-0.5 text-[#0052ff]">
@@ -291,11 +291,11 @@ const getPrognosisColorKC = (val?: string) => {
             </div>
           </section>
 
-          <!-- Visual Indicators Section (Standard 6-Site Hexagonal Diagrams) -->
+
           <section>
             <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 text-center">BOP (6 Sites)</h3>
             <div class="grid grid-cols-2 gap-4">
-              <!-- A -->
+
               <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center" :class="{ 'opacity-50 pointer-events-none': toothDataA?.extracted }">
                 <div v-if="analysisA?.bop !== '0%' && analysisA" class="absolute top-2 right-2 px-1.5 py-0.5 bg-red-50 text-red-500 text-[8px] font-black rounded border border-red-100 shadow-sm">{{ analysisA.bop }}</div>
                 <div class="relative w-16 h-16 mb-2">
@@ -331,7 +331,7 @@ const getPrognosisColorKC = (val?: string) => {
                   </svg>
                 </div>
               </div>
-              <!-- B -->
+
               <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center" :class="{ 'opacity-50 pointer-events-none': toothDataB?.extracted }">
                 <div v-if="analysisB?.bop !== '0%' && analysisB" class="absolute top-2 right-2 px-1.5 py-0.5 bg-red-50 text-red-500 text-[8px] font-black rounded border border-red-100 shadow-sm">{{ analysisB.bop }}</div>
                 <div class="relative w-16 h-16 mb-2">
@@ -371,7 +371,7 @@ const getPrognosisColorKC = (val?: string) => {
 
             <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 mt-6 text-center">PI (6 Sites)</h3>
             <div class="grid grid-cols-2 gap-4">
-              <!-- A -->
+
               <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center" :class="{ 'opacity-50 pointer-events-none': toothDataA?.extracted }">
                 <div v-if="analysisA?.pi !== '0%' && analysisA" class="absolute top-2 right-2 px-1.5 py-0.5 bg-blue-50 text-blue-500 text-[8px] font-black rounded border border-blue-100 shadow-sm">{{ analysisA.pi }}</div>
                 <div class="relative w-16 h-16 mb-2">
@@ -407,7 +407,7 @@ const getPrognosisColorKC = (val?: string) => {
                   </svg>
                 </div>
               </div>
-              <!-- B -->
+
               <div class="relative bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center" :class="{ 'opacity-50 pointer-events-none': toothDataB?.extracted }">
                 <div v-if="analysisB?.pi !== '0%' && analysisB" class="absolute top-2 right-2 px-1.5 py-0.5 bg-blue-50 text-blue-500 text-[8px] font-black rounded border border-blue-100 shadow-sm">{{ analysisB.pi }}</div>
                 <div class="relative w-16 h-16 mb-2">
@@ -446,17 +446,17 @@ const getPrognosisColorKC = (val?: string) => {
             </div>
           </section>
 
-          <!-- Notes Section -->
+
           <section v-if="analysisA?.note || analysisB?.note">
              <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 text-center">Clinical Notes</h3>
              <div class="grid grid-cols-2 gap-4">
-                <!-- A -->
+
                 <div v-if="analysisA?.note" class="bg-yellow-50/50 border border-yellow-100 rounded-2xl p-4 shadow-sm group relative">
                   <p class="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-wrap">{{ analysisA.note }}</p>
                 </div>
                 <div v-else class="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs text-slate-300 italic text-center">No note</div>
-                
-                <!-- B -->
+
+
                 <div v-if="analysisB?.note" class="bg-yellow-50/50 border border-yellow-100 rounded-2xl p-4 shadow-sm group relative">
                   <p class="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-wrap">{{ analysisB.note }}</p>
                 </div>
@@ -469,7 +469,7 @@ const getPrognosisColorKC = (val?: string) => {
     </aside>
   </Transition>
 
-  <!-- Prognosis Reference Modal -->
+
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-300 ease-out"
@@ -494,7 +494,7 @@ const getPrognosisColorKC = (val?: string) => {
           </div>
 
           <div class="p-8 space-y-10">
-            <!-- Table 1: McGuire and Nunn -->
+
             <div v-if="prognosisModalType === 'MN'">
               <div class="flex items-center gap-3 mb-5">
                 <span class="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Classification</span>
@@ -534,7 +534,7 @@ const getPrognosisColorKC = (val?: string) => {
               </div>
             </div>
 
-            <!-- Table 2: Kwok and Caton -->
+
             <div v-if="prognosisModalType === 'KC'">
               <div class="flex items-center gap-3 mb-5">
                 <span class="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Classification</span>

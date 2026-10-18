@@ -3,18 +3,18 @@ import { getSiteLabel, getSiteRegion, type SiteRegion } from './chart.mapper'
 
 const toNumber = (value: string) => Number.parseInt(value, 10) || 0
 
-// ── Site-aware summary types & helpers (for the Overview display) ──────────────
-// Each finding keeps the affected site(s) so the UI can show *where* on the tooth
-// the value was recorded, not just the tooth number.
+
+
+
 
 export interface SiteRef {
-  label: string       // base position label, e.g. 'MB' | 'B' | 'DB' | 'MP' …
-  region: SiteRegion  // buccal-upper | palatal | lingual | buccal-lower (color + arch)
+  label: string
+  region: SiteRegion
 }
 
 export interface ToothSiteEntry {
   toothId: number
-  sites: SiteRef[]    // empty ⇒ whole-tooth finding (e.g. mobility)
+  sites: SiteRef[]
 }
 
 const SURFACES: Surface[] = ['buccal', 'lingual']
@@ -22,8 +22,8 @@ const SURFACES: Surface[] = ['buccal', 'lingual']
 const sortedToothIds = (chartData: ChartData): number[] =>
   Object.keys(chartData).map(Number).sort((a, b) => a - b)
 
-// Append a site to the per-tooth accumulator, creating the entry on first hit.
-// Iterating surfaces buccal→lingual and index 0→2 keeps sites in display order.
+
+
 const pushSite = (
   map: Map<number, ToothSiteEntry>,
   toothId: number,
@@ -45,13 +45,13 @@ const toEntries = (map: Map<number, ToothSiteEntry>): ToothSiteEntry[] =>
   Array.from(map.values()).sort((a, b) => a.toothId - b.toothId)
 
 
-/**
- * Get teeth by Probing Depth (PD) range
- * @param chartData - Chart data
- * @param min - Minimum PD value (inclusive)
- * @param max - Maximum PD value (inclusive, optional for open-ended ranges)
- * @returns Array of tooth IDs that have PD in the specified range
- */
+
+
+
+
+
+
+
 export const getTeethByPdRange = (
   chartData: ChartData,
   min: number,
@@ -78,13 +78,13 @@ export const getTeethByPdRange = (
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get teeth by Clinical Attachment Level (CAL) range
- * @param chartData - Chart data
- * @param min - Minimum CAL value (inclusive)
- * @param max - Maximum CAL value (inclusive, optional for open-ended ranges)
- * @returns Array of tooth IDs that have CAL in the specified range
- */
+
+
+
+
+
+
+
 export const getTeethByCalRange = (
   chartData: ChartData,
   min: number,
@@ -111,12 +111,12 @@ export const getTeethByCalRange = (
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get teeth by mobility grade
- * @param chartData - Chart data
- * @param grade - Mobility grade (0-3)
- * @returns Array of tooth IDs with the specified mobility grade
- */
+
+
+
+
+
+
 export const getTeethByMobility = (
   chartData: ChartData,
   grade: number,
@@ -133,12 +133,12 @@ export const getTeethByMobility = (
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get teeth by furcation grade (highest grade only)
- * @param chartData - Chart data
- * @param grade - Furcation grade (1-3)
- * @returns Array of tooth IDs with maximum furcation equal to specified grade
- */
+
+
+
+
+
+
 export const getTeethByFurcation = (
   chartData: ChartData,
   grade: number,
@@ -149,7 +149,7 @@ export const getTeethByFurcation = (
   Object.entries(chartData).forEach(([toothId, tooth]) => {
     if (tooth.extracted || tooth.implant) return
 
-    // Find maximum furcation value for this tooth
+
     let maxFur = 0
     surfaces.forEach((surface) => {
       tooth.fur[surface].forEach((furValue) => {
@@ -159,7 +159,7 @@ export const getTeethByFurcation = (
       })
     })
 
-    // Only include if max furcation equals the requested grade
+
     if (maxFur === grade) {
       result.push(Number.parseInt(toothId, 10))
     }
@@ -168,11 +168,11 @@ export const getTeethByFurcation = (
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get teeth that have Bleeding on Probing (BOP)
- * @param chartData - Chart data
- * @returns Array of tooth IDs with at least one BOP site
- */
+
+
+
+
+
 export const getTeethWithBop = (chartData: ChartData): number[] => {
   const result: number[] = []
   const surfaces: Surface[] = ['buccal', 'lingual']
@@ -192,11 +192,11 @@ export const getTeethWithBop = (chartData: ChartData): number[] => {
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get teeth that have Plaque Index (PI)
- * @param chartData - Chart data
- * @returns Array of tooth IDs with at least one PI site
- */
+
+
+
+
+
 export const getTeethWithPi = (chartData: ChartData): number[] => {
   const result: number[] = []
   const surfaces: Surface[] = ['buccal', 'lingual']
@@ -216,12 +216,12 @@ export const getTeethWithPi = (chartData: ChartData): number[] => {
   return result.sort((a, b) => a - b)
 }
 
-/**
- * Get prognosis summary (McGuire & Nunn)
- * Groups teeth by prognosis category
- * @param chartData - Chart data
- * @returns Record with prognosis categories as keys and tooth arrays as values
- */
+
+
+
+
+
+
 export const getPrognosisSummary = (
   chartData: ChartData,
 ): Record<string, number[]> => {
@@ -275,11 +275,11 @@ export const getPrognosisSummary = (
   return summary
 }
 
-/**
- * Get teeth with keratinized tissue width (KTW) less than 2mm on any surface
- * @param chartData - Chart data
- * @returns Array of tooth IDs with KTW < 2mm on at least one surface
- */
+
+
+
+
+
 export const getTeethByKtwLessThanTwo = (chartData: ChartData): number[] => {
   const result: number[] = []
   const surfaces: Surface[] = ['buccal', 'lingual']
@@ -300,12 +300,12 @@ export const getTeethByKtwLessThanTwo = (chartData: ChartData): number[] => {
   return result.sort((a, b) => a - b)
 }
 
-// ── Site-aware accessors (used by the Overview's Clinical Data Summary) ────────
 
-/**
- * Group abnormal Probing Depth (PD > 4mm) by value, keeping the affected site(s)
- * of each tooth.
- */
+
+
+
+
+
 export const getPdByValueWithSites = (
   chartData: ChartData,
 ): Record<number, ToothSiteEntry[]> => {
@@ -333,11 +333,11 @@ export const getPdByValueWithSites = (
   return out
 }
 
-/**
- * Group keratinized tissue width (0 < KTW < 2mm) by value, keeping the affected
- * surface(s). KTW is per-surface, so the center label (index 1) is used as the
- * surface code (Bᵘ / P / L / Bˡ).
- */
+
+
+
+
+
 export const getKtwByValueWithSites = (
   chartData: ChartData,
 ): Record<string, ToothSiteEntry[]> => {
@@ -364,10 +364,10 @@ export const getKtwByValueWithSites = (
   return out
 }
 
-/**
- * Teeth whose maximum furcation grade equals the requested grade (matching
- * getTeethByFurcation), keeping the site(s) that carry that grade.
- */
+
+
+
+
 export const getFurcationWithSites = (
   chartData: ChartData,
   grade: number,

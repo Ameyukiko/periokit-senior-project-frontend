@@ -29,7 +29,7 @@ import {
 } from './criteria-cell'
 
 const props = defineProps<{
-  /** The grade the rows below arrive at. Read only — the rows are what move it. */
+
   grade: GradeId | null
   directEvidence: DirectEvidence | null
   boneLossPercent: number | null
@@ -37,11 +37,11 @@ const props = defineProps<{
   ratio: number | null
   ratioGrade: GradeId | null
   phenotype: Phenotype | null
-  /** True when the phenotype came off the chart instead of being answered. */
+
   phenotypeFromChart: boolean
   smoking: Smoking | null
   diabetes: Diabetes | null
-  /** A saved visit nobody has pressed Edit on: the table is read, not ticked. */
+
   readonly?: boolean
 }>()
 
@@ -85,8 +85,8 @@ const DIABETES_BANDS: Record<GradeId, string> = {
   C: 'HbA1c ≥ 7.0% in patients with diabetes',
 }
 
-// Each clickable row is one of the grade inputs, so ticking a cell answers the
-// question in the panel above rather than leaving a mark of its own.
+
+
 const DIRECT_VALUES: Record<GradeId, DirectEvidence> = {
   A: 'no-loss',
   B: 'lt-2mm',
@@ -131,8 +131,8 @@ const diabetesChip = computed(() =>
   props.diabetes ? `Patient: ${DIABETES_LABEL[props.diabetes]}` : '',
 )
 
-// Clicking the cell that is already ticked clears the answer again. A read-only
-// visit answers nothing: the table is there to be read until Edit is pressed.
+
+
 const choose = (choice: GradeChoice) => {
   if (props.readonly) return
   emit('choose', choice)
@@ -158,19 +158,19 @@ const chooseDiabetes = (grade: GradeId) =>
     value: diabetesGrade.value === grade ? null : DIABETES_VALUES[grade],
   })
 
-// An answered row reads as a pressed button either way; `fromChart` only drops
-// the ring that marks a tick as the doctor's own. A cell holding no answer is
-// dashed, which is what tells these rows apart from the calculated % bone loss ÷
-// age row below: dashed cells are the ones to fill in.
-//
-// The faint tint down the grade's column is only drawn on rows still waiting for
-// an answer, pointing them at where the rest of the table is heading. An
-// answered row shows its own band and nothing else — two shades of yellow on one
-// row read as two answers.
-//
-// Read-only keeps every one of those colours — the answer is still the answer on
-// a visit nobody is editing. What goes is the invitation to click: no pointer,
-// no dashed "open" border, no hover.
+
+
+
+
+
+
+
+
+
+
+
+
+
 const cellClass = (answered: GradeId | null, grade: GradeId, fromChart = false) => [
   CELL_BASE,
   props.readonly ? 'cursor-default' : 'cursor-pointer',
@@ -188,9 +188,9 @@ const cellClass = (answered: GradeId | null, grade: GradeId, fromChart = false) 
         : CELL_IDLE,
 ]
 
-// % bone loss ÷ age comes out of two numbers, so its row is read-only: it shows
-// the band it lands in with no ring, since nobody ticked it, and offers no
-// hover because there is nothing to click.
+
+
+
 const ratioCellClass = (grade: GradeId) => [
   CELL_BASE,
   'text-black',
@@ -207,7 +207,7 @@ const rowHeaderClass =
 
 <template>
   <div class="flex flex-col gap-2">
-    <!-- Key / Legend -->
+
     <div class="flex items-center justify-end gap-4 px-1 text-[11px]">
       <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Key:</span>
       <div
@@ -250,9 +250,9 @@ const rowHeaderClass =
                 </span>
               </div>
             </th>
-          <!-- The grade is the answer these rows add up to, so the column is
-               reported and not offered — the way to move it is to change the
-               answer that reads wrong. -->
+
+
+
           <th
             v-for="column in COLUMNS"
             :key="column.id"

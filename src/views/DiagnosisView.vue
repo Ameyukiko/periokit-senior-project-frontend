@@ -61,7 +61,7 @@ const notifStore = useNotificationStore()
 const diagnosisStore = useDiagnosisStore()
 const { loadVisit } = useVisitLoad()
 
-// Stable object — resetInputs() assigns into it rather than replacing it.
+
 const inputs = diagnosisStore.inputs
 
 type ConfirmationDialog = 'save' | 'cancel-edit' | 'discard'
@@ -79,13 +79,13 @@ const closeConfirmation = () => {
 const patientId = computed(() => (route.query.patientId as string) || null)
 const visitId = computed(() => (route.query.visitId as string) || null)
 
-/**
- * The chart page shows "Please select a patient from the drawer" for exactly one
- * combination: a visit in the query with no patient beside it. A visit that has
- * no chart yet gives `loadFromBackend` nothing to read a patient off, so the URL
- * is not always enough — the visit tab strip is asked as well, and a visit is
- * only ever sent on once a patient can be sent with it.
- */
+
+
+
+
+
+
+
 const resolvedPatientId = computed(
   () =>
     patientId.value ||
@@ -95,12 +95,12 @@ const resolvedPatientId = computed(
     null,
 )
 
-/**
- * The visit always goes back with the doctor, patient or no patient. A chart
- * being drafted for someone not yet on file has no patientId to carry, and
- * arriving at the chart page with an empty query is what used to make it read
- * the trip as "start a new visit" and blank the work in progress.
- */
+
+
+
+
+
+
 const chartQuery = computed(() => ({
   ...(resolvedPatientId.value ? { patientId: resolvedPatientId.value } : {}),
   ...(visitId.value ? { visitId: visitId.value } : {}),
@@ -114,8 +114,8 @@ const openChartTab = (tab: 'chart' | 'xray' | 'export') => {
   })
 }
 
-// The X-ray board of this visit stays in its store while the doctor is here, so
-// an unsaved one is asked about on the way out just as the chart page asks.
+
+
 const {
   showLeaveWarning: showXrayLeaveWarning,
   hasUnsavedBoard,
@@ -126,10 +126,10 @@ const {
 } = useXrayLeaveGuard()
 
 onBeforeRouteLeave(to => {
-  // Edit mode belongs to the visit, and the chart and Diagnosis pages are two
-  // halves of the same visit. Stepping outside both locks it again.
+
+
   if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
-  // Back to this visit's own chart is back to the board itself — nothing to lose.
+
   const toSameVisitChart =
     to.name === 'chart' &&
     (to.query.visitId ?? null) === (chartQuery.value.visitId ?? null) &&
@@ -138,40 +138,40 @@ onBeforeRouteLeave(to => {
   return askBeforeLeaving(to)
 })
 
-/**
- * A measurement shown here is only ever read. Correcting one means correcting
- * the record, so this opens the chart on the tooth the reading came from, with
- * its detail panel already showing.
- */
+
+
+
+
+
 const openTooth = (toothId: ToothId) => {
   chartStore.selectedToothId = toothId
   openChartTab('chart')
 }
 
-/**
- * The chart the diagnosis reads from is usually already in the store — the
- * doctor came here from it. On a reload or a deep link it is not, so the visit
- * is fetched the same way the chart page fetches it. The guards keep a chart
- * that is already open (and possibly edited) from being reloaded over.
- */
+
+
+
+
+
+
 watch(
   [visitId, resolvedPatientId],
   ([newVisit, newPatient]) => openVisitContext(newVisit, newPatient),
   { immediate: true },
 )
 
-// Anything the doctor can change carries a faint box, so an editable value is
-// told apart from a printed one at a glance. The border firms up under the
-// cursor and turns blue on focus. On a saved visit nothing here is editable, so
-// the box greys out and stops answering the cursor — the value still reads,
-// it just no longer offers itself.
+
+
+
+
+
 const QUIET =
   'bg-white border border-slate-200 rounded-md px-1.5 py-0.5 -mx-0.5 text-[13px] font-bold text-slate-800 outline-none hover:border-slate-300 hover:bg-slate-50 focus:border-[#0052ff] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-colors disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-100'
 const QUIET_NUMBER = `${QUIET} w-16`
 const QUIET_PROMPT = `${QUIET} placeholder:text-[#0052ff] placeholder:font-bold disabled:placeholder:text-slate-400`
 
-// No box: what the chart recorded is printed, not offered for editing. The
-// tooth it was read at sits next to it as a link into the chart.
+
+
 const RECORDED = 'text-[13px] font-bold text-slate-800'
 const CHART_LINK =
   'inline-flex items-center gap-1 ml-0.5 text-[12px] text-slate-400 hover:text-[#0052ff] rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-100 transition-colors'
@@ -188,16 +188,16 @@ const setNumber = (key: NumericKey, raw: string) => {
   inputs[key] = Number.isNaN(value) ? null : value
 }
 
-// Ticking a band on one row of the staging table, which overrides the band that
-// row's measurement fell in. Clicking the same cell again hands the row back to
-// the numbers. This is the only way the stage moves — it is worked out from the
-// four rows and never set on its own.
+
+
+
+
 const markStageRow = (row: StageRow, stage: StageId) => {
   inputs.stageMarks[row] = inputs.stageMarks[row] === stage ? null : stage
 }
 
-// Same shape as the stage and grade controls: picking what the chart already
-// counted hands the answer back to the chart, anything else overrides it.
+
+
 const selectExtent = (option: ExtentId) => {
   inputs.extent = diagnosisStore.extent === option ? null : option
 }
@@ -207,17 +207,17 @@ const selectPhenotype = (raw: string) => {
   inputs.phenotype = value === diagnosisStore.suggestedPhenotype ? null : value
 }
 
-// Every clickable row of the grading table stands for one of the inputs above
-// it, so ticking a cell fills that answer in. As with the stage, this is the
-// only way the grade moves — it is worked out from these rows and never set on
-// its own.
+
+
+
+
 const applyGradeChoice = (choice: GradeChoice) => {
   switch (choice.field) {
     case 'directEvidence':
       inputs.directEvidence = choice.value
       break
     case 'phenotype':
-      // Picking what the chart already reads hands the row back to the chart.
+
       inputs.phenotype =
         choice.value === diagnosisStore.suggestedPhenotype ? null : choice.value
       break
@@ -236,23 +236,23 @@ const confirmDiscard = () => {
   notifStore.info('Diagnosis cleared')
 }
 
-// --- Read-only / edit mode ---
-// A saved visit opens read-only here for the same reason it does on the chart
-// page: it is the same visit. `chartStore.editMode` is what both read, so one
-// Edit unlocks both and walking between them keeps it open. A draft — visit
-// 'new', or no visit at all — has never been written down and is always open.
-// Both the URL and the visit strip are asked, and either one naming a saved
-// visit locks the page. They can disagree for a moment — a draft saved from
-// here is a real visit before `router.replace` has written its id into the
-// query — and for that moment the record is the one to protect.
+
+
+
+
+
+
+
+
+
 const isExistingVisit = computed(() =>
   [visitId.value, visitStore.activeVisitId].some(id => !!id && id !== 'new'),
 )
 const editable = computed(() => !isExistingVisit.value || chartStore.editMode)
 const isLocked = computed(() => isExistingVisit.value && !editable.value)
 
-// Keep the chart store's own guard in step while the doctor is on this page,
-// so pressing Edit here unlocks the chart they walk back to.
+
+
 watch(editable, value => { chartStore.readonly = !value }, { immediate: true })
 
 const handleEdit = () => {
@@ -270,8 +270,8 @@ const handleCancelEditClick = () => {
 const confirmCancelEdit = async () => {
   closeConfirmation()
   chartStore.editMode = false
-  // Throw the unsaved edits away by reading the visit back off the backend —
-  // the chart and the diagnosis together, since one save wrote both.
+
+
   const id = visitId.value
   if (id && id !== 'new') {
     try {
@@ -283,9 +283,9 @@ const confirmCancelEdit = async () => {
   diagnosisStore.revertToSaved(resolveDiagnosisKey(visitId.value, resolvedPatientId.value))
 }
 
-// --- Saving ---
-// The same press as the chart page's: this is not a diagnosis of its own, it is
-// part of the visit, and the visit is saved in one go.
+
+
+
 const { isSaving, validate, saveVisit } = useVisitSave()
 
 const nothingToSave = computed(
@@ -303,8 +303,8 @@ const confirmSave = async () => {
   const saved = await saveVisit()
   if (!saved) return
 
-  // A draft has just been minted a real visit id — carry it in the URL so this
-  // page, and the chart behind it, are about the visit that now exists.
+
+
   const { visitId: savedVisitId, patientId: savedPatientId } = saved
   if (
     savedVisitId &&
@@ -329,8 +329,8 @@ const DIABETES_OPTIONS: Diabetes[] = ['none', 'hba1c-lt-7', 'hba1c-gte-7']
 
 const findings = computed(() => diagnosisStore.findings)
 
-// Where the starting number came from, kept in view after it is edited: the
-// chart counts every gap in the arch, whatever put it there.
+
+
 const toothLossHint = computed(() => {
   const missing = findings.value.missingTeeth.length
   if (!missing) return 'No missing teeth on the chart'
@@ -339,8 +339,8 @@ const toothLossHint = computed(() => {
 
 const boneLossBand = computed(() => boneLossBandOf(diagnosisStore.boneLoss))
 
-// Field tooltips, laid out rather than written as a paragraph: the answer in
-// bold, the sentence behind it, then the caveats one to a bullet.
+
+
 const FROM_CHART = 'Edit the chart to change it'
 
 const CAL_TOOLTIP = {
@@ -372,30 +372,30 @@ const BONE_LOSS_TOOLTIP = {
 
 const hasChart = computed(() => chartStore.hasChartData)
 
-// What the answer means for the patient. The tables above already show which
-// criteria produced it, row by row, so the line under the result is the part
-// they never say: how much of the periodontium has gone, and what treating it
-// now involves.
+
+
+
+
 const stageMeaning = computed(() =>
   diagnosisStore.finalStage
     ? STAGE_MEANING[diagnosisStore.finalStage]
     : 'The stage says how far the disease has already gone. Fill in the rows still marked above and this line will say what that means for the patient.',
 )
 
-// The grade always has a value — TAP 2023 starts every case at Grade B — so this
-// line reads what that grade means rather than asking for rows first.
+
+
 const gradeMeaning = computed(() => GRADE_MEANING[diagnosisStore.finalGrade])
 
-// Edit / Cancel / Save keep their place in the header row until it scrolls up
-// under the sticky sub-nav (which ends at ~105px), then break out and follow
-// the page — the same behaviour the chart page carries. The row is measured
-// rather than the buttons, which leave the flow once they go fixed.
+
+
+
+
 const buttonRowRef = ref<HTMLElement | null>(null)
 const actionsFloating = ref(false)
 
 const updateActionsFloating = () => {
   const rect = buttonRowRef.value?.getBoundingClientRect()
-  // Phones and tablets keep the buttons in the row; only desktop floats them
+
   const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
   actionsFloating.value = desktop && !!rect && rect.bottom < 110
 }
@@ -414,13 +414,13 @@ const actionButtonShape = computed(() =>
   actionsFloating.value ? 'p-4 rounded-full shadow-lg' : 'px-3 py-1.5 rounded-lg shadow-sm',
 )
 const actionIconSize = computed(() => (actionsFloating.value ? 'w-5 h-5' : 'w-3.5 h-3.5'))
-// Discard runs a size above the rest: it is the one button in the stack that
-// throws work away, so it should not be the easiest one to miss.
+
+
 const discardButtonShape = computed(() =>
   actionsFloating.value ? 'p-[18px] rounded-full shadow-lg' : 'px-4 py-2 rounded-lg shadow-sm',
 )
-// Floating, the buttons sit at the bottom of the page, so their tooltips have
-// to open upwards or they would be drawn off screen.
+
+
 const actionTooltipPlacement = computed(() =>
   actionsFloating.value ? 'bottom-full mb-2' : 'top-full mt-2',
 )
@@ -465,10 +465,10 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
 
     <main class="max-w-320 mx-auto px-4 py-6 flex flex-col gap-5">
       <div ref="buttonRowRef" class="flex flex-wrap items-start justify-between gap-3 -mb-2">
-        <!-- Out of every state, including the ones with nothing to show. Same
-             pill as the one Visit History goes back to My Patients with. The
-             page title rides alongside it: the Result below is the heading that
-             matters, so this one stays quieter than it. -->
+
+
+
+
         <div class="flex flex-wrap items-center gap-3">
           <button
             class="group flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-[#0052ff] hover:border-[#0052ff] hover:bg-blue-50 font-medium text-sm shadow-sm transition-all w-fit"
@@ -479,11 +479,11 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           </button>
         </div>
 
-        <!-- The same Save the chart page carries, because it is the same save:
-             there is no diagnosis record of its own, the diagnosis is written
-             with the visit. Each button says so on hover, rather than carrying a
-             note underneath that has to be read on every visit to be read once.
-             Both tooltips hang off the right edge so they open inwards. -->
+
+
+
+
+
         <div
           v-if="hasChart && !isLoading && !loadFailed"
           :class="
@@ -492,9 +492,9 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               : 'flex flex-wrap items-center justify-end gap-2'
           "
         >
-          <!-- Discard sits at the top of the stack, above Cancel and Save. It
-               used to be a fixed button of its own, which landed on top of this
-               group once the group started floating too. -->
+
+
+
           <Transition name="fade">
             <span v-if="editable && diagnosisStore.hasChanges" class="relative group inline-flex">
               <button
@@ -580,14 +580,14 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
         </div>
       </div>
 
-      <!-- Loading -->
+
       <template v-if="isLoading">
         <Skeleton variant="rounded" height="120px" />
         <Skeleton variant="rounded" height="420px" />
         <Skeleton variant="rounded" height="420px" />
       </template>
 
-      <!-- Could not read the visit -->
+
       <section
         v-else-if="loadFailed"
         class="bg-white rounded-3xl shadow-md border border-slate-200 p-10 flex flex-col items-center gap-3"
@@ -598,7 +598,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
         </p>
       </section>
 
-      <!-- Nothing recorded to diagnose from -->
+
       <section
         v-else-if="!hasChart"
         class="bg-white rounded-3xl shadow-md border border-slate-200 p-10 flex flex-col items-center gap-3"
@@ -618,7 +618,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
       </section>
 
       <template v-else>
-        <!-- Diagnosis header -->
+
         <header class="px-1">
           <h1
             v-if="hasChart && !isLoading && !loadFailed"
@@ -626,8 +626,8 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           >
             Periodontal diagnosis · AAP / EFP 2017
           </h1>
-          <!-- Saving lives at the foot of the page, once, below the decisions
-               it is meant to record. -->
+
+
           <h2 class="text-xl xl:text-2xl font-extrabold text-[#0052ff] tracking-tight">
             Result : {{ diagnosisStore.diagnosisTitle }}
           </h2>
@@ -638,10 +638,10 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
             any row if needed.
           </p>
 
-          <!-- Said out loud, because every control below is greyed out and a
-               page that quietly refuses clicks reads as a page that is broken.
-               Same lock the chart page keeps a saved visit under: one Edit
-               unlocks both. -->
+
+
+
+
           <p
             v-if="isLocked"
             class="mt-2.5 flex items-start gap-2 text-[12px] text-slate-600 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2"
@@ -653,8 +653,8 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
             </span>
           </p>
 
-          <!-- TAP 2023 step 1. The readings alone can fail this and the patient
-               still have periodontitis, so it is said and not enforced. -->
+
+
           <p
             v-if="!findings.meetsCaseDefinition"
             class="mt-2.5 flex items-start gap-2 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"
@@ -668,7 +668,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           </p>
         </header>
 
-        <!-- 1 · Stage -->
+
         <section class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 xl:p-6 flex flex-col gap-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
@@ -760,8 +760,8 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 </button>
               </template>
               <template v-if="findings.mobility">
-                <!-- Extra air when furcation sits to its left, so the two
-                     readings do not read as one run of text. -->
+
+
                 <span :class="[RECORDED, findings.furcation && 'ml-2']">
                   Mob {{ findings.mobility.grade }}
                 </span>
@@ -892,9 +892,9 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 </template>
               </span>
             </div>
-            <!-- Greyed as a whole when the visit is locked: a segmented control
-                 that still looks pressable is the one thing on this page that
-                 would read as editable. -->
+
+
+
             <div
               class="flex items-center gap-1 p-0.5 rounded-lg border"
               :class="
@@ -950,15 +950,15 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               </span>
             </div>
 
-            <!-- Not which criteria produced the stage — the table above shows
-                 that, row by row — but what having it means for this patient. -->
+
+
             <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
               {{ stageMeaning }}
             </p>
 
-            <!-- The stage carries no dropdown of its own. It is what the four
-                 rows add up to, so the way to move it is to tick the row that
-                 reads differently, and the answer keeps its criteria with it. -->
+
+
+
             <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
               <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
               <span>
@@ -969,7 +969,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           </div>
         </section>
 
-        <!-- 2 · Grade -->
+
         <section class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 xl:p-6 flex flex-col gap-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
@@ -1082,9 +1082,9 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
                 </span>
               </label>
 
-              <!-- Age is the one row here the record already answers, so it is
-                   read from the patient header and changed there. The input only
-                   appears for a record that carries no age at all. -->
+
+
+
               <label class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
                 <span class="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
                   Patient age
@@ -1205,15 +1205,15 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
               </span>
             </div>
 
-            <!-- As with the stage: what the grade means for this patient, not
-                 which rows arrived at it. -->
+
+
             <p class="mt-3 text-[13px] text-slate-600 leading-relaxed">
               {{ gradeMeaning }}
             </p>
 
-            <!-- No dropdown here either. The grade is what the criteria arrive
-                 at, so the way to move it is to change the answer that reads
-                 wrong — above the table, or by ticking the row itself. -->
+
+
+
             <p class="mt-5 flex items-start gap-2 text-[12px] text-slate-500">
               <Lock class="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
               <span>
@@ -1224,7 +1224,7 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
           </div>
         </section>
 
-        <!-- Reference -->
+
         <section class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5">
           <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">
             Reference
@@ -1238,8 +1238,8 @@ const actionTooltipArrow = computed(() => (actionsFloating.value ? '-bottom-1' :
       </template>
     </main>
 
-    <!-- Says out loud what the button beneath it already says: one Save, one
-         visit. Same wording as the chart page's, because it is the same act. -->
+
+
     <ConfirmModal
       :show="confirmationDialog === 'save'"
       title="Save Chart"

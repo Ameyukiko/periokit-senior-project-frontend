@@ -17,10 +17,10 @@ import type {
   XrayUploadResponse,
 } from '@/domain/xray/xray.types'
 
-// Written against the schema in PER-233, and live end to end: PER-234 (read),
-// PER-254 (write) and PER-255 (orphan cleanup) all have resolvers behind them,
-// and the board calls all three. The browser no longer keeps a copy — a visit's
-// board is whatever the server says it is.
+
+
+
+
 
 const BOARD_FIELDS = gql`
   fragment XrayBoardFields on XrayBoard {
@@ -57,7 +57,7 @@ const BOARD_FIELDS = gql`
   }
 `
 
-/** Null when the visit has no board yet — which is not the same as a failed read. */
+
 const XRAY_BOARD_BY_VISIT = gql`
   ${BOARD_FIELDS}
   query XrayBoardByVisit($visitId: ID!) {
@@ -93,8 +93,8 @@ const SAVE_XRAY_BOARD = gql`
 `
 
 export const xrayApi = {
-  // network-only: a cached board would hand back signed URLs that expired hours
-  // ago, and the placeholder in PER-239 would fire for every film on the board.
+
+
   getByVisit: (visitId: string) =>
     apolloClient.query<{ xrayBoardByVisit: XrayBoardResponse | null }>({
       query: XRAY_BOARD_BY_VISIT,
@@ -102,10 +102,10 @@ export const xrayApi = {
       fetchPolicy: 'network-only',
     }),
 
-  /**
-   * Assets the caller may not read are dropped from the result rather than
-   * raising — the board shows a placeholder for whatever does not come back.
-   */
+
+
+
+
   refreshUrls: (assetIds: string[]) =>
     apolloClient.query<{ refreshXrayUrls: XrayAssetResponse[] }>({
       query: REFRESH_XRAY_URLS,
@@ -120,22 +120,22 @@ export const xrayApi = {
     }),
 }
 
-/**
- * What to tell the doctor when a board write did not go through (PER-259 §A.5).
- * Plain words, never a code (SRS-197), and the wording is the card's to the
- * letter — split across the toast's two lines so the sentence that matters most
- * is the one left on screen.
- *
- * "Nothing on the board was lost" carries more weight than the failure itself:
- * someone who reads "save failed" and assumes the work is gone closes the tab,
- * which is what actually loses it.
- */
+
+
+
+
+
+
+
+
+
+
 export interface XrayBoardFailure {
   title: string
   detail: string
 }
 
-/** The code the resolver put on the error — null when no server answered. */
+
 function graphqlCode(error: unknown): string | null {
   const errors = (error as { graphQLErrors?: { extensions?: { code?: unknown } }[] })
     ?.graphQLErrors
@@ -144,13 +144,13 @@ function graphqlCode(error: unknown): string | null {
 }
 
 export function toBoardFailure(error: unknown): XrayBoardFailure {
-  // Said before anything about saving: signing in again is the only thing that
-  // will help, and the board stays exactly where it is while they do.
+
+
   if (graphqlCode(error) === 'UNAUTHENTICATED') {
     return { title: 'Your session expired. Please sign in again.', detail: '' }
   }
-  // Worth telling apart, because it is the one failure the doctor can fix
-  // without touching the board at all.
+
+
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return {
       title: 'Save failed: you appear to be offline.',
@@ -160,10 +160,10 @@ export function toBoardFailure(error: unknown): XrayBoardFailure {
   return { title: 'Save failed. Please try again.', detail: 'Nothing on the board was lost.' }
 }
 
-/** The endpoint answers with the payload itself, not the `{ success, data }`
- *  envelope the rest of the REST API uses, and puts its message under `error`
- *  rather than `message`. Parsed here rather than through `apiRequest` for that
- *  reason as much as for the progress events. */
+
+
+
+
 function parseBody(text: string): Record<string, unknown> | null {
   if (!text) return null
   try {
@@ -173,15 +173,15 @@ function parseBody(text: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * `XMLHttpRequest` rather than `fetch`, because `fetch` says nothing at all
- * until the response starts coming back: an 8 MB film would sit at 0% for its
- * entire journey, which is the one thing PER-245 exists to fix.
- *
- * Rejects with an `ApiError` when a server answered and refused, and with a
- * plain `Error` when the request never got that far — `toUploadFailure` tells
- * the two apart, and only the second is worth offering a retry for.
- */
+
+
+
+
+
+
+
+
+
 function postWithProgress<T>(
   path: string,
   form: FormData,
@@ -189,7 +189,7 @@ function postWithProgress<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    // Already called off before this film's turn came round.
+
     if (signal?.aborted) {
       reject(new Error('The upload was cancelled'))
       return
@@ -200,14 +200,14 @@ function postWithProgress<T>(
 
     const stopOnAbort = () => request.abort()
     signal?.addEventListener('abort', stopOnAbort, { once: true })
-    // Fires on load, error and abort alike, so the listener never outlives the
-    // request it belongs to.
+
+
     request.onloadend = () => signal?.removeEventListener('abort', stopOnAbort)
     for (const [name, value] of Object.entries(getAuthHeaders())) {
       request.setRequestHeader(name, value)
     }
-    // Content-Type is left alone on purpose: only the browser knows the
-    // multipart boundary it is about to write.
+
+
 
     request.upload.onprogress = event => {
       if (event.lengthComputable && onProgress) {
@@ -225,9 +225,9 @@ function postWithProgress<T>(
         resolve((payload ?? {}) as T)
         return
       }
-      // The controller answers `{ error, reason }`; the auth middleware in front
-      // of it still answers `{ success, message }`. Both are read so a log line
-      // says what actually came back.
+
+
+
       reject(
         new ApiError(
           typeof payload?.error === 'string'
@@ -248,21 +248,21 @@ function postWithProgress<T>(
 }
 
 export const xrayAssetApi = {
-  /**
-   * `uploadIds` is passed in rather than minted here so the caller can hand the
-   * same ids to the board: the id under which a film is drawn locally has to be
-   * the id the server files it under, or the board that comes back points at
-   * assets nothing on screen recognises. Resending one is also what makes Retry
-   * safe — the endpoint hands back the asset it already has rather than storing
-   * the film twice (SRS-245).
-   *
-   * Throws before sending on a bad pairing, and on any transport or status
-   * error — `toUploadFailure` turns whichever one it was into something to say.
-   *
-   * `signal` cuts a film's trip short: discarding an edit throws away the films
-   * it was adding, and an upload nobody is waiting for is bandwidth spent on a
-   * result that will be dropped the moment it arrives (PER-258 §4).
-   */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   async upload(
     visitId: string,
     files: File[],
@@ -281,11 +281,11 @@ export const xrayAssetApi = {
   },
 }
 
-/**
- * Anything that is not an ApiError never reached a server — a dropped
- * connection, a request that timed out — and those are the ones worth offering
- * a retry for, so they fall through to the catch-all with no status at all.
- */
+
+
+
+
+
 export function toUploadFailure(error: unknown): XrayUploadFailure {
   if (error instanceof XrayUploadIdError) {
     return describeUploadFailure({ status: 400, reason: error.reason })

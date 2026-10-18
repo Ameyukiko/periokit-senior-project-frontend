@@ -3,9 +3,9 @@ import { calculateChartSummary } from './chart.calculations'
 import { createInitialChartData } from './chart.factory'
 import type { ChartData, PatientInfo, ToothData } from './chart.types'
 
-// ── Surface mapping ──────────────────────────────────────────────────────────
-// Frontend uses only 'buccal' | 'lingual' as keys for both upper and lower teeth.
-// When saving to DB, the inner surface of upper teeth must be stored as 'palatal'.
+
+
+
 
 type DbSurface = 'buccal' | 'palatal' | 'lingual'
 
@@ -14,9 +14,9 @@ function toDbSurface(toothFdi: number, frontendSurface: 'buccal' | 'lingual'): D
   return isUpperTooth(toothFdi) ? 'palatal' : 'lingual'
 }
 
-// ── Site position mapping ─────────────────────────────────────────────────────
-// Frontend stores sites as index [0, 1, 2] = Mesial, Center, Distal.
-// DB stores named positions per surface (MB/B/DB for buccal, MP/P/DP for palatal, ML/L/DL for lingual).
+
+
+
 
 const SITE_POSITION_MAP: Record<DbSurface, readonly [string, string, string]> = {
   buccal:  ['MB', 'B',  'DB'],
@@ -24,9 +24,9 @@ const SITE_POSITION_MAP: Record<DbSurface, readonly [string, string, string]> = 
   lingual: ['ML', 'L',  'DL'],
 }
 
-// ── Site region helpers (for UI display) ───────────────────────────────────────
-// Buccal exists on both arches, so it splits into buccal-upper / buccal-lower.
-// Palatal (upper) and lingual (lower) already imply their arch.
+
+
+
 
 export type SiteRegion = 'buccal-upper' | 'palatal' | 'lingual' | 'buccal-lower'
 
@@ -37,13 +37,13 @@ export function getSiteRegion(fdi: number, surface: 'buccal' | 'lingual'): SiteR
   return isUpperTooth(fdi) ? 'buccal-upper' : 'buccal-lower'
 }
 
-// Base position label (without arch superscript), e.g. 'MB' | 'B' | 'DB' | 'MP' …
+
 export function getSiteLabel(fdi: number, surface: 'buccal' | 'lingual', siteIndex: number): string {
   return SITE_POSITION_MAP[toDbSurface(fdi, surface)][siteIndex]
 }
 
-// ── Tooth status ──────────────────────────────────────────────────────────────
-// Frontend uses two separate booleans; DB uses a single status enum.
+
+
 
 function toDbToothStatus(tooth: ToothData): 'present' | 'missing' | 'implant' {
   if (tooth.implant)   return 'implant'
@@ -51,15 +51,15 @@ function toDbToothStatus(tooth: ToothData): 'present' | 'missing' | 'implant' {
   return 'present'
 }
 
-// ── Furcation grade ───────────────────────────────────────────────────────────
-// Frontend stores furcation as integer 0-3; DB uses enum strings.
+
+
 
 function toFurcationGrade(grade: number): string {
   return grade === 0 ? 'none' : `grade_${grade}`
 }
 
-// ── Numeric parsing helpers ───────────────────────────────────────────────────
-// Frontend stores numeric fields as strings; '' means "not entered" → null in DB.
+
+
 
 const parseIntOrNull = (value: string): number | null => {
   const parsed = parseInt(value, 10)
@@ -71,7 +71,7 @@ const parseFloatOrNull = (value: string): number | null => {
   return isNaN(parsed) ? null : parsed
 }
 
-// ── Types for the DB payload ──────────────────────────────────────────────────
+
 
 export interface DbSitePayload {
   site_position: string
@@ -122,7 +122,7 @@ export interface ChartPayload {
   summary:      DbSummaryPayload
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+
 
 export function mapChartToPayload(chart: {
   name:        string
@@ -156,7 +156,7 @@ export function mapChartToPayload(chart: {
       }
     })
 
-    // Furcation: only include surfaces that have at least one site defined (array length > 0)
+
     const furcations: DbFurcationPayload[] = frontendSurfaces.flatMap(frontendSurface => {
       const dbSurface  = toDbSurface(fdi, frontendSurface)
       const furArray   = tooth.fur[frontendSurface]

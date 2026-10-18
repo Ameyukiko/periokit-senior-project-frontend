@@ -1,7 +1,7 @@
 import { apolloClient } from '../apollo-client'
 import { gql } from '@apollo/client/core'
 
-// Types
+
 export interface Visit {
   id: string
   patientId: string
@@ -82,7 +82,7 @@ const PATIENT_BY_ID = gql`
 `
 
 export const patientApi = {
-  // Fetch a single patient by ID
+
   async getById(id: string): Promise<Patient | null> {
     const { data } = await apolloClient.query({
       query: PATIENT_BY_ID,
@@ -92,7 +92,7 @@ export const patientApi = {
     return data?.patientById || null
   },
 
-  // Fetch my patients
+
   async getMyPatients(
     page: number = 1,
     pageSize: number = 10,
@@ -121,7 +121,7 @@ export const patientApi = {
     }
   },
 
-  // Fetch patients from backend
+
   async getPatients(
     page: number = 1,
     pageSize: number = 10,
@@ -150,13 +150,13 @@ export const patientApi = {
 
     const result = data?.myPatients
 
-    // Client-side filtering for gender and age (backend doesn't support these yet)
-    // Clone to avoid read-only array from Apollo
+
+
     let filteredItems = [...(result?.items || [])]
 
     if (gender) {
-      // Backend stores gender as lowercase enum (male/female/other),
-      // but filter options use capitalized labels — compare case-insensitively.
+
+
       const genderLower = gender.toLowerCase()
       filteredItems = filteredItems.filter(
         (p: Patient) => (p.gender ?? '').toLowerCase() === genderLower
@@ -173,15 +173,15 @@ export const patientApi = {
       })
     }
 
-    // Client-side sorting (backend doesn't support sorts yet)
+
     let sorts = { date: 'date_desc', age: null, name: null }
     try {
       sorts = JSON.parse(sortsStr)
     } catch (e) {}
 
-    // Clone again before sort to avoid mutating read-only array
+
     const sortedItems = [...filteredItems].sort((a: Patient, b: Patient) => {
-      // Date Priority
+
       if (sorts.date) {
         const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
         const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
@@ -189,7 +189,7 @@ export const patientApi = {
         if (dateCmp !== 0) return dateCmp
       }
 
-      // Age Priority
+
       if (sorts.age) {
         const ageA = a.age ?? 0
         const ageB = b.age ?? 0
@@ -197,7 +197,7 @@ export const patientApi = {
         if (ageCmp !== 0) return ageCmp
       }
 
-      // Name Priority
+
       if (sorts.name) {
         const nameCmp =
           sorts.name === 'name_asc'
@@ -218,11 +218,11 @@ export const patientApi = {
     }
   },
 
-  // TODO: Add createPatient mutation to backend and update this
-  // For now, this creates a mock patient for testing
+
+
   async createPatient(data: Omit<Patient, 'id' | 'lastVisitDate'>): Promise<Patient> {
-    // This should call the backend once createPatient mutation is available
-    // For now, return a mock patient
+
+
     const newPatient: Patient = {
       ...data,
       id: `temp-${Date.now()}`,

@@ -10,11 +10,11 @@ import {
 } from './diagnosis.rules'
 import { EXTENT_LABEL, type ChartFindings, type DiagnosisInputs } from './diagnosis.types'
 
-/**
- * Builds the complete diagnosis view model from recorded chart findings and
- * the clinician's inputs. It has no Vue or persistence concerns, so the same
- * clinical path can be verified without constructing a Pinia store.
- */
+
+
+
+
+
 export function deriveDiagnosisAssessment(
   inputs: DiagnosisInputs,
   findings: ChartFindings,

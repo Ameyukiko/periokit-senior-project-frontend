@@ -37,13 +37,13 @@ const { loadVisit } = useVisitLoad()
 const drawerOpen = ref(false)
 const urlVisitId = ref<string | null>(null)
 
-// Put the page into "new visit" draft mode. The backend has no standalone
-// create-visit mutation: a visit is persisted only when its chart is saved
-// (saveChart with no visitId). So a new visit is a local draft — a blank chart
-// that keeps the current patient's identity — until the user hits Save.
+
+
+
+
 async function enterNewVisitState() {
-  // Use only the URL param — never chartStore.currentPatientId, which may still
-  // hold a previous patient's id before resetChart() has cleared it.
+
+
   const patientId = route.query.patientId as string | undefined
   const today = new Date().toISOString().split('T')[0]
   chartStore.resetChart()
@@ -55,12 +55,12 @@ async function enterNewVisitState() {
   visitStore.addDraftVisit(patientId || '', today, 'before_hygienic')
 }
 
-/**
- * Put the tab of a draft that was never saved back on the strip. The chart it
- * holds survives in the store, but the visit store is not persisted and
- * `loadVisits` only ever returns visits the backend knows about — so the tab
- * has to be re-added by hand, without touching the chart behind it.
- */
+
+
+
+
+
+
 function keepDraftVisit(patientId: string) {
   visitStore.visits = []
   visitStore.addDraftVisit(
@@ -70,24 +70,24 @@ function keepDraftVisit(patientId: string) {
   )
 }
 
-/**
- * A chart typed into but never saved lives nowhere but this store — the backend
- * has no visit to read it back from. So a route that lands on a bare /chart must
- * put the draft back rather than blank it: the navbar's own "Periodontal Chart"
- * link carries no query, and it is the first thing a doctor on the Diagnosis
- * page reaches for on the way back.
- *
- * `activeVisitId` is what says the draft belongs to this session rather than to
- * a reload — the visit store is not persisted, so it comes back null and the
- * draft recovery modal asks instead.
- */
+
+
+
+
+
+
+
+
+
+
+
 const hasOpenDraft = () => chartStore.isDirty && visitStore.activeVisitId === 'new'
 
-/**
- * Puts the draft's tab back on the strip and gives the URL the visit it is
- * about, so everything that reads the query — the Diagnosis page, the X-ray
- * board, this page's own watchers — agrees on which visit is open.
- */
+
+
+
+
+
 const restoreOpenDraft = (
   patientId: string | null,
   extraQuery: Record<string, string | undefined> = {},
@@ -99,54 +99,54 @@ const restoreOpenDraft = (
   })
 }
 
-// True when this mount kept a draft that the URL did not name, so the recovery
-// modal does not ask about work it is already looking at.
+
+
 const draftRestored = ref(false)
 
 onMounted(async () => {
   const visitId = route.query.visitId as string | undefined
   const patientId = route.query.patientId as string | undefined
-  // Read before the branches below: they can resetChart() (which forces the tab
-  // back to 'chart') and router.replace() away the query we are reading from.
+
+
   const requestedTab = route.query.tab
   const wantsTab =
     requestedTab === 'xray' || requestedTab === 'export' ? requestedTab : null
-  // Carried through the redirects below so a reload keeps the same tab open.
+
   const tabQuery = wantsTab ? { tab: wantsTab } : {}
 
-  // Capture persisted state before any mutations so we can detect a page reload
-  // where the user had an unsaved draft for this patient.
+
+
   const hadDirtyWork = chartStore.isDirty
   const persistedPatientId = chartStore.currentPatientId
 
-  /**
-   * Is what is already in the store a draft this mount must not write over?
-   * Mounting happens on a reload, but also every time the doctor walks back
-   * here from the Diagnosis page — and a chart that has been typed into and
-   * never saved lives nowhere but the store. Blanking it there would throw the
-   * visit away for the price of switching tabs.
-   */
+
+
+
+
+
+
+
   const keepsDraft = (forPatientId?: string | null) =>
     hadDirtyWork && (persistedPatientId ?? null) === (forPatientId ?? null)
 
-  /**
-   * The URL names no visit, and a draft is open. Whichever way the doctor got
-   * here — the navbar link, a patient link, the Diagnosis page — the draft is
-   * the visit this page is about, so it is kept and the URL is given it back.
-   * A URL naming a different patient is not this draft and falls through.
-   */
+
+
+
+
+
+
   const draftMatchesUrl =
     hasOpenDraft() && (!patientId || (persistedPatientId ?? null) === patientId)
 
   if (patientId && visitId) {
     urlVisitId.value = visitId
     const keepingDraft = visitId === 'new' && keepsDraft(patientId)
-    // Null out currentPatientId before loadPatientById so that if Pinia's
-    // persisted state has a different (non-null) patient, the
-    // currentPatientId watcher fires with oldPatientId===null and skips,
-    // avoiding a race where it clears our visits mid-setup. Skipped when the
-    // draft is being kept: re-reading the patient would hand the header back
-    // its filed values over whatever the doctor typed into this visit.
+
+
+
+
+
+
     if (!keepingDraft) chartStore.currentPatientId = null
     try {
       if (!keepingDraft) await chartStore.loadPatientById(patientId)
@@ -179,13 +179,13 @@ onMounted(async () => {
     try {
       await chartStore.loadPatientById(patientId)
       const fetchedVisits = await visitStore.loadVisits(patientId)
-      // Patient has no visits yet — auto-open a blank draft so the tab row shows immediately
+
       if (fetchedVisits.length === 0) {
         visitStore.visits = []
         await enterNewVisitState()
         navigate({ name: 'chart', query: { patientId, visitId: 'new', ...tabQuery } })
       } else {
-        // Redirect to the latest visit's chart (sorted by visitNumber)
+
         const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
         const latest = sorted[sorted.length - 1]
         visitStore.visits = [latest]
@@ -196,8 +196,8 @@ onMounted(async () => {
     }
   } else if (visitId) {
     urlVisitId.value = visitId
-    // A draft for a patient who is not on file yet has no patientId to be
-    // recognised by — the null it was left at is what identifies it.
+
+
     const keepingDraft = visitId === 'new' && keepsDraft(null)
     chartStore.currentPatientId = null
     visitStore.setActiveVisit(visitId)
@@ -225,21 +225,21 @@ onMounted(async () => {
     await enterNewVisitState()
   }
 
-  // Deep link from the Visit History list, or a reload of the tab the user was
-  // already on — either way the query is the only thing that survived.
+
+
   if (wantsTab) chartStore.activeSubNav = wantsTab
 })
 
-/**
- * Keeps `?tab=` alongside the open sub-tab, so reloading the X-ray board comes
- * back to the X-ray board instead of dropping the doctor on the chart.
- *
- * Watched rather than wired to the tab buttons: `resetChart()` sets the tab back
- * to 'chart' on its own, and the deep link sets it during mount, so the button
- * is not the only thing that moves it. Replaces rather than pushes — switching
- * tabs is not a place in history to come back to — and goes through `navigate`
- * so the unsaved-board guard treats it as this page's own doing.
- */
+
+
+
+
+
+
+
+
+
+
 watch(
   () => chartStore.activeSubNav,
   tab => {
@@ -252,14 +252,14 @@ watch(
   },
 )
 
-// Watch for visitId changes (when user navigates to different visit)
+
 watch(() => route.query.visitId, async (newVisitId, oldVisitId) => {
-  /**
-   * The URL catching up with a draft the store already holds — a query that
-   * named no visit at all now naming this patient's — is not a request for a
-   * fresh one. `restoreOpenDraft` makes exactly this move, and blanking the
-   * chart in answer to it would undo the rescue.
-   */
+
+
+
+
+
+
   if (
     newVisitId === 'new' &&
     oldVisitId === undefined &&
@@ -274,14 +274,14 @@ watch(() => route.query.visitId, async (newVisitId, oldVisitId) => {
     urlVisitId.value = newVisitId
     visitStore.setActiveVisit(newVisitId)
     if (newVisitId !== 'new') {
-      // Ensure this visit is in visitStore.visits (our opened tabs)
+
       const existing = visitStore.visits.find(v => v.id === newVisitId)
       if (!existing) {
         const selectedVisit = visitStore.patientVisits.find(v => v.id === newVisitId)
         if (selectedVisit) {
           visitStore.visits.push(selectedVisit)
         } else {
-          // Fallback: load patient visits and find it
+
           const patientId = route.query.patientId as string || chartStore.currentPatientId
           if (patientId) {
             const fetchedVisits = await visitStore.loadVisits(patientId)
@@ -301,9 +301,9 @@ watch(() => route.query.visitId, async (newVisitId, oldVisitId) => {
       await enterNewVisitState()
     }
   } else if (newVisitId === undefined && route.query.patientId === undefined) {
-    // The navbar's own link lands here while the page stays mounted. An open
-    // draft is not a page the doctor left behind — blanking it now would throw
-    // an unsaved visit away — so it is put back instead.
+
+
+
     if (hasOpenDraft()) {
       restoreOpenDraft(chartStore.currentPatientId)
       return
@@ -313,11 +313,11 @@ watch(() => route.query.visitId, async (newVisitId, oldVisitId) => {
   }
 })
 
-// When patientId is removed from the URL without a visitId change (e.g. navigating
-// to /chart from a patient-specific chart), enter new-patient mode.
+
+
 watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
   if (newPatientId === undefined && oldPatientId !== undefined && route.query.visitId === undefined) {
-    // Same as above: an unsaved draft outlives the query that named its patient.
+
     if (hasOpenDraft()) {
       restoreOpenDraft(chartStore.currentPatientId)
       return
@@ -327,16 +327,16 @@ watch(() => route.query.patientId, (newPatientId, oldPatientId) => {
   }
 })
 
-// Watch for patient changes - reset visits when switching patients.
-// Skip the initial mount transition (oldPatientId === null): onMounted already
-// loads the visits, so re-loading here would double-fetch and clobber the
-// active visit via clearVisits().
+
+
+
+
 watch(() => chartStore.currentPatientId, async (newPatientId, oldPatientId) => {
   if (!newPatientId || newPatientId === oldPatientId || oldPatientId === null) return
   visitStore.clearVisits()
   const fetchedVisits = await visitStore.loadVisits(newPatientId)
   if (fetchedVisits.length > 0) {
-    // Open the latest visit as a tab by default
+
     const sorted = [...fetchedVisits].sort((a, b) => (a.visitNumber ?? 0) - (b.visitNumber ?? 0))
     const latest = sorted[sorted.length - 1]
     visitStore.visits = [latest]
@@ -355,9 +355,9 @@ const {
   activeSubNav,
   summary,
   currentPatientId,
-  // Edit mode for saved visits (read-only by default — see computeds below).
-  // It lives in the store because the Diagnosis page shares it: one Edit
-  // unlocks the visit on both pages, and walking between them keeps it open.
+
+
+
   editMode,
 } = storeToRefs(chartStore)
 
@@ -369,10 +369,10 @@ const showDraftRecoveryModal = ref(false)
 const showValidation = ref(false)
 const showCancelEditConfirmModal = ref(false)
 
-// The X-ray board is only in memory until it is saved, and opening another
-// visit reloads it from storage on top of whatever was there — so anything that
-// changes which visit is open asks first (SRS-363). Moving between the Chart
-// and X-ray sub-tabs is safe: the board reloads only when its visit changes.
+
+
+
+
 const {
   showLeaveWarning: showXrayLeaveWarningModal,
   hasUnsavedBoard,
@@ -384,7 +384,7 @@ const {
   askBeforeLeaving,
 } = useXrayLeaveGuard()
 
-// Auto-fit scale toggle
+
 const enableAutoFit = ref(false)
 
 const isTouchDevice = ref(false)
@@ -393,9 +393,9 @@ onMounted(() => {
 })
 
 onBeforeRouteUpdate((to, from) => {
-  // Only a change of visit or patient reloads the board over what is on screen.
-  // Toggling between the Chart and X-ray sub-tabs is a query change as well,
-  // and that one must never ask (SRS-365).
+
+
+
   const sameBoard =
     to.query.visitId === from.query.visitId && to.query.patientId === from.query.patientId
   if (isBypassing() || sameBoard || !hasUnsavedBoard()) return true
@@ -403,12 +403,12 @@ onBeforeRouteUpdate((to, from) => {
 })
 
 onBeforeRouteLeave(to => {
-  // Edit mode belongs to the visit for as long as the doctor is working on it,
-  // and the chart and Diagnosis pages are two halves of that work. Stepping
-  // outside both locks it again, so no visit is ever found already unlocked.
+
+
+
   if (to.name !== 'chart' && to.name !== 'diagnosis') chartStore.editMode = false
-  // Diagnosis for the same visit loses nothing: the board stays in the store, and
-  // Diagnosis asks in turn if the doctor heads anywhere else from there.
+
+
   const toSameVisitDiagnosis =
     to.name === 'diagnosis' &&
     (to.query.visitId ?? null) === xrayVisitId.value &&
@@ -417,7 +417,7 @@ onBeforeRouteLeave(to => {
   return askBeforeLeaving(to)
 })
 
-// The visit tab strip — opening, closing, and starting a fresh draft.
+
 const {
   showCloseTabWarning: showCloseTabWarningModal,
   switchVisit: handleSwitchVisit,
@@ -427,9 +427,9 @@ const {
   newVisit: handleNewVisit,
 } = useVisitTabs({ navigate, guard: guardUnsavedXray, enterNewVisitState })
 
-// Open the AAP/EFP staging and grading worksheet for the visit on screen.
-// Pushed through the router rather than `navigate`; the route guard lets it
-// through without asking, since the X-ray board survives the round trip.
+
+
+
 const handleOpenDiagnosis = () => {
   const patientId = currentPatientId.value || (route.query.patientId as string | undefined)
   const visitId = activeVisitId.value || (route.query.visitId as string | undefined)
@@ -443,14 +443,14 @@ const handleOpenDiagnosis = () => {
   })
 }
 
-// The visit's own save — the chart, the diagnosis read off it and the X-ray
-// board, in one press. The Diagnosis page presses the same one.
+
+
 const { isSaving, validate, saveVisit } = useVisitSave()
 
 const handleSaveClick = () => {
   if (isSaving.value) return
-  // Flags the header fields the doctor still has to fill in; the composable
-  // says which one out loud.
+
+
   showValidation.value = true
   if (!validate()) return
   showSaveConfirmModal.value = true
@@ -463,10 +463,10 @@ const confirmSaveChart = async () => {
 
   const { visitId: activeVisit, patientId } = saved
 
-  // Saving never leaves this page, not even for a brand-new patient (PER-261).
-  // The backend hands back the ids it just minted; writing them into the query
-  // is all it takes for the X-ray and Diagnosis tabs to be about the new visit,
-  // so the doctor can carry on with it instead of picking it out of a list.
+
+
+
+
   if (activeVisit && (route.query.visitId !== activeVisit || (patientId && route.query.patientId !== patientId))) {
     navigate({
       query: {
@@ -478,69 +478,69 @@ const confirmSaveChart = async () => {
   }
 }
 
-// Format date for display
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Computed: show empty state only if we have no patient and no query params (i.e., user just clicked a drawer item but patient isn't loaded yet)
-// If there are no query params at all, we're in "new patient" mode - show the blank chart
+
+
 const hasPatient = computed(() => {
-  // A draft for somebody not on file yet has no patientId to carry — they are
-  // being typed into the header right now — so the visit alone says there is a
-  // chart here. Without this, walking to the Diagnosis page and back (which
-  // puts `visitId=new` in the query) answers with "no patient open yet" and the
-  // work, still in the store, is nowhere on screen.
+
+
+
+
+
   const isDraft = route.query.visitId === 'new' || activeVisitId.value === 'new'
-  // If there are no query params at all, we're in blank chart mode (new patient flow)
+
   const hasNoQueryParams = !route.query.patientId && !route.query.visitId
   return isDraft || hasNoQueryParams || Boolean(currentPatientId.value || route.query.patientId)
 })
 
-// Computed: true if we're in blank chart mode (creating new patient from scratch).
-// The visit is not part of it: a draft is still a chart for nobody on file until
-// it is saved, whether or not `visitId=new` is in the query.
+
+
+
 const isNewPatientMode = computed(() => {
   return !route.query.patientId && !currentPatientId.value
 })
 
-// The X-ray tab replaces the chart area with a full-height board.
+
 const isXrayTab = computed(() => activeSubNav.value === 'xray' && hasPatient.value)
 const xrayPatientId = computed(
   () => currentPatientId.value || (route.query.patientId as string) || null,
 )
 const xrayVisitId = computed(() => activeVisitId.value || (route.query.visitId as string) || null)
 
-// --- Read-only / edit mode for saved visits ---
-// - id='new' (unsaved draft): always editable, no Edit button needed
-// - existing draft/completed: read-only by default, Edit button unlocks
+
+
+
 const isExistingVisit = computed(
   () => activeVisitId.value !== 'new' && activeVisitId.value !== null
 )
-// Editable when: new unsaved visit OR (existing visit AND editMode is on)
+
 const chartEditable = computed(
   () => !isExistingVisit.value || editMode.value
 )
-// Patient-identity fields stay locked on existing visits
+
 const patientFieldsEditable = computed(() => !isExistingVisit.value)
 
-// Edit / Cancel / Save keep their place beside Diagnosis until the button row
-// scrolls up under the sticky sub-nav (which ends at ~105px), and only then
-// break out and follow the page, so Save is never scrolled away from.
+
+
+
 const buttonRowRef = ref<HTMLElement | null>(null)
 const actionsFloating = ref(false)
 
 const updateActionsFloating = () => {
   const rect = buttonRowRef.value?.getBoundingClientRect()
-  // Phones and tablets keep the buttons in the row; only desktop floats them
+
   const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
   actionsFloating.value = desktop && !!rect && rect.bottom < 110
 }
 
-// The row itself never leaves the flow, so measuring it cannot flip-flop the
-// way measuring the buttons would once they go fixed.
+
+
 onMounted(() => {
   window.addEventListener('scroll', updateActionsFloating, { passive: true })
   window.addEventListener('resize', updateActionsFloating)
@@ -556,9 +556,9 @@ const actionButtonShape = computed(() =>
 )
 const actionIconSize = computed(() => (actionsFloating.value ? 'w-5 h-5' : 'w-3.5 h-3.5'))
 
-// Keep the store's read-only guard in sync with the editable state.
+
 watch(chartEditable, value => { chartStore.readonly = !value }, { immediate: true })
-// The diagnosis worksheet follows whichever visit is on screen.
+
 watch(
   [activeVisitId, currentPatientId],
   ([newVisit, newPatient]) => {
@@ -566,12 +566,12 @@ watch(
   },
   { immediate: true },
 )
-/**
- * Opening a different visit locks it again — an unlocked visit is unlocked, not
- * a page the doctor left in edit mode. Mounting is not a change: `activeVisitId`
- * starts null on every mount (the visit store is not persisted), and coming back
- * from the Diagnosis page must not undo the Edit that was pressed there.
- */
+
+
+
+
+
+
 watch(activeVisitId, (newVisitId, oldVisitId) => {
   if (oldVisitId === null || newVisitId === oldVisitId) return
   editMode.value = false
@@ -590,7 +590,7 @@ const handleCancelEditClick = () => {
 const confirmCancelEdit = async () => {
   showCancelEditConfirmModal.value = false
   editMode.value = false
-  // Discard unsaved edits by reloading from backend
+
   const visitId = activeVisitId.value
   if (visitId && visitId !== 'new') {
     try { await loadVisit(visitId) } catch (e) { console.error(e) }
@@ -598,27 +598,27 @@ const confirmCancelEdit = async () => {
   diagnosisStore.revertToSaved(resolveDiagnosisKey(activeVisitId.value, currentPatientId.value))
 }
 
-// --- beforeunload guard (crash/accidental tab close protection) ---
-// The wording of this one belongs to the browser; there is no way to set it.
-// Removed again in onUnmounted below, or it would go on stopping people from
-// leaving pages that have nothing to lose.
+
+
+
+
 const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
   if (chartStore.isDirty || diagnosisStore.isDirty || hasUnsavedBoard()) {
     e.preventDefault()
-    // Ignored by current browsers, still required by older Chrome.
+
     e.returnValue = ''
   }
 }
 onMounted(() => { window.addEventListener('beforeunload', beforeUnloadHandler) })
 onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnloadHandler) })
 
-// --- Draft Recovery ---
-// On mount, if localStorage has isDirty=true (restored by Pinia persist) and the
-// current session has no active visit, offer to restore the draft.
+
+
+
 onMounted(() => {
-  // Not asked when the mount above already put this session's draft back: the
-  // doctor is looking at the work, and walking between the chart and the
-  // Diagnosis page is no reason to be questioned about it.
+
+
+
   if (chartStore.isDirty && !route.query.visitId && !draftRestored.value) {
     showDraftRecoveryModal.value = true
   }
@@ -674,7 +674,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       </div>
     </div>
 
-    <!-- X-ray board: free canvas of radiographs for the active visit -->
+
     <XrayBoardPanel
       v-if="isXrayTab"
       :patient-id="xrayPatientId"
@@ -682,8 +682,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
     />
 
     <main v-else class="max-w-400 mx-auto px-4 py-3">
-      <!-- Empty state when no patient selected. Same card as the one the
-           diagnosis page shows when it has no chart to read. -->
+
+
       <section
         v-if="!hasPatient"
         class="bg-white rounded-3xl shadow-md border border-slate-200 p-10 flex flex-col items-center gap-3 mt-3"
@@ -719,8 +719,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             >
               <Stethoscope class="w-3.5 h-3.5" /> Diagnosis
             </button>
-            <button 
-              class="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg font-bold text-[11px] transition-all duration-200 xl:hidden" 
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg font-bold text-[11px] transition-all duration-200 xl:hidden"
               @click="enableAutoFit = !enableAutoFit"
               :class="enableAutoFit ? 'bg-[#0052ff] border-[#0052ff] text-white shadow-inner transform scale-[0.98]' : 'bg-white border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50'"
             >
@@ -730,11 +730,11 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               <Plus class="w-3.5 h-3.5" /> New Visit
             </button>
 
-            <!-- Beside Diagnosis at the top of the page, bottom right once the
-                 row scrolls away. z-40 keeps the floating state under the
-                 virtual numpad (z-200) and the mobile tooth sidebar (z-150). -->
+
+
+
             <div :class="actionsFloating ? 'fixed bottom-8 right-8 z-40 flex items-center gap-2' : 'flex flex-wrap items-center gap-2 max-sm:contents'">
-              <!-- Edit button: existing visit, not yet in edit mode -->
+
               <button
                 v-if="isExistingVisit && !editMode"
                 @click="handleEditVisit"
@@ -746,7 +746,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 <Pencil :class="actionIconSize" /><span v-if="!actionsFloating">Edit</span>
               </button>
 
-              <!-- Cancel edit: discard unsaved edits -->
+
               <button
                 v-if="isExistingVisit && editMode"
                 @click="handleCancelEditClick"
@@ -758,7 +758,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
                 <X :class="actionIconSize" /><span v-if="!actionsFloating">Cancel</span>
               </button>
 
-              <!-- Save Chart: new unsaved visit OR existing visit in edit mode -->
+
               <button
                 v-if="chartEditable"
                 @click="handleSaveClick"
@@ -780,7 +780,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
           <ChartLegend :is-sidebar-open="selectedToothId !== null" class="hidden xl:flex" />
 
           <div class="w-full xl:w-255 shrink-0 flex flex-col gap-0 transition-all duration-500 min-w-0">
-            <!-- Visit Tabs: always visible when there are visits/drafts -->
+
             <div v-if="!isNewPatientMode || visits.length > 0" class="flex items-center gap-0 relative z-10">
               <template v-if="visits.length === 0">
                 <div class="px-4 py-2 text-xs text-slate-400 italic">
@@ -845,8 +845,8 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
               @update:patient-info="chartStore.updatePatientInfo"
             />
 
-            <!-- fieldset disables native inputs/checkboxes when read-only; the
-                 store guard covers the div-based toggles (BoP/PI/fur/Ext). -->
+
+
             <fieldset :disabled="!chartEditable" class="border-0 p-0 m-0 min-w-0">
               <div class="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent" :class="isTouchDevice ? 'pb-96' : 'pb-4'">
                 <AutoFitWrapper :enable-auto-fit="enableAutoFit">
@@ -884,14 +884,14 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @update-note="handleUpdateNote"
           />
 
-          <!-- Overview Modal -->
+
           <ChartOverviewModal
             :show="showOverviewModal"
             :chart-data="teethData"
             @close="showOverviewModal = false"
           />
 
-          <!-- Save Chart Confirmation Modal -->
+
           <ConfirmModal
             :show="showSaveConfirmModal"
             title="Save Chart"
@@ -902,7 +902,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @cancel="showSaveConfirmModal = false"
           />
 
-          <!-- Close Tab Warning Modal -->
+
           <ConfirmModal
             :show="showCloseTabWarningModal"
             title="Unsaved Changes"
@@ -914,7 +914,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @cancel="cancelCloseTab"
           />
 
-          <!-- Draft Recovery Modal -->
+
           <ConfirmModal
             :show="showDraftRecoveryModal"
             title="Draft Found"
@@ -925,7 +925,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @cancel="discardDraft"
           />
 
-          <!-- Cancel Edit Confirmation Modal -->
+
           <ConfirmModal
             :show="showCancelEditConfirmModal"
             title="Cancel Editing"
@@ -937,14 +937,14 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
             @cancel="showCancelEditConfirmModal = false"
           />
 
-          <!-- Virtual Numpad -->
+
           <VirtualNumpad />
         </div>
       </template>
     </main>
 
-    <!-- Unsaved X-ray Board Warning. Outside <main> so it can still open while
-         the X-ray tab is showing, which is where an unsaved board usually is. -->
+
+
     <ConfirmModal
       :show="showXrayLeaveWarningModal"
       :title="XRAY_LEAVE_WARNING.title"

@@ -51,13 +51,13 @@ const showDeleteConfirm = ref(false)
 
 const boardKey = computed(() => xrayBoardKey(props.patientId, props.visitId))
 
-// The visit id rides along with the key: the key is where the board is stored,
-// the visit id is where its films are uploaded to.
+
+
 watch(boardKey, key => board.loadBoard(key, props.visitId), { immediate: true })
 
-// The two templates are ticked independently: neither is a free canvas, both is
-// both. The store still keeps one mode, since a board is only ever in one of the
-// four states and everything downstream asks it that way.
+
+
+
 const showFmx = computed(() => layoutMode.value === 'fmx' || layoutMode.value === 'both')
 const showIntraoral = computed(
   () => layoutMode.value === 'intraoral' || layoutMode.value === 'both',
@@ -68,9 +68,9 @@ const setTemplates = (fmx: boolean, intraoral: boolean) =>
     fmx && intraoral ? 'both' : fmx ? 'fmx' : intraoral ? 'intraoral' : 'off',
   )
 
-// The menu stays open while the boxes are ticked — the two are read together,
-// and a menu that closed on the first tick would make ticking the second one a
-// second trip.
+
+
+
 const layoutMenu = ref<HTMLElement | null>(null)
 const layoutMenuOpen = ref(false)
 
@@ -91,7 +91,7 @@ function toggleLayoutMenu() {
 
 onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutsideLayout))
 
-/** What the chip says it is showing, without opening the menu. */
+
 const layoutSummary = computed(() =>
   showFmx.value && showIntraoral.value
     ? 'Both'
@@ -105,19 +105,19 @@ const LAYOUT_HINTS = {
   both: 'X-ray Board: Layout mode — FMX films above, intraoral photographs below',
 } as const
 
-// Layout mode is a way of placing films, so it only describes a board that can
-// still be placed into. A saved board reads as what it holds.
+
+
 const hint = computed(() =>
   layout.value && editable.value
     ? LAYOUT_HINTS[layoutMode.value]
     : LAYOUT_HINTS.off,
 )
 
-/** Failed, or mid-retry: either way we cannot vouch for what the board holds. */
+
 const contentsUnknown = computed(() => loadFailed.value || isRetrying.value)
 
-// A board we could not read is never called Draft: that is the label that
-// invites the doctor to save over films they cannot see (SRS-198).
+
+
 const badgeLabel = computed(() => {
   if (saved.value) return 'Saved'
   return contentsUnknown.value ? 'Unavailable' : 'Draft'
@@ -136,8 +136,8 @@ const saveDisabled = computed(
   () => isSaving.value || !canSave.value || (saved.value && editMode.value && !isDirty.value),
 )
 
-// Plain words only — never an error code or a stack trace (SRS-197). What the
-// doctor needs to know is that nothing is lost and why saving is off.
+
+
 const errorTitle = computed(() => {
   if (isRetrying.value) return 'Loading the X-ray board...'
   return retryFailed.value
@@ -153,11 +153,11 @@ const errorDetail = computed(() => {
     : `${why} Nothing on the board has been changed.`
 })
 
-/**
- * What the confirmation is about to write down, counted rather than described:
- * a save replaces the whole board, so "3 images and 1 note" is the doctor's one
- * chance to notice that the film they just added is not in the count (SRS-311).
- */
+
+
+
+
+
 const saveSummary = computed(() => {
   if (!objects.value.length) return 'This X-ray board will be cleared.'
   const images = objects.value.filter(object => object.objectType === 'image').length
@@ -174,16 +174,16 @@ const saveMessage = computed(
     `<span class='text-slate-500 font-normal'>Once saved, you can still click Edit to modify it later.</span>`,
 )
 
-/**
- * A dialog is up. The canvas listens for keys on the document, so without this
- * ⌘Z, Delete or a paste would still change the board behind the confirmation —
- * and the count the doctor just agreed to would no longer be what gets saved.
- */
+
+
+
+
+
 const dialogOpen = computed(
   () => showSaveConfirm.value || showCancelEditConfirm.value || showDeleteConfirm.value,
 )
 
-// A greyed-out button with no reason reads as a broken one.
+
 const saveTitle = computed(() => {
   if (contentsUnknown.value) return 'Saving is off until the board loads'
   if (!canUpload.value) return 'Save the visit first to upload films'
@@ -236,9 +236,9 @@ async function onFilesPicked(event: Event) {
   input.value = ''
 }
 
-// A film uploaded by mistake is deleted the moment it is noticed, and a
-// question there is just in the way. One that is already on the saved board is
-// something a colleague may be reading, so that one gets asked about (SRS-283).
+
+
+
 function requestDelete() {
   if (!editable.value || !selectedId.value) return
   if (selectedIsSaved.value) showDeleteConfirm.value = true
@@ -255,13 +255,13 @@ function handleSaveClick() {
   showSaveConfirm.value = true
 }
 
-/**
- * The dialog stays up for the whole request — both its buttons locked — and
- * comes down either way (PER-259 §A.4). A failure leaves the board untouched
- * and still dirty, so Save on the toolbar is live again behind it: the retry is
- * one click away, and it is not hidden under a dialog reporting on a request
- * that has already finished.
- */
+
+
+
+
+
+
+
 async function confirmSave() {
   if (isSaving.value) return
   await board.saveBoard()
@@ -299,8 +299,8 @@ function confirmCancelEdit() {
       </span>
       <span class="min-w-0 flex-1 truncate text-[13px] text-slate-500">{{ hint }}</span>
 
-      <!-- On a phone the chips drop to their own row; beside the hint they ran off
-           the right edge and took the layout picker with them. -->
+
+
       <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2 max-sm:w-full">
         <button
           class="xray-chip px-2.5"
@@ -311,10 +311,10 @@ function confirmCancelEdit() {
           <Sun v-else class="h-[15px] w-[15px]" />
         </button>
 
-        <!-- Gone rather than greyed on a read-only board: the slots it switches
-             on are not drawn there either, so the chip would toggle nothing. -->
-        <!-- z-60 lifts the menu over the canvas toolbar (z-50), which comes later
-             in the page and used to cover the bottom of the list. -->
+
+
+
+
         <div v-if="editable" ref="layoutMenu" class="relative z-60">
           <button
             class="xray-chip"
@@ -342,8 +342,8 @@ function confirmCancelEdit() {
           </div>
         </div>
 
-        <!-- Locked while a save is in flight, like Save itself: the board is
-             being written down, and both of these would change what it holds. -->
+
+
         <button
           v-if="saved && !editMode"
           class="xray-chip"
@@ -366,8 +366,8 @@ function confirmCancelEdit() {
           Cancel
         </button>
 
-        <!-- Kept on screen while the load is broken, greyed out rather than
-             hidden, so the reason is visible instead of just missing. -->
+
+
         <button
           v-if="editable || contentsUnknown"
           class="xray-chip is-primary"
@@ -382,8 +382,8 @@ function confirmCancelEdit() {
       </div>
     </div>
 
-    <!-- Held on screen through the retry as well, so a second failure reads as
-         an answer rather than as a button that did nothing. -->
+
+
     <div
       v-if="contentsUnknown"
       class="mx-[18px] mb-2.5 flex items-start gap-2.5 rounded-[10px] border border-amber-300 bg-amber-50 px-3.5 py-3"
@@ -421,7 +421,7 @@ function confirmCancelEdit() {
       />
       <XrayNotePanel class="absolute top-[78px] right-3.5 z-50" />
       <XrayZoomBar class="absolute bottom-3.5 left-3.5 z-50" />
-      <!-- Keyboard shortcuts mean nothing on a phone, and the card sits on the zoom bar there -->
+
       <XrayShortcutsCard class="absolute right-3.5 bottom-3.5 z-50 max-sm:hidden" />
       <XrayUploadQueue class="absolute bottom-3.5 left-1/2 z-50 -translate-x-1/2" />
 

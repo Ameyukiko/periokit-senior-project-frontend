@@ -14,7 +14,7 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// GraphQL must go through the backend API boundary, not Supabase directly.
+
 const httpLink = createHttpLink({
   uri: `${API_URL}/graphql`,
 });
@@ -44,7 +44,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
     }
   }
 
-  // For Network Error, e.g., 401
+
   if (
     networkError &&
     "statusCode" in networkError &&

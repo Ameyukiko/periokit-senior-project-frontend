@@ -18,10 +18,10 @@ export const useVisitStore = defineStore('visit', () => {
     activeVisitId.value = null
   }
 
-  // Remove a visit tab from the local strip (UI only — does not delete the
-  // visit on the backend). If the closed tab was active, the active visit is
-  // moved to the neighbouring tab. Returns the new active visit id (or null
-  // when no tabs remain).
+
+
+
+
   function removeVisit(visitId: string): string | null {
     const idx = visits.value.findIndex(v => v.id === visitId)
     if (idx === -1) return activeVisitId.value
@@ -43,9 +43,9 @@ export const useVisitStore = defineStore('visit', () => {
     return fetched
   }
 
-  // Add a local draft tab immediately so the user sees the new visit in the
-  // strip before saving. The draft (id='new') is replaced by the real visit
-  // when loadVisits refreshes after a successful save.
+
+
+
   function addDraftVisit(patientId: string, visitDate: string, phase: string) {
     const existingIdx = visits.value.findIndex(v => v.id === 'new')
     if (existingIdx !== -1) visits.value.splice(existingIdx, 1)

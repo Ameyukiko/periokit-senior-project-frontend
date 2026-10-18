@@ -32,25 +32,25 @@ const getContainerClass = (type: string) => {
         ]"
       >
         <div class="shrink-0 mr-3 mt-0.5">
-          <!-- Success Icon -->
+
           <svg v-if="notification.type === 'success'" class="w-6 h-6 text-[#22a061]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" fill="currentColor"/>
             <path d="M8 12.5L10.5 15L16 9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          
-          <!-- Error Icon -->
+
+
           <svg v-else-if="notification.type === 'error'" class="w-6 h-6 text-[#d94b4b]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" fill="currentColor"/>
             <path d="M15 9l-6 6M9 9l6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          
-          <!-- Warning Icon -->
+
+
           <svg v-else-if="notification.type === 'warning'" class="w-6 h-6 text-[#f59e0b]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" fill="currentColor"/>
             <path d="M12 7v5M12 15h.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
 
-          <!-- Info/Default Icon -->
+
           <svg v-else class="w-6 h-6 text-[#4a72e8]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" fill="currentColor"/>
             <path d="M12 16v-4M12 8h.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -61,17 +61,17 @@ const getContainerClass = (type: string) => {
           <p class="text-[15px] font-semibold text-gray-900 leading-tight" :class="{'mb-1': notification.description}">
             {{ notification.message }}
           </p>
-          <!-- pre-line so a description can list one rejected file per line -->
+
           <p v-if="notification.description" class="text-[14px] text-gray-500 leading-relaxed pr-2 whitespace-pre-line">
             {{ notification.description }}
           </p>
-          
-          <!-- A "Retry" used to sit beside Dismiss, wired to the same call:
-               it closed the toast and retried nothing. On a failed save that is
-               the worst place for it — the doctor presses it, the message goes
-               away, and the board looks saved when the save never happened.
-               Retrying belongs to whichever button started the work, and that
-               one is still there behind this. -->
+
+
+
+
+
+
+
           <div v-if="notification.type === 'error' && notification.description" class="flex items-center gap-4 mt-3">
             <button @click.stop="notificationStore.remove(notification.id)" class="text-[14px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
               Dismiss
@@ -86,7 +86,7 @@ const getContainerClass = (type: string) => {
           <X class="w-4 h-4" />
         </button>
 
-        <!-- Progress Bar (Subtle) -->
+
         <div
           class="absolute bottom-0 left-0 h-[2px] opacity-10"
           :class="{

@@ -12,12 +12,12 @@ export type ApiResponse<T> = {
   message?: string;
   data?: T;
   errors?: ApiValidationError[];
-  /**
-   * Machine-readable cause, on the endpoints that send one (the X-ray upload
-   * answers `file_too_large`, `unsupported_type`, `upload_id_count_mismatch`).
-   * `message` is written for a person and may be reworded at any time, so
-   * anything branching on the cause has to read this instead.
-   */
+
+
+
+
+
+
   reason?: string;
 };
 

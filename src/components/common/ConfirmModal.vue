@@ -9,18 +9,18 @@ const props = defineProps<{
   confirmText?: string;
   cancelText?: string;
   type?: "danger" | "info" | "warning";
-  /**
-   * The confirmed action is still running. Both buttons lock and the dialog
-   * refuses to close — closing it mid-request would leave the screen saying one
-   * thing while the request finishes saying another.
-   */
+
+
+
+
+
   busy?: boolean;
   busyText?: string;
 }>();
 
 const emit = defineEmits(["confirm", "cancel"]);
 
-/** Esc and the backdrop are the same answer as Cancel, and are refused alike. */
+
 function requestCancel() {
   if (props.busy) return;
   emit("cancel");
@@ -33,8 +33,8 @@ function onKeyDown(event: KeyboardEvent) {
 const confirmButton = ref<HTMLButtonElement | null>(null);
 const cancelButton = ref<HTMLButtonElement | null>(null);
 
-// Only listened for while the dialog is up, so a closed one never swallows Esc
-// from the page behind it.
+
+
 watch(
   () => props.show,
   async (open) => {
@@ -44,9 +44,9 @@ watch(
     }
     document.addEventListener("keydown", onKeyDown);
     await nextTick();
-    // A dialog that can destroy something opens with the safe answer under the
-    // cursor, so Return keeps what is there instead of throwing it away. Every
-    // other dialog is asking the user to go ahead, and focuses that.
+
+
+
     (props.type === "danger" ? cancelButton : confirmButton).value?.focus();
   },
   { immediate: true },
@@ -61,34 +61,34 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
       v-if="show"
       class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
     >
-      <!-- Backdrop -->
+
       <div
         class="absolute inset-0 bg-black/40 backdrop-blur-sm"
         @click="requestCancel"
       ></div>
 
-      <!-- Modal Content -->
+
       <Transition name="scale">
         <div
           v-if="show"
           class="relative bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-lg overflow-hidden"
         >
-          <!-- Background Glow Effect -->
-          <div 
+
+          <div
             class="absolute -top-20 -right-20 w-48 h-48 rounded-full blur-3xl opacity-20 pointer-events-none transition-colors"
             :class="type === 'danger' ? 'bg-red-500' : 'bg-[#0052ff]'"
           ></div>
 
           <div class="p-8 relative z-10">
-            <!-- Header/Icon Section -->
+
             <div class="flex justify-between items-start mb-2">
-              <h3 
+              <h3
                 class="text-2xl font-bold pr-4"
                 :class="type === 'danger' ? 'text-red-600' : 'text-[#0052ff]'"
               >
                 {{ title }}
               </h3>
-              <div 
+              <div
                 :class="type === 'danger' ? 'text-red-500' : 'text-[#0052ff]'"
                 class="flex-shrink-0"
               >
@@ -97,13 +97,13 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
               </div>
             </div>
 
-            <!-- Body -->
+
             <p
               class="text-gray-500 font-semibold leading-relaxed whitespace-pre-line mb-8"
               v-html="message"
             ></p>
 
-            <!-- Actions -->
+
             <div class="flex flex-col sm:flex-row gap-3">
               <button
                 ref="confirmButton"

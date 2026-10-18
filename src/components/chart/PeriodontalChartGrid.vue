@@ -47,7 +47,7 @@ const handleSelectTooth = (id: ToothId) => {
 
 const chartContainerRef = ref<HTMLElement | null>(null)
 
-// Define section order for navigation
+
 const SECTION_ORDER = ['upper-buccal', 'upper-palatal', 'lower-lingual', 'lower-buccal'] as const
 type Section = typeof SECTION_ORDER[number]
 
@@ -81,12 +81,12 @@ const isFocusableChartInput = (input: HTMLElement) => {
   return true
 }
 
-// Single-cell fields: only one value per tooth (no site navigation)
+
 const SINGLE_CELL_FIELDS = ['mo', 'ktw'] as const
 const isSingleCellField = (field: string | null) => field && SINGLE_CELL_FIELDS.includes(field as any)
 
-// Mirrors the legacy PeriodontalChartView keyboard navigation, but keeps
-// keyboard focus movement independent from selected tooth/sidebar state.
+
+
 const handleKeyDown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement
   if (!target.classList.contains('chart-input')) return
@@ -117,7 +117,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
       if (
         input.getAttribute('data-tooth') === currentTooth &&
-        // Skip site check for single-cell fields (mo, ktw), but enforce it for multi-site fields
+
         (isTargetSingleCell || input.getAttribute('data-site') === currentSite) &&
         (input.getAttribute('data-surface') || '') === currentSurface &&
         (input.getAttribute('data-section') || '') === currentSection &&
@@ -135,7 +135,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
       if (
         input.getAttribute('data-tooth') === currentTooth &&
-        // Skip site check for single-cell fields (mo, ktw), but enforce it for multi-site fields
+
         (isTargetSingleCell || input.getAttribute('data-site') === currentSite) &&
         (input.getAttribute('data-surface') || '') === currentSurface &&
         (input.getAttribute('data-section') || '') === currentSection &&
@@ -147,7 +147,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     }
   } else if (key === 'ArrowRight' || key === 'Enter' || key === ' ') {
     if (isSingleCell) {
-      // Single-cell field: go directly to next tooth (same field, same surface)
+
       for (let i = currentIndex + 1; i < allInputs.length; i += 1) {
         const input = allInputs[i]
         if (
@@ -161,7 +161,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Wrap to next section, leftmost tooth
+
       if (!nextTarget && currentSection) {
         const nextSection = getNextSection(currentSection)
         for (let i = 0; i < allInputs.length; i += 1) {
@@ -177,7 +177,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
     } else {
-      // Multi-site field: First priority: next site within same tooth (site 0→1→2)
+
       for (let i = currentIndex + 1; i < allInputs.length; i += 1) {
         const input = allInputs[i]
         if (
@@ -192,7 +192,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Second priority: next tooth with site 0 (wrapping to next tooth)
+
       if (!nextTarget) {
         for (let i = currentIndex + 1; i < allInputs.length; i += 1) {
           const input = allInputs[i]
@@ -209,7 +209,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Third priority: go to next section, leftmost tooth, site 0
+
       if (!nextTarget && currentSection) {
         const nextSection = getNextSection(currentSection)
         for (let i = 0; i < allInputs.length; i += 1) {
@@ -228,7 +228,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     }
   } else if (key === 'ArrowLeft') {
     if (isSingleCell) {
-      // Single-cell field: go directly to previous tooth (same field, same surface)
+
       for (let i = currentIndex - 1; i >= 0; i -= 1) {
         const input = allInputs[i]
         if (
@@ -242,7 +242,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Wrap to previous section, rightmost tooth
+
       if (!nextTarget && currentSection) {
         const prevSection = getPrevSection(currentSection)
         for (let i = allInputs.length - 1; i >= 0; i -= 1) {
@@ -258,7 +258,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
     } else {
-      // Multi-site field: First priority: previous site within same tooth (site 2→1→0)
+
       for (let i = currentIndex - 1; i >= 0; i -= 1) {
         const input = allInputs[i]
         if (
@@ -273,7 +273,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Second priority: previous tooth with site 2 (wrapping to previous tooth)
+
       if (!nextTarget) {
         for (let i = currentIndex - 1; i >= 0; i -= 1) {
           const input = allInputs[i]
@@ -290,7 +290,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         }
       }
 
-      // Third priority: go to previous section, rightmost tooth, site 2
+
       if (!nextTarget && currentSection) {
         const prevSection = getPrevSection(currentSection)
         for (let i = allInputs.length - 1; i >= 0; i -= 1) {
@@ -321,7 +321,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
       <div ref="chartContainerRef" class="w-fit mx-auto" @keydown="handleKeyDown">
 
         <template v-if="archFilter !== 'lower'">
-        <!-- Upper Arch Buccal -->
+
         <div v-if="!summaryMode" class="flex items-end mb-1" data-section="upper-buccal">
           <div class="flex flex-col bg-white border-l border-t border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div class="h-7 border-b border-r border-slate-200"></div>
@@ -359,7 +359,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Upper Arch - Extracted Button-->
+
         <div v-if="!summaryMode" class="flex mb-4">
           <div class="w-20"></div>
           <div class="flex">
@@ -374,7 +374,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Upper Arch - Tooth Numbers (summary/compare only) -->
+
         <div v-if="summaryMode" class="flex mb-2">
           <div class="w-20"></div>
           <div class="flex">
@@ -387,13 +387,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Upper Arch - Images -->
+
         <div class="flex flex-col gap-6 mb-4">
           <ToothImageRow label="BUCCAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg" group-gap-class="w-4" label-position="top" :baseline-y="99" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
           <ToothImageRow label="PALATAL" :arch="UPPER_ARCH" :chart-data="chartData" surface="lingual" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-4" label-position="top" :baseline-y="62" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
         </div>
 
-        <!-- Upper Arch Palatal -->
+
         <div v-if="!summaryMode" class="flex mt-4 mb-10" data-section="upper-palatal">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 w-20 sticky left-0 z-20">
             <div v-for="row in PALATAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
@@ -432,7 +432,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </template>
 
         <template v-if="archFilter !== 'upper'">
-        <!-- Lower Arch - Tooth Numbers (summary/compare only) -->
+
         <div v-if="summaryMode" class="flex mb-2">
           <div class="w-20"></div>
           <div class="flex">
@@ -445,7 +445,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Lower Arch Lingual -->
+
         <div v-if="!summaryMode" class="flex mb-1 mt-8" data-section="lower-lingual">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in LINGUAL_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>
@@ -482,7 +482,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           </div>
         </div>
 
-        <!-- Lower Arch - Extracted Button -->
+
         <div v-if="!summaryMode" class="flex mt-1 mb-4">
           <div class="w-20"></div>
           <div class="flex">
@@ -502,7 +502,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           <ToothImageRow label="BUCCAL" :arch="LOWER_ARCH" :chart-data="chartData" surface="buccal" :selected-tooth-id="selectedToothId" grid-class="clinical-grid-bg-inf" group-gap-class="w-6" label-position="bottom" :baseline-y="62" @select-tooth="handleSelectTooth" @toggle-fur="(...args) => emit('toggleFur', ...args)" />
         </div>
 
-        <!-- Lower Arch Buccal -->
+
         <div v-if="!summaryMode" class="flex mb-4" data-section="lower-buccal">
           <div class="flex flex-col bg-white border-l border-y border-slate-200 text-[9px] font-bold text-slate-500 uppercase w-20 sticky left-0 z-20">
             <div v-for="row in INNER_SURFACE_ROWS" :key="row" class="h-6 flex items-center px-2 border-b border-r border-slate-300 last:border-b-0">{{ row }}</div>

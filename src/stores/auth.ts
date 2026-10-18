@@ -22,7 +22,7 @@ import {
 import type { UserProfile } from "../types/auth";
 
 export const useAuthStore = defineStore("auth", () => {
-  // State
+
   const user = ref<UserProfile | null>(getStoredUserProfile());
   const token = ref<string | null>(getAccessToken());
 
@@ -31,11 +31,11 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = null;
   });
 
-  // Getters
+
   const isAuthenticated = computed(() => !!token.value);
   const userProfile = computed(() => user.value);
 
-  // Actions
+
   async function fetchProfile() {
     if (!token.value) return;
     try {
@@ -58,7 +58,7 @@ export const useAuthStore = defineStore("auth", () => {
       token.value = result.token;
       user.value = result.user;
 
-      // Fetch the full profile from backend
+
       await fetchProfile();
 
       return { success: true, user: user.value, token: result.token };
@@ -98,9 +98,9 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  /**
-   * Clear session and redirect to login page when token is expired or invalid (401)
-   */
+
+
+
   async function handleUnauthorized() {
     await handleUnauthorizedSession();
   }

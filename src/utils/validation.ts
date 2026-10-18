@@ -1,19 +1,19 @@
-/**
- * Clinical Input Validation Utilities
- */
 
-// Field ranges: { normal threshold, absolute max }
-// Values above normal show red (abnormal), values above absolute are blocked
+
+
+
+
+
 export const FIELD_RANGES = {
   pd: { normal: 15, absolute: 99 },
   rec: { normal: 10, absolute: 99 },
   cal: { normal: 10, absolute: 99 },
-  mo: { normal: 3, absolute: 3 }, // Miller's Classification: 0-3 only
+  mo: { normal: 3, absolute: 3 },
   ktw: { normal: 5, absolute: 20 },
   furcation: { normal: 3, absolute: 3 },
 } as const;
 
-// Mobility valid values (Miller's Classification)
+
 export const MOBILITY_VALID_VALUES = [0, 1, 2, 3];
 
 type FieldKey = keyof typeof FIELD_RANGES;
@@ -48,8 +48,8 @@ export const filterNumericInput = (value: string, allowNegative = false, allowDe
     }
   }
 
-  // Strip leading zeros for multi-digit numbers, keeping single "0" or "-0".
-  // Preserve decimal point
+
+
   if (!hasDecimal) {
     while (result.startsWith("0") && result.length > 1) {
       result = result.substring(1);
@@ -66,14 +66,14 @@ export const isAbnormalValue = (value: string, fieldName: string): boolean => {
   const fieldKey = getFieldKey(fieldName);
   if (!fieldKey) return false;
 
-  // Use parseFloat for KTW to support decimals
+
   const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
   const range = FIELD_RANGES[fieldKey];
-  
+
   if (fieldKey === "rec" && num < 0) {
     return num < -10 && num >= -range.absolute;
   }
-  
+
   return num > range.normal && num <= range.absolute;
 };
 
@@ -81,16 +81,16 @@ export const exceedsAbsoluteLimit = (value: string, fieldName: string): boolean 
   const fieldKey = getFieldKey(fieldName);
   if (!fieldKey) return false;
 
-  // Use parseFloat for KTW to support decimals
+
   const num = fieldKey === "ktw" ? parseFloat(value) || 0 : parseInt(value) || 0;
-  
+
   if (num < 0) {
-    // Only check negative limit for fields that allow negative numbers
+
     if (fieldKey === "rec" || fieldKey === "cal") {
       return num < -FIELD_RANGES[fieldKey].absolute;
     }
   }
-  
+
   return num > FIELD_RANGES[fieldKey].absolute;
 };
 

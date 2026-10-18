@@ -15,7 +15,7 @@ import { shortcutLabel } from '@/utils/keyboard'
 
 const emit = defineEmits<{
   (event: 'upload'): void
-  // Deleting a saved film asks first, and the panel is where the dialog lives.
+
   (event: 'delete'): void
 }>()
 
@@ -36,8 +36,8 @@ function addNote() {
     class="flex items-center gap-1 overflow-x-auto scrollbar-hide rounded-xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_8px_26px_rgba(15,23,42,0.28)] backdrop-blur-md"
   >
     <div v-if="!toolbarCollapsed" class="flex items-center gap-1">
-      <!-- Off during a save: the payload is built when Save is pressed, so a
-           film added now would be on screen but not in it. -->
+
+
       <button
         class="xray-tool"
         :disabled="!editable || isSaving"

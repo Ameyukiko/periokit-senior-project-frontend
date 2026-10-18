@@ -10,17 +10,17 @@ export const clamp = (value: number, min: number, max: number) =>
 
 export const toRad = (degrees: number) => (degrees * Math.PI) / 180
 
-/** Rotate a vector by `angle` radians. */
+
 export const rotateVec = (x: number, y: number, angle: number) => ({
   x: x * Math.cos(angle) - y * Math.sin(angle),
   y: x * Math.sin(angle) + y * Math.cos(angle),
 })
 
-/**
- * Axis-aligned bounding box of everything on the board, used by "Fit".
- * Rotated objects contribute their rotated corners, so nothing is clipped.
- * `slots` is whichever templates are on screen — Fit frames what can be seen.
- */
+
+
+
+
+
 export function boardBounds(objects: XrayObject[], slots: FmxSlot[]): Bounds | null {
   if (!objects.length && !slots.length) return null
 
@@ -54,11 +54,11 @@ export function boardBounds(objects: XrayObject[], slots: FmxSlot[]): Bounds | n
   return bounds
 }
 
-/**
- * The slot an object dropped at (cx, cy) should snap into, if any. Only the
- * slots on screen are offered: a template that is not being shown is not one
- * the doctor is laying out into.
- */
+
+
+
+
+
 export function findSlotAt(cx: number, cy: number, slots: FmxSlot[]): FmxSlot | undefined {
   return slots.find(
     slot =>
@@ -67,17 +67,17 @@ export function findSlotAt(cx: number, cy: number, slots: FmxSlot[]): FmxSlot | 
   )
 }
 
-/**
- * The persisted identity of a slot. `FmxSlot.label` is display text and may be
- * reworded, so the stable code is what a saved board points at.
- */
+
+
+
+
 export const slotCodeOf = (slot: FmxSlot) => slot.code
 
-/**
- * On-board size a film gets the moment it is added (SRS-223, SRS-224). A sensor
- * writes films thousands of pixels wide, so the long side is capped — both sides
- * by the same factor, or the film comes out stretched.
- */
+
+
+
+
+
 export function initialImageSize(naturalWidth: number, naturalHeight: number) {
   const longSide = Math.max(naturalWidth, naturalHeight)
   const scale = longSide > IMAGE_MAX_LONG_SIDE ? IMAGE_MAX_LONG_SIDE / longSide : 1
@@ -87,7 +87,7 @@ export function initialImageSize(naturalWidth: number, naturalHeight: number) {
   }
 }
 
-/** Geometry a film takes once mounted in a slot — centred, upright, aspect kept. */
+
 export function fitIntoSlot(image: XrayImageObject, slot: FmxSlot) {
   const scale = Math.min(
     (slot.w - SLOT_PADDING) / image.naturalWidth,

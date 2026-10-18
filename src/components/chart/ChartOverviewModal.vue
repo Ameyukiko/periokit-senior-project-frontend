@@ -22,14 +22,14 @@ const emit = defineEmits<{
   close: []
 }>()
 
-// Tab state
+
 type Tab = 'clinical' | 'bop-pi'
 const activeTab = ref<Tab>('clinical')
 
 const bopPercentage = computed(() => calculateBopPercentage(props.chartData))
 const piPercentage = computed(() => calculatePiPercentage(props.chartData))
 
-// Detailed summary computed properties
+
 const mobility1Teeth = computed(() => getTeethByMobility(props.chartData, 1))
 const mobility2Teeth = computed(() => getTeethByMobility(props.chartData, 2))
 const mobility3Teeth = computed(() => getTeethByMobility(props.chartData, 3))
@@ -37,27 +37,27 @@ const furcation1Teeth = computed(() => getFurcationWithSites(props.chartData, 1)
 const furcation2Teeth = computed(() => getFurcationWithSites(props.chartData, 2))
 const furcation3Teeth = computed(() => getFurcationWithSites(props.chartData, 3))
 
-// Group teeth by actual PD values (only abnormal values > 4mm), keeping sites
+
 const pdByValue = computed(() => getPdByValueWithSites(props.chartData))
 
-// Sorted computed properties for PD
+
 const sortedPdValues = computed(() =>
   Object.entries(pdByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
-// Group teeth by actual KTW values (values > 0 and < 2mm), keeping surface
+
 const ktwByValue = computed(() => getKtwByValueWithSites(props.chartData))
 
-// Sorted computed properties for KTW
+
 const sortedKtwValues = computed(() =>
   Object.entries(ktwByValue.value).sort((a, b) => Number(a[0]) - Number(b[0]))
 )
 
-// Map a whole-tooth finding (e.g. mobility) to site-less entries
+
 const toToothEntries = (teeth: number[]): ToothSiteEntry[] =>
   teeth.map(toothId => ({ toothId, sites: [] }))
 
-// Pill color per surface region + arch superscript (u = upper buccal, l = lower buccal)
+
 const SITE_PILL_CLASS: Record<SiteRegion, string> = {
   'buccal-upper': 'bg-sky-50 text-sky-700 ring-sky-100',
   'palatal': 'bg-violet-50 text-violet-700 ring-violet-100',
@@ -68,42 +68,42 @@ const SITE_PILL_CLASS: Record<SiteRegion, string> = {
 const siteArch = (region: SiteRegion): string =>
   region === 'buccal-upper' ? 'u' : region === 'buccal-lower' ? 'l' : ''
 
-// Styling helper functions for tables
+
 const getRowTextColorClass = (sectionTitle: string, label: string) => {
   if (sectionTitle.includes('PD')) {
     const val = parseInt(label, 10)
     if (val >= 8) return 'text-rose-800 font-bold'
     if (val === 7) return 'text-rose-700 font-bold'
     if (val === 6) return 'text-rose-600 font-bold'
-    return 'text-rose-500 font-semibold' // val === 5
+    return 'text-rose-500 font-semibold'
   }
-  
+
   if (sectionTitle.includes('KTW')) {
     return 'text-teal-600 font-bold'
   }
-  
-  // Mobility or Furcation
+
+
   if (label.endsWith('III')) return 'text-rose-800 font-bold'
   if (label.endsWith('II')) return 'text-rose-600 font-bold'
-  return 'text-rose-400 font-semibold' // Grade I
+  return 'text-rose-400 font-semibold'
 }
 
 const getRowBorderClass = (sectionTitle: string, label: string) => {
   if (sectionTitle.includes('PD')) {
     return ''
   }
-  
+
   if (sectionTitle.includes('KTW')) {
     return 'border-l-[3px] border-l-teal-500 pl-3'
   }
-  
-  // Mobility or Furcation has left border
+
+
   if (label.endsWith('III')) return 'border-l-[3px] border-l-rose-800 pl-3'
   if (label.endsWith('II')) return 'border-l-[3px] border-l-rose-500 pl-3'
-  return 'border-l-[3px] border-l-rose-300 pl-3' // Grade I
+  return 'border-l-[3px] border-l-rose-300 pl-3'
 }
 
-// Clinical data section type
+
 interface SeverityItem {
   label: string
   count: number
@@ -117,7 +117,7 @@ interface ClinicalSection {
   items: SeverityItem[]
 }
 
-// PD sections grouped by category
+
 const pdSection = computed<ClinicalSection>(() => {
   const items: SeverityItem[] = sortedPdValues.value.map(([pd, teeth]) => {
     return {
@@ -131,7 +131,7 @@ const pdSection = computed<ClinicalSection>(() => {
   return { title: 'PD (mm)', items }
 })
 
-// Mobility section
+
 const mobilitySection = computed<ClinicalSection>(() => {
   const items: SeverityItem[] = []
   if (mobility1Teeth.value.length) {
@@ -164,7 +164,7 @@ const mobilitySection = computed<ClinicalSection>(() => {
   return { title: 'Mobility', items }
 })
 
-// Furcation section
+
 const furcationSection = computed<ClinicalSection>(() => {
   const items: SeverityItem[] = []
   if (furcation1Teeth.value.length) {
@@ -197,7 +197,7 @@ const furcationSection = computed<ClinicalSection>(() => {
   return { title: 'Furcation', items }
 })
 
-// KTW section
+
 const ktwSection = computed<ClinicalSection>(() => {
   const items: SeverityItem[] = sortedKtwValues.value.map(([ktw, teeth]) => {
     return {
@@ -211,7 +211,7 @@ const ktwSection = computed<ClinicalSection>(() => {
   return { title: 'KTW (mm)', items }
 })
 
-// All clinical sections
+
 const clinicalSections = computed<ClinicalSection[]>(() => {
   const sections: ClinicalSection[] = []
   if (pdSection.value.items.length > 0) sections.push(pdSection.value)
@@ -221,7 +221,7 @@ const clinicalSections = computed<ClinicalSection[]>(() => {
   return sections
 })
 
-// Proportional widths matching clinical charts scaled for layout
+
 const TOOTH_WIDTHS: Record<number, number> = {
   18: 41, 17: 43, 16: 48, 15: 33, 14: 34, 13: 36, 12: 31, 11: 41,
   21: 41, 22: 31, 23: 36, 24: 34, 25: 33, 26: 48, 27: 43, 28: 41,
@@ -233,7 +233,7 @@ const getToothWidth = (id: number): number => {
   return TOOTH_WIDTHS[id] ?? 25
 }
 
-// Smile-line arch curve styling
+
 const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
   const indexInRow = (id: number) => {
     const upperOrder = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -247,7 +247,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
 
   const offsets = [0, 1.5, 3, 5, 7, 9, 11, 12.5, 12.5, 11, 9, 7, 5, 3, 1.5, 0]
   const offset = offsets[idx] ?? 0
-  
+
   return {
     transform: `translateY(${offset}px)`
   }
@@ -260,19 +260,19 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
       v-if="show"
       class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
     >
-      <!-- Backdrop -->
+
       <div
         class="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"
         @click="emit('close')"
       ></div>
 
-      <!-- Modal Content -->
+
       <Transition name="scale">
         <div
           v-if="show"
           class="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/60"
         >
-          <!-- Header -->
+
           <div class="flex items-center justify-between px-6 py-4 bg-linear-to-r from-slate-50 to-white border-b border-slate-200/60">
             <div class="flex items-center gap-3">
               <div class="w-1 h-6 bg-blue-500 rounded-full"></div>
@@ -288,9 +288,9 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
             </button>
           </div>
 
-          <!-- Body -->
+
           <div class="flex flex-col flex-1 overflow-hidden">
-            <!-- Tab Bar -->
+
             <div class="flex border-b border-slate-200/60 px-6">
               <button
                 @click="activeTab = 'clinical'"
@@ -324,15 +324,15 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               </button>
             </div>
 
-            <!-- Tab Content -->
+
             <div class="flex-1 overflow-y-auto p-5 scrollbar-hide relative">
               <Transition name="tab-fade" mode="out-in">
-                <!-- Clinical Data Summary Tab -->
+
                 <div v-if="activeTab === 'clinical'" key="clinical">
             <div v-if="clinicalSections.length > 0" class="space-y-6">
               <h3 class="text-sm font-semibold text-slate-900">Clinical Data Summary</h3>
 
-              <!-- Site legend / key -->
+
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 -mt-3">
                 <span class="inline-flex items-center gap-1">
                   <span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-100 ring-1 ring-inset ring-sky-200"></span>
@@ -352,7 +352,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                 </span>
               </div>
 
-              <!-- Clinical Data Tables -->
+
               <div class="space-y-6">
                 <div
                   v-for="section in clinicalSections"
@@ -379,7 +379,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                         :key="item.label"
                         class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
                       >
-                        <!-- Column 1: Value / Grade / Class -->
+
                         <td
                           class="py-2.5 pr-3 text-sm"
                           :class="getRowBorderClass(section.title, item.label)"
@@ -388,13 +388,13 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             {{ item.label }}
                           </span>
                         </td>
-                        <!-- Column 2: Count -->
+
                         <td class="py-2.5 px-3 text-center text-sm">
                           <span :class="getRowTextColorClass(section.title, item.label)">
                             {{ item.count }}
                           </span>
                         </td>
-                        <!-- Column 3: Teeth List (with site labels) -->
+
                         <td class="py-2.5 px-3 text-sm text-slate-600">
                           <span
                             v-for="entry in item.teeth"
@@ -419,15 +419,15 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               </div>
             </div>
 
-            <!-- Empty state for clinical tab -->
+
             <div v-else class="text-center py-12 text-slate-400">
               <p class="text-sm">No clinical data abnormalities detected.</p>
             </div>
                 </div>
 
-                <!-- %BoP & PI Tab -->
+
                 <div v-else key="bop-pi" class="space-y-4">
-            <!-- PI (%) Section -->
+
             <div class="bg-slate-50/50 rounded-xl p-3 border border-slate-100/80">
               <div class="flex justify-between items-end mb-2">
                 <h3 class="text-sm font-semibold text-slate-900 tracking-tight">PI (%)</h3>
@@ -435,7 +435,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               </div>
               <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center overflow-x-auto">
                 <div class="min-w-max mx-auto px-4">
-                  <!-- Upper Arch Teeth -->
+
                   <div class="flex justify-center items-center gap-0 h-16">
                   <div
                     v-for="id in UPPER_TEETH"
@@ -443,7 +443,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     :style="getToothRowStyle(id, 'upper')"
                     class="relative transition-all duration-250 hover:scale-105 hover:-translate-y-0.5 group flex justify-center items-center"
                   >
-                    <!-- Tooltip -->
+
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
@@ -463,7 +463,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                         </defs>
                         <g :clip-path="`url(#squircle-clip-pi-upper-${id})`">
                           <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                          <!-- Top Half: Buccal -->
+
                           <path
                             d="M50 50 L0 50 L0 0 Z"
                             :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
@@ -479,7 +479,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Bottom Half: Palatal -->
+
                           <path
                             d="M50 50 L0 50 L0 100 Z"
                             :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
@@ -495,23 +495,23 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Divider Lines -->
+
                           <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
                         </g>
-                        <!-- Outer Stroke -->
+
                         <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
-                        <!-- Extracted representation -->
+
                         <line x1="20" y1="20" x2="80" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                         <line x1="80" y1="20" x2="20" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                       </g>
                     </svg>
                   </div>
                 </div>
-                <!-- Lower Arch Teeth -->
+
                 <div class="flex justify-center items-center gap-0 h-16 mt-1">
                   <div
                     v-for="id in LOWER_TEETH"
@@ -519,7 +519,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     :style="getToothRowStyle(id, 'lower')"
                     class="relative transition-all duration-250 hover:scale-105 hover:-translate-y-0.5 group flex justify-center items-center"
                   >
-                    <!-- Tooltip -->
+
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
@@ -539,7 +539,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                         </defs>
                         <g :clip-path="`url(#squircle-clip-pi-lower-${id})`">
                           <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                          <!-- Top Half: Lingual -->
+
                           <path
                             d="M50 50 L0 50 L0 0 Z"
                             :fill="chartData[id]?.lingual?.pi?.[0] ? '#3b82f6' : '#ffffff'"
@@ -555,7 +555,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.lingual?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Bottom Half: Buccal -->
+
                           <path
                             d="M50 50 L0 50 L0 100 Z"
                             :fill="chartData[id]?.buccal?.pi?.[0] ? '#3b82f6' : '#ffffff'"
@@ -571,16 +571,16 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.buccal?.pi?.[2] ? '#3b82f6' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Divider Lines -->
+
                           <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
                         </g>
-                        <!-- Outer Stroke -->
+
                         <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
-                        <!-- Extracted representation -->
+
                         <line x1="20" y1="20" x2="80" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                         <line x1="80" y1="20" x2="20" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                       </g>
@@ -591,7 +591,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               </div>
             </div>
 
-            <!-- BOP (%) Section -->
+
             <div class="bg-slate-50/50 rounded-xl p-3 border border-slate-100/80">
               <div class="flex justify-between items-end mb-2">
                 <h3 class="text-sm font-semibold text-slate-900 tracking-tight">BOP (%)</h3>
@@ -599,7 +599,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
               </div>
               <div class="flex flex-col gap-2 py-3 bg-white rounded-lg border border-slate-200/60 justify-center overflow-x-auto">
                 <div class="min-w-max mx-auto px-4">
-                  <!-- Upper Arch Teeth -->
+
                   <div class="flex justify-center items-center gap-0 h-16">
                   <div
                     v-for="id in UPPER_TEETH"
@@ -607,7 +607,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     :style="getToothRowStyle(id, 'upper')"
                     class="relative transition-all duration-250 hover:scale-105 hover:-translate-y-0.5 group flex justify-center items-center"
                   >
-                    <!-- Tooltip -->
+
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
@@ -627,7 +627,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                         </defs>
                         <g :clip-path="`url(#squircle-clip-bop-upper-${id})`">
                           <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                          <!-- Top Half: Buccal -->
+
                           <path
                             d="M50 50 L0 50 L0 0 Z"
                             :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
@@ -643,7 +643,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Bottom Half: Palatal -->
+
                           <path
                             d="M50 50 L0 50 L0 100 Z"
                             :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
@@ -659,23 +659,23 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Divider Lines -->
+
                           <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
                         </g>
-                        <!-- Outer Stroke -->
+
                         <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
-                        <!-- Extracted representation -->
+
                         <line x1="20" y1="20" x2="80" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                         <line x1="80" y1="20" x2="20" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                       </g>
                     </svg>
                   </div>
                 </div>
-                <!-- Lower Arch Teeth -->
+
                 <div class="flex justify-center items-center gap-0 h-16 mt-1">
                   <div
                     v-for="id in LOWER_TEETH"
@@ -683,7 +683,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                     :style="getToothRowStyle(id, 'lower')"
                     class="relative transition-all duration-250 hover:scale-105 hover:-translate-y-0.5 group flex justify-center items-center"
                   >
-                    <!-- Tooltip -->
+
                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-slate-800 text-white text-[9px] font-black rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                       #{{ id }}
                     </div>
@@ -703,7 +703,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                         </defs>
                         <g :clip-path="`url(#squircle-clip-bop-lower-${id})`">
                           <rect x="4" y="4" width="92" height="92" rx="26" fill="white" />
-                          <!-- Top Half: Lingual -->
+
                           <path
                             d="M50 50 L0 50 L0 0 Z"
                             :fill="chartData[id]?.lingual?.bop?.[0] ? '#ef4444' : '#ffffff'"
@@ -719,7 +719,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.lingual?.bop?.[2] ? '#ef4444' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Bottom Half: Buccal -->
+
                           <path
                             d="M50 50 L0 50 L0 100 Z"
                             :fill="chartData[id]?.buccal?.bop?.[0] ? '#ef4444' : '#ffffff'"
@@ -735,16 +735,16 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
                             :fill="chartData[id]?.buccal?.bop?.[2] ? '#ef4444' : '#ffffff'"
                             class="transition-all duration-200"
                           />
-                          <!-- Divider Lines -->
+
                           <line x1="0" y1="0" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="100" y1="0" x2="0" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
                           <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="1.5" />
                         </g>
-                        <!-- Outer Stroke -->
+
                         <rect x="4" y="4" width="92" height="92" rx="26" fill="none" stroke="#cbd5e1" stroke-width="2" />
                       </g>
                       <g v-else>
-                        <!-- Extracted representation -->
+
                         <line x1="20" y1="20" x2="80" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                         <line x1="80" y1="20" x2="20" y2="80" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round" />
                       </g>
@@ -787,7 +787,7 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
   transform: scale(0.96);
 }
 
-/* Tab transition - smooth fade and slide */
+
 .tab-fade-enter-active,
 .tab-fade-leave-active {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -803,16 +803,16 @@ const getToothRowStyle = (id: number, arch: 'upper' | 'lower') => {
   transform: translateY(-8px);
 }
 
-/* Hide scrollbar but allow scrolling */
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Smooth badge animation */
+
 @keyframes badge-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.9; }

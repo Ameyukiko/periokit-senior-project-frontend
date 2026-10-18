@@ -63,7 +63,7 @@ export const calculatePdBreakdown = (chartData: ChartData): PdBreakdown => {
       })
     })
 
-    // Count teeth with max PD > 4
+
     if (maxPd > 4) {
       breakdown[maxPd] = (breakdown[maxPd] || 0) + 1
     }
@@ -78,14 +78,14 @@ export const calculateChartSummary = (chartData: ChartData): ChartSummary => {
   const bopPercentage = calculateBopPercentage(chartData)
   const piPercentage = calculatePiPercentage(chartData)
 
-  // Count teeth with mobility
+
   const mobilityCount = Object.values(chartData).filter(tooth => {
     if (tooth.extracted) return false
     const moValue = toNumber(tooth.mo)
     return moValue > 0
   }).length
 
-  // Count teeth with furcation involvement
+
   const furcationCount = Object.values(chartData).filter(tooth => {
     if (tooth.extracted) return false
     const surfaces: Surface[] = ['buccal', 'lingual']
@@ -95,7 +95,7 @@ export const calculateChartSummary = (chartData: ChartData): ChartSummary => {
     })
   }).length
 
-  // Count teeth with keratinized width < 2mm on either surface
+
   const keratinizedLowCount = Object.values(chartData).filter(tooth => {
     if (tooth.extracted) return false
     const surfaces: Surface[] = ['buccal', 'lingual']
@@ -106,7 +106,7 @@ export const calculateChartSummary = (chartData: ChartData): ChartSummary => {
   }).length
 
 
-  // Health distribution based on PD categories (standard periodontal classification)
+
   const totalSites = pdCategories.healthy + pdCategories.warning + pdCategories.deep || 1
   const healthyPercent = Math.round((pdCategories.healthy / totalSites) * 100)
   const moderatePercent = Math.round((pdCategories.warning / totalSites) * 100)

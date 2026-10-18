@@ -8,7 +8,7 @@ import {
 import { clamp } from '@/domain/xray/xray.geometry'
 import type { Viewport } from '@/domain/xray/xray.types'
 
-/** What `fit` frames — the extent of everything currently on the board. */
+
 export interface FitBounds {
   minX: number
   minY: number
@@ -16,15 +16,15 @@ export interface FitBounds {
   maxY: number
 }
 
-/**
- * Pan and zoom, on their own. Nothing here reads or writes a board object: the
- * viewport is a way of looking rather than part of what gets saved, which is
- * why undo steps past it and why it can live outside the store entirely.
- *
- * The one thing it needs from the board is where its contents are, and it asks
- * for that through `bounds` at the moment it fits — so the caller stays free to
- * work that out from whatever is on screen at the time.
- */
+
+
+
+
+
+
+
+
+
 export function useXrayViewport(bounds: () => FitBounds | null) {
   const viewport = ref<Viewport>({ x: 0, y: 0, scale: 1 })
   const stageSize = ref({ width: 0, height: 0 })
@@ -73,7 +73,7 @@ export function useXrayViewport(bounds: () => FitBounds | null) {
 
   function fit() {
     const { width, height } = stageSize.value
-    // The board has no size yet (hidden tab) — fit as soon as it gets one.
+
     if (!width || !height) {
       pendingFit = true
       return
@@ -106,7 +106,7 @@ export function useXrayViewport(bounds: () => FitBounds | null) {
     if (pendingFit && width && height) fit()
   }
 
-  /** Back to where a board opens: origin at the top-left corner, unzoomed. */
+
   function resetViewport() {
     viewport.value = { x: 0, y: 0, scale: 1 }
   }

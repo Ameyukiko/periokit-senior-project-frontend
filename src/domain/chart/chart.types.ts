@@ -44,7 +44,7 @@ export interface PdCategories {
 }
 
 export interface PdBreakdown {
-  [depth: number]: number  // PD depth → tooth count, e.g., { 5: 3, 6: 2, 7: 1 }
+  [depth: number]: number
 }
 
 export interface HealthDistribution {
