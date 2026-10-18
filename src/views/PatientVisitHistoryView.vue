@@ -11,6 +11,12 @@ import { Search, Plus, Calendar, ChevronLeft, ChevronRight, X, AlertCircle, User
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import Skeleton from '../components/common/Skeleton.vue'
+import {
+  filterVisits,
+  selectVisitForComparison,
+  sortVisits,
+  type VisitFilters,
+} from '@/domain/visits/visit-history'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,7 +61,7 @@ const filterConfigs: FilterConfig[] = [
 ]
 
 
-const filterValues = ref<Record<string, any>>({
+const filterValues = ref<VisitFilters>({
   phase: '',
   date: null
 })
@@ -69,12 +75,7 @@ const fetchPatientAndVisits = async () => {
     ])
     patient.value = patientData
 
-    visits.value = [...visitsData].sort(
-      (a, b) =>
-        new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
-        b.id.localeCompare(a.id)
-    )
+    visits.value = sortVisits(visitsData)
 
 
     await chartStore.loadPatientById(patientId)
@@ -100,28 +101,12 @@ const openChart = (visitId: string) => {
 }
 
 const handleCompare = (visitId: string) => {
-  const visit = visits.value.find(v => v.id === visitId)
-  if (!visit?.hasChart) return
-
-
-  if (compareAnchorVisitId.value === visitId) {
-    compareAnchorVisitId.value = compareSecondVisitId.value
-    compareSecondVisitId.value = null
-    return
-  }
-  if (compareSecondVisitId.value === visitId) {
-    compareSecondVisitId.value = null
-    return
-  }
-
-  if (!compareAnchorVisitId.value) {
-
-    compareAnchorVisitId.value = visitId
-  } else if (!compareSecondVisitId.value) {
-
-    compareSecondVisitId.value = visitId
-  }
-
+  const selection = selectVisitForComparison(
+    { anchorId: compareAnchorVisitId.value, secondId: compareSecondVisitId.value },
+    visits.value.find(visit => visit.id === visitId),
+  )
+  compareAnchorVisitId.value = selection.anchorId
+  compareSecondVisitId.value = selection.secondId
 }
 
 const startCompare = () => {
@@ -188,58 +173,16 @@ const paginatedVisits = computed(() => {
 })
 
 
-const filteredVisits = computed(() => {
-  let result = [...visits.value]
+const filteredVisits = computed(() => filterVisits(visits.value, filterValues.value, searchInput.value))
 
 
-  if (filterValues.value.phase) {
-    result = result.filter(v => v.phase === filterValues.value.phase)
-  }
-
-
-  if (searchInput.value) {
-    const search = searchInput.value.toLowerCase()
-    result = result.filter(v =>
-      v.visitDate.toLowerCase().includes(search) ||
-      v.phase.toLowerCase().includes(search) ||
-      v.doctorName?.toLowerCase().includes(search)
-    )
-  }
-
-
-  const sortOrder = filterValues.value.date
-  if (sortOrder === 'date_asc') {
-    result.sort(
-      (a, b) =>
-        new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime() ||
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
-        a.id.localeCompare(b.id)
-    )
-  } else {
-
-    result.sort(
-      (a, b) =>
-        new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime() ||
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
-        b.id.localeCompare(a.id)
-    )
-  }
-
-  return result
-})
-
-
-watch(() => filterValues.value, () => {
+watch([filterValues, searchInput], () => {
   page.value = 1
 }, { deep: true })
 
 const goBack = () => {
   router.push({ name: 'my-patients' })
 }
-
-
-
-
 
 onUnmounted(() => {
   if (!chartStore.isDirty) {
