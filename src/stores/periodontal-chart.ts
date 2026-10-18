@@ -95,7 +95,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
       this.readonly = false
       this.editMode = false
 
-      try { localStorage.removeItem('periodontalChart') } catch (_) {}
+      try { localStorage.removeItem('periodontalChart') } catch (_) { }
     },
 
     updatePatientInfo(value: PatientInfo) {
@@ -285,7 +285,7 @@ export const usePeriodontalChartStore = defineStore('periodontalChart', {
         }
 
         this.isDirty = false
-        notifStore.success('Chart saved successfully')
+        notifStore.success('Chart saved successfully',)
 
 
 
