@@ -12,6 +12,7 @@ import VirtualNumpad from '@/components/chart/VirtualNumpad.vue'
 import AutoFitWrapper from '@/components/common/AutoFitWrapper.vue'
 import PatientDrawer from '@/components/patients/VisitListPanel.vue'
 import XrayBoardPanel from '@/components/xray/XrayBoardPanel.vue'
+import ExportPanel from '@/components/export/ExportPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
@@ -679,6 +680,14 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       v-if="isXrayTab"
       :patient-id="xrayPatientId"
       :visit-id="xrayVisitId"
+    />
+
+
+    <ExportPanel
+      v-else-if="activeSubNav === 'export' && hasPatient"
+      :patient-id="xrayPatientId"
+      :visit-id="xrayVisitId"
+      @switch-visit="handleSwitchVisit"
     />
 
     <main v-else class="max-w-400 mx-auto px-4 py-3">
