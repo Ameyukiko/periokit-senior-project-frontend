@@ -15,34 +15,31 @@ const pages = computed(() => {
   }
   return out
 })
-const range = computed(() => {
-  if (!props.total) return '0 users'
-  const start = (props.page - 1) * props.pageSize + 1
-  return `${start}–${Math.min(props.page * props.pageSize, props.total)} of ${props.total}`
-})
-const BTN = 'min-w-8 h-8 px-2 rounded-lg text-sm font-semibold disabled:opacity-40'
+const start = computed(() => (props.page - 1) * props.pageSize)
+const ARROW = 'w-8 h-8 rounded-lg flex items-center justify-center disabled:text-slate-300 disabled:cursor-not-allowed text-slate-600 enabled:hover:bg-slate-100'
 </script>
 
 <template>
-  <nav aria-label="Pagination" class="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200">
-    <p class="text-xs text-slate-500">{{ range }}</p>
+  <nav v-if="total > 0" aria-label="Pagination" class="flex items-center justify-between px-4 py-3 border-t border-slate-100">
+    <span class="text-[12px] text-slate-500">Showing {{ start + 1 }}–{{ Math.min(start + pageSize, total) }} of {{ total }}</span>
     <div class="flex items-center gap-1">
-      <button :class="BTN" class="hover:bg-slate-100" :disabled="page <= 1" aria-label="Previous page" @click="emit('change', page - 1)">
-        <ChevronLeft class="w-4 h-4 mx-auto" />
+      <button :class="ARROW" :disabled="page <= 1" aria-label="Previous page" @click="emit('change', page - 1)">
+        <ChevronLeft class="w-4 h-4" />
       </button>
       <template v-for="(p, i) in pages" :key="p ?? `gap-${i}`">
-        <span v-if="p === null" class="px-1 text-slate-400">…</span>
+        <span v-if="p === null" class="px-2 text-slate-400">…</span>
         <button
           v-else
-          :class="[BTN, p === page ? 'bg-[#0052ff] text-white' : 'hover:bg-slate-100 text-slate-700']"
+          class="min-w-8 h-8 px-2 rounded-lg text-[13px] font-bold"
+          :class="p === page ? 'bg-[#0052ff] text-white' : 'text-slate-600 hover:bg-slate-100'"
           :aria-current="p === page ? 'page' : undefined"
           @click="emit('change', p)"
         >
           {{ p }}
         </button>
       </template>
-      <button :class="BTN" class="hover:bg-slate-100" :disabled="page >= totalPages" aria-label="Next page" @click="emit('change', page + 1)">
-        <ChevronRight class="w-4 h-4 mx-auto" />
+      <button :class="ARROW" :disabled="page >= totalPages" aria-label="Next page" @click="emit('change', page + 1)">
+        <ChevronRight class="w-4 h-4" />
       </button>
     </div>
   </nav>

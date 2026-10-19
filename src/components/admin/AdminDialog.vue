@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { X } from 'lucide-vue-next'
 
-const props = defineProps<{ show: boolean; title: string; busy?: boolean; width?: string }>()
+/** Bare modal shell: overlay, Escape, focus trap and return focus. Content renders its own header. */
+const props = defineProps<{ show: boolean; busy?: boolean; width?: string; z?: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const panel = ref<HTMLElement | null>(null)
@@ -53,25 +53,17 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeyDown))
 
 <template>
   <Teleport to="body">
-    <div v-if="show" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="close" />
+    <div v-if="show" class="fixed inset-0 flex items-center justify-center p-4" :class="z ?? 'z-50'">
+      <div class="absolute inset-0 bg-slate-900/30" @click="close" />
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="relative bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto"
-        :class="width ?? 'max-w-lg'"
+        class="relative bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
+        :class="width ?? 'w-100 max-w-[95vw]'"
       >
-        <header class="flex items-center justify-between px-6 pt-5 pb-3">
-          <h2 :id="titleId" class="text-lg font-bold text-slate-800">{{ title }}</h2>
-          <button type="button" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="Close" :disabled="busy" @click="close">
-            <X class="w-5 h-5" />
-          </button>
-        </header>
-        <div class="px-6 pb-6">
-          <slot />
-        </div>
+        <slot :title-id="titleId" :close="close" />
       </div>
     </div>
   </Teleport>

@@ -46,6 +46,22 @@ describe('admin users mock API', () => {
     expect(page2.items).toHaveLength(5)
   })
 
+  it('filters stale sign-ins and sorts blanks last', async () => {
+    const stale = (await list({ lastSignIn: 'stale' })).items
+    expect(stale.every((u) => Date.now() - Date.parse(u.lastSignInAt!) > 30 * 86_400_000)).toBe(true)
+    const sorted = (await list({ sort: 'studentId', dir: 'desc' })).items
+    const firstBlank = sorted.findIndex((u) => !u.studentId)
+    expect(sorted.slice(firstBlank).every((u) => !u.studentId)).toBe(true)
+  })
+
+  it('restores deleted accounts as deactivated', async () => {
+    profile.value = { ...profile.value!, role: 'super_admin' }
+    const deleted = (await list({ status: 'deleted' })).items[0]
+    expect(deleted.deletedAt).toBeTruthy()
+    const restored = await run(mock.changeAdminUserLifecycle(deleted.id, 'restore'))
+    expect(restored).toMatchObject({ status: 'inactive', deletedAt: null })
+  })
+
   it('aborts with AbortError', async () => {
     const c = new AbortController()
     const p = mock.listAdminUsers(DEFAULT_QUERY, c.signal)

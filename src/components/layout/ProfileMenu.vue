@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ChevronDown, LayoutGrid, LogOut, Shield } from 'lucide-vue-next'
+import { ChevronDown, LogOut, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { isPrivileged } from '@/domain/admin/admin-users.types'
 import ConfirmModal from '../common/ConfirmModal.vue'
-
-/** `admin` shows the link back to the dentist workspace instead of the dashboard link. */
-const props = defineProps<{ context?: 'workspace' | 'admin' }>()
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
@@ -16,7 +13,7 @@ const showLogoutConfirm = ref(false)
 const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 
-const canSeeAdmin = computed(() => props.context !== 'admin' && isPrivileged(user.value?.role))
+const canSeeAdmin = computed(() => isPrivileged(user.value?.role))
 
 function close(returnFocus = false) {
   open.value = false
@@ -75,17 +72,13 @@ const ITEM = 'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold trans
     </button>
 
     <div v-if="open" role="menu" class="absolute top-full right-0 mt-3 w-60 bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] py-2 z-50">
-      <div class="px-4 py-3 border-b border-[#e2e8f0] mb-1">
+      <div class="px-4 py-3 border-b border-[#e2e8f0] mb-1 xl:hidden">
         <p class="text-sm font-bold text-[#1f2937] truncate">{{ user?.first_name }} {{ user?.last_name }}</p>
         <p class="text-xs text-gray-400 truncate">{{ user?.email }}</p>
       </div>
       <router-link v-if="canSeeAdmin" to="/admin" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
         <div class="p-1.5 bg-violet-100 text-violet-600 rounded-lg"><Shield class="w-4 h-4" /></div>
         Admin Dashboard
-      </router-link>
-      <router-link v-if="context === 'admin'" to="/patients" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
-        <div class="p-1.5 bg-blue-100 text-[#0052ff] rounded-lg"><LayoutGrid class="w-4 h-4" /></div>
-        Dentist workspace
       </router-link>
       <button type="button" role="menuitem" :class="ITEM" class="text-red-500 hover:bg-red-50" @click="handleLogout">
         <div class="p-1.5 bg-red-100 rounded-lg"><LogOut class="w-4 h-4" /></div>

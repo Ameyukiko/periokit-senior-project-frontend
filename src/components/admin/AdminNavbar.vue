@@ -26,7 +26,7 @@ const { user } = storeToRefs(useAuthStore())
       >
         {{ ROLE_LABELS[user!.role as 'admin' | 'super_admin'] }}
       </span>
-      <ProfileMenu context="admin" />
+      <ProfileMenu />
     </div>
   </nav>
 </template>

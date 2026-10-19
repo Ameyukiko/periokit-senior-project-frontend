@@ -1,29 +1,36 @@
 <script setup lang="ts">
 import { Loader2 } from 'lucide-vue-next'
 import AdminDialog from './AdminDialog.vue'
+import { ACTION_ICONS, TONES } from './admin-format'
+import type { PendingConfirm } from '@/domain/admin/admin-users.confirm'
 
-defineProps<{ show: boolean; title: string; message: string; confirmText: string; danger?: boolean; busy?: boolean }>()
+defineProps<{ confirm: PendingConfirm | null; busy?: boolean }>()
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 </script>
 
 <template>
-  <AdminDialog :show="show" :title="title" :busy="busy" @close="emit('cancel')">
-    <!-- Plain text only: message may contain user-provided names. -->
-    <p class="text-sm text-slate-600 whitespace-pre-line">{{ message }}</p>
-    <div class="mt-6 flex justify-end gap-2">
-      <button type="button" autofocus class="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50" :disabled="busy" @click="emit('cancel')">
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-        :class="danger ? 'bg-red-500 hover:bg-red-600' : 'bg-[#0052ff] hover:bg-[#0042cc]'"
-        :disabled="busy"
-        @click="emit('confirm')"
-      >
-        <Loader2 v-if="busy" class="w-4 h-4 animate-spin" />
-        {{ confirmText }}
-      </button>
+  <AdminDialog v-slot="{ titleId }" :show="!!confirm" :busy="busy" z="z-[60]" @close="emit('cancel')">
+    <!-- Plain text only: title and message contain user-provided names. -->
+    <div v-if="confirm" class="p-6">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center mb-3" :class="TONES[confirm.tone].soft">
+        <component :is="ACTION_ICONS[confirm.icon]" class="w-5 h-5" />
+      </div>
+      <h3 :id="titleId" class="font-bold mb-1">{{ confirm.title }}</h3>
+      <p class="text-[13px] text-slate-500 mb-5">{{ confirm.message }}</p>
+      <div class="flex justify-end gap-2">
+        <button type="button" autofocus class="px-4 py-2 text-[13px] font-bold rounded-xl border border-slate-200 hover:bg-slate-50" :disabled="busy" @click="emit('cancel')">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-2 px-4 py-2 text-[13px] font-bold rounded-xl text-white disabled:opacity-60"
+          :class="TONES[confirm.tone].solid"
+          :disabled="busy"
+          @click="emit('confirm')"
+        >
+          <Loader2 v-if="busy" class="w-4 h-4 animate-spin" />{{ confirm.confirmText }}
+        </button>
+      </div>
     </div>
   </AdminDialog>
 </template>

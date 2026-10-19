@@ -31,6 +31,7 @@ function seed(): AdminUser[] {
       studentId: role === 'dentist' ? String(6400000 + i * 37) : null,
       role,
       status: i % 11 === 5 ? 'inactive' : i % 13 === 7 ? 'deleted' : 'active',
+      deletedAt: i % 13 === 7 ? new Date(now - (i % 20) * DAY).toISOString() : null,
       createdAt: new Date(now - (i * 9 + 3) * DAY).toISOString(),
       lastSignInAt: i % 7 === 3 ? null : new Date(now - ((i * 5) % 120) * DAY).toISOString(),
     }
@@ -81,8 +82,6 @@ function delay<T>(value: () => T, signal?: AbortSignal): Promise<T> {
   })
 }
 
-const LAST_SIGN_IN_DAYS = { '7d': 7, '30d': 30, '90d': 90 } as const
-
 function matches(u: AdminUser, q: AdminUserQuery): boolean {
   const term = q.search.trim().toLowerCase()
   if (term) {
@@ -93,16 +92,21 @@ function matches(u: AdminUser, q: AdminUserQuery): boolean {
   if (q.lastSignIn === 'never') return u.lastSignInAt === null
   if (q.lastSignIn !== 'any') {
     if (!u.lastSignInAt) return false
-    return Date.now() - Date.parse(u.lastSignInAt) <= LAST_SIGN_IN_DAYS[q.lastSignIn] * DAY
+    const days = (Date.now() - Date.parse(u.lastSignInAt)) / DAY
+    return q.lastSignIn === 'week' ? days <= 7 : days > 30
   }
   return true
 }
 
+// Blank student IDs and never-signed-in users always sort last.
 function compare(a: AdminUser, b: AdminUser, q: AdminUserQuery): number {
-  const va = a[q.sort] ?? ''
-  const vb = b[q.sort] ?? ''
-  const r = va < vb ? -1 : va > vb ? 1 : 0
-  return q.dir === 'asc' ? r : -r
+  if (!q.sort) return 0
+  const va = a[q.sort]
+  const vb = b[q.sort]
+  if (va === vb) return 0
+  if (va === null) return 1
+  if (vb === null) return -1
+  return (va < vb ? -1 : 1) * (q.dir === 'asc' ? 1 : -1)
 }
 
 export function listAdminUsers(q: AdminUserQuery, signal?: AbortSignal): Promise<AdminUserPage> {
@@ -151,7 +155,8 @@ const TRANSITIONS: Record<LifecycleAction, { from: AdminUser['status']; to: Admi
   deactivate: { from: 'active', to: 'inactive' },
   reactivate: { from: 'inactive', to: 'active' },
   delete: { from: 'active', to: 'deleted' },
-  restore: { from: 'deleted', to: 'active' },
+  // Restored accounts come back deactivated; reactivate separately.
+  restore: { from: 'deleted', to: 'inactive' },
 }
 
 export function changeAdminUserLifecycle(id: string, action: LifecycleAction): Promise<AdminUser> {
@@ -165,6 +170,7 @@ export function changeAdminUserLifecycle(id: string, action: LifecycleAction): P
     const allowed = action === 'delete' ? user.status !== 'deleted' : user.status === t.from
     if (!allowed) throw new ApiError('This account has already changed. Refresh and try again.', 409)
     user.status = t.to
+    user.deletedAt = t.to === 'deleted' ? new Date().toISOString() : null
     return { ...user, capabilities: permissionsFor(me, user) }
   })
 }

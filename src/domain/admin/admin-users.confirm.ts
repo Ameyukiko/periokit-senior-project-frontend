@@ -4,20 +4,36 @@ export type ConfirmChange =
   | { kind: 'role'; role: UserRole; input: AdminUserProfileInput & { role?: UserRole } }
   | { kind: 'lifecycle'; action: LifecycleAction }
 
+export type ConfirmTone = 'amber' | 'emerald' | 'red' | 'blue'
+
 export interface PendingConfirm {
   user: AdminUser
   change: ConfirmChange
+  /** Key into the dialog's icon map. */
+  icon: LifecycleAction | 'role'
+  tone: ConfirmTone
   title: string
   message: string
   confirmText: string
-  danger: boolean
 }
 
-const LIFECYCLE_COPY: Record<LifecycleAction, { title: string; verb: string; effect: string; danger: boolean }> = {
-  deactivate: { title: 'Deactivate account', verb: 'Deactivate', effect: 'They will not be able to sign in until reactivated.', danger: true },
-  reactivate: { title: 'Reactivate account', verb: 'Reactivate', effect: 'They will be able to sign in again.', danger: false },
-  delete: { title: 'Delete account', verb: 'Delete', effect: 'The account is soft-deleted and can be restored later.', danger: true },
-  restore: { title: 'Restore account', verb: 'Restore', effect: 'The account will be active again.', danger: false },
+const LIFECYCLE_COPY: Record<LifecycleAction, { verb: string; text: string; tone: ConfirmTone }> = {
+  deactivate: {
+    verb: 'Deactivate',
+    text: 'They can no longer sign in. Their patients and visits are kept and the account can be reactivated later.',
+    tone: 'amber',
+  },
+  reactivate: { verb: 'Reactivate', text: 'They will be able to sign in again.', tone: 'emerald' },
+  delete: {
+    verb: 'Delete',
+    text: 'The account is hidden and can no longer sign in. Their records are kept, and it can be restored from the Deleted filter.',
+    tone: 'red',
+  },
+  restore: {
+    verb: 'Restore',
+    text: 'The account comes back as Deactivated. Reactivate it when they should be able to sign in again.',
+    tone: 'blue',
+  },
 }
 
 /** Builds plain-text confirmation copy; never interpolated as HTML. */
@@ -27,19 +43,21 @@ export function confirmationFor(user: AdminUser, change: ConfirmChange): Pending
     return {
       user,
       change,
-      title: 'Change role',
-      message: `Change ${name} from ${ROLE_LABELS[user.role]} to ${ROLE_LABELS[change.role]}?\nThis changes what they can access immediately.`,
+      icon: 'role',
+      tone: 'blue',
+      title: `Change ${name}'s role?`,
+      message: `${ROLE_LABELS[user.role]} → ${ROLE_LABELS[change.role]}. This changes what they can access immediately.`,
       confirmText: 'Change role',
-      danger: change.role === 'dentist' || change.role === 'super_admin',
     }
   }
   const copy = LIFECYCLE_COPY[change.action]
   return {
     user,
     change,
-    title: copy.title,
-    message: `${copy.verb} ${name} (${user.email})?\n${copy.effect}`,
+    icon: change.action,
+    tone: copy.tone,
+    title: `${copy.verb} ${name}?`,
+    message: copy.text,
     confirmText: copy.verb,
-    danger: copy.danger,
   }
 }

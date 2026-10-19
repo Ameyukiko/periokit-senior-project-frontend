@@ -16,7 +16,7 @@ const useMock = import.meta.env.VITE_ADMIN_USERS_MOCK !== 'false'
 export async function listAdminUsers(query: AdminUserQuery, signal?: AbortSignal): Promise<AdminUserPage> {
   if (useMock) return mock.listAdminUsers(query, signal)
   const params = new URLSearchParams(
-    Object.entries(query).map(([k, v]) => [k, String(v)]),
+    Object.entries(query).filter(([, v]) => v !== null).map(([k, v]) => [k, String(v)]),
   )
   const res = await apiRequest<AdminUserPage>(`/admin/users?${params}`, { auth: true, signal })
   return res.data!

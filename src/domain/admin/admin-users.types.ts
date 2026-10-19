@@ -1,7 +1,7 @@
 export type UserRole = 'dentist' | 'admin' | 'super_admin'
 export type UserStatus = 'active' | 'inactive' | 'deleted'
 export type StatusTab = 'all' | UserStatus
-export type LastSignInFilter = 'any' | '7d' | '30d' | '90d' | 'never'
+export type LastSignInFilter = 'any' | 'week' | 'stale' | 'never'
 export type SortField = 'studentId' | 'createdAt' | 'lastSignInAt'
 export type SortDir = 'asc' | 'desc'
 
@@ -29,6 +29,7 @@ export interface AdminUser {
   status: UserStatus
   createdAt: string
   lastSignInAt: string | null
+  deletedAt?: string | null
   /** Provided by the API when available; preferred over the local policy. */
   capabilities?: UserCapabilities
 }
@@ -38,7 +39,8 @@ export interface AdminUserQuery {
   search: string
   role: UserRole | 'all'
   lastSignIn: LastSignInFilter
-  sort: SortField
+  /** null keeps the server's default order. */
+  sort: SortField | null
   dir: SortDir
   page: number
   pageSize: number
