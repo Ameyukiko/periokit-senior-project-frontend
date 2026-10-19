@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ChevronDown, LogOut, Shield } from 'lucide-vue-next'
+import { ChevronDown, LayoutGrid, LogOut, Shield } from 'lucide-vue-next'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { isPrivileged } from '@/domain/admin/admin-users.types'
 import ConfirmModal from '../common/ConfirmModal.vue'
@@ -13,7 +14,9 @@ const showLogoutConfirm = ref(false)
 const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 
-const canSeeAdmin = computed(() => isPrivileged(user.value?.role))
+const route = useRoute()
+const onAdminPage = computed(() => route.path.startsWith('/admin'))
+const canSeeAdmin = computed(() => !onAdminPage.value && isPrivileged(user.value?.role))
 
 function close(returnFocus = false) {
   open.value = false
@@ -79,6 +82,10 @@ const ITEM = 'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold trans
       <router-link v-if="canSeeAdmin" to="/admin" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
         <div class="p-1.5 bg-violet-100 text-violet-600 rounded-lg"><Shield class="w-4 h-4" /></div>
         Admin Dashboard
+      </router-link>
+      <router-link v-if="onAdminPage" to="/patients" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
+        <div class="p-1.5 bg-blue-100 text-[#0052ff] rounded-lg"><LayoutGrid class="w-4 h-4" /></div>
+        Dentist workspace
       </router-link>
       <button type="button" role="menuitem" :class="ITEM" class="text-red-500 hover:bg-red-50" @click="handleLogout">
         <div class="p-1.5 bg-red-100 rounded-lg"><LogOut class="w-4 h-4" /></div>

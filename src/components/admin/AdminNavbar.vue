@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { LayoutGrid, Shield } from 'lucide-vue-next'
+import { Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ROLE_LABELS, isPrivileged } from '@/domain/admin/admin-users.types'
 import ProfileMenu from '../layout/ProfileMenu.vue'
@@ -15,9 +15,6 @@ const { user } = storeToRefs(useAuthStore())
         <img src="@/assets/logo_perio.png" alt="PERIOKIT" class="h-12 w-auto" />
       </router-link>
       <span class="flex items-center gap-2 text-[#0052ff] font-bold text-sm"><Shield class="w-5 h-5" />Admin Dashboard</span>
-      <router-link to="/patients" class="hidden md:flex items-center gap-2 text-[#4b5563] hover:text-[#0052ff] font-bold text-sm">
-        <LayoutGrid class="w-5 h-5" />Dentist workspace
-      </router-link>
     </div>
     <div class="flex items-center gap-4">
       <span

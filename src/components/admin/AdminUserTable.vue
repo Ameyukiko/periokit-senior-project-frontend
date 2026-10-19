@@ -3,10 +3,11 @@ import { computed } from 'vue'
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, RotateCcw, Trash2, UserCheck, UserMinus, UserX } from 'lucide-vue-next'
 import AdminAvatar from './AdminAvatar.vue'
 import AdminRoleBadge from './AdminRoleBadge.vue'
+import AdminRoleSelect from './AdminRoleSelect.vue'
 import AdminUserStatus from './AdminUserStatus.vue'
 import { OFF, formatDate, fullName } from './admin-format'
 import { permissionsFor, type Actor } from '@/domain/admin/admin-users.policy'
-import type { AdminUser, AdminUserQuery, LifecycleAction, SortField } from '@/domain/admin/admin-users.types'
+import type { AdminUser, AdminUserQuery, LifecycleAction, SortField, UserRole } from '@/domain/admin/admin-users.types'
 
 const props = defineProps<{ users: AdminUser[]; actor: Actor; query: AdminUserQuery; pendingId: string | null; loading: boolean }>()
 const emit = defineEmits<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   edit: [user: AdminUser]
   lifecycle: [user: AdminUser, action: LifecycleAction]
   sort: [field: SortField]
+  role: [user: AdminUser, role: UserRole]
 }>()
 
 const perms = computed(() => new Map(props.users.map((u) => [u.id, permissionsFor(props.actor, u)])))
@@ -67,7 +69,16 @@ const BTN = 'p-1.5 rounded-lg'
           </button>
         </td>
         <td class="px-4 py-3">{{ user.studentId || '—' }}</td>
-        <td class="px-4 py-3"><AdminRoleBadge :role="user.role" /></td>
+        <td class="px-4 py-3" @click.stop>
+          <AdminRoleSelect
+            v-if="perms.get(user.id)!.canChangeRole && user.status !== 'deleted'"
+            :role="user.role"
+            :label="`Role for ${fullName(user)}`"
+            :disabled="!!pendingId"
+            @change="(role) => role !== user.role && emit('role', user, role)"
+          />
+          <AdminRoleBadge v-else :role="user.role" :title="perms.get(user.id)!.roleReason ?? undefined" />
+        </td>
         <td class="px-4 py-3"><AdminUserStatus :user="user" /></td>
         <td class="px-4 py-3">{{ formatDate(user.createdAt) }}</td>
         <td class="px-4 py-3">{{ formatDate(user.lastSignInAt) }}</td>

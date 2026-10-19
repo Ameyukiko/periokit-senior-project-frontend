@@ -52,6 +52,11 @@ async function save(input: AdminUserProfileInput & { role?: UserRole }) {
 
 const sortBy = (field: SortField) => setQuery(nextSort(query.value, field))
 
+function requestRole(u: AdminUser, role: UserRole) {
+  const input = { firstName: u.firstName, lastName: u.lastName, studentId: u.studentId, role }
+  confirming.value = confirmationFor(u, { kind: 'role', role, input })
+}
+
 function requestLifecycle(u: AdminUser, action: LifecycleAction) {
   confirming.value = confirmationFor(u, { kind: 'lifecycle', action })
 }
@@ -121,6 +126,7 @@ async function confirm() {
             @edit="openEdit"
             @lifecycle="requestLifecycle"
             @sort="sortBy"
+            @role="requestRole"
           />
           <AdminPagination
             :page="query.page"
