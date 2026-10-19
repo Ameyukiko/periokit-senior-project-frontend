@@ -2,6 +2,16 @@ import { createRouter, createWebHistory } from "vue-router";
 import RegisterView from "../views/RegisterView.vue";
 import LoginView from "../views/LoginView.vue";
 import { getAccessToken } from "../services/token-storage";
+import { useAuthStore } from "../stores/auth";
+
+declare module "vue-router" {
+  interface RouteMeta {
+    requiresAuth?: boolean;
+    requiresGuest?: boolean;
+    /** UX gate only; the backend authorizes every admin request. */
+    requiresRole?: string[];
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,7 +62,7 @@ const router = createRouter({
       path: "/admin",
       name: "admin",
       component: () => import("../views/AdminDashboardView.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresRole: ["admin", "super_admin"] },
     },
 
     {
@@ -62,21 +72,23 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   const token = getAccessToken();
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
   const requiresGuest = to.matched.some((record) => record.meta.requiresGuest);
+  const allowedRoles = to.matched.flatMap((record) => record.meta.requiresRole ?? []);
 
-  if (requiresAuth && !token) {
+  if (requiresAuth && !token) return { name: "login" };
+  if (requiresGuest && token) return { name: "my-patients" };
 
-    next({ name: "login" });
-  } else if (requiresGuest && token) {
-
-    next({ name: "my-patients" });
-  } else {
-
-    next();
+  if (allowedRoles.length) {
+    // Re-read the role from GET /auth/me so a stale stored profile cannot open the page.
+    const authStore = useAuthStore();
+    await authStore.fetchProfile();
+    if (!authStore.isAuthenticated) return { name: "login" };
+    if (!allowedRoles.includes(authStore.user?.role ?? "")) return { name: "my-patients" };
   }
+  return true;
 });
 
 export default router;
