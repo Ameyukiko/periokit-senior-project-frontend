@@ -22,7 +22,7 @@ export function useExportReport(visitId: Ref<string | null>) {
     format: 'pdf',
     paper: 'a4',
     pngDpi: 150,
-    orient: { chart: 'landscape', diagnosis: 'portrait', images: 'landscape', imageNotes: 'portrait', notes: 'portrait' },
+    orient: { chart: 'landscape', diagnosis: 'portrait', images: 'landscape', imageNotes: 'portrait' },
     on: Object.fromEntries(SECTIONS.map((s) => [s.id, true])) as ExportState['on'],
     gray: false,
   })

@@ -6,8 +6,8 @@ const state = (patch: Partial<ExportState> = {}): ExportState => ({
   format: 'pdf',
   paper: 'a4',
   pngDpi: 150,
-  orient: { chart: 'landscape', diagnosis: 'portrait', images: 'landscape', imageNotes: 'portrait', notes: 'portrait' },
-  on: { chart: true, diagnosis: true, images: true, imageNotes: true, notes: false },
+  orient: { chart: 'landscape', diagnosis: 'portrait', images: 'landscape', imageNotes: 'portrait' },
+  on: { chart: true, diagnosis: true, images: true, imageNotes: true },
   gray: false,
   ...patch,
 })

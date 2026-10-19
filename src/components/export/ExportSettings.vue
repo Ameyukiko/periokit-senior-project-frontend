@@ -142,7 +142,7 @@ const LABEL = 'text-[11px] font-bold text-slate-400 uppercase tracking-wide'
             <span class="block text-[10px]" :class="reasonOf(s.id) ? 'text-amber-600' : 'text-slate-500'">{{ reasonOf(s.id) ?? s.desc }}</span>
           </span>
           <button
-            v-if="orientOf(s.id)"
+            v-if="orientOf(s.id) && !reasonOf(s.id)"
             type="button"
             :title="`Switch to ${orientOf(s.id) === 'portrait' ? 'landscape' : 'portrait'}`"
             class="shrink-0 w-21 flex items-center justify-between gap-1 pl-2 pr-1.5 py-1 rounded-md border text-[10px] font-bold transition-colors"
