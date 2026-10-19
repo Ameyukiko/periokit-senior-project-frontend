@@ -14,7 +14,7 @@ export interface Notification {
 export const useNotificationStore = defineStore("notification", () => {
   const notifications = ref<Notification[]>([]);
 
-  const DEFAULT_DURATION = 500;
+  const DEFAULT_DURATION = 1000;
 
   const show = (
     message: string,
