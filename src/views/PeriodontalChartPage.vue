@@ -16,6 +16,7 @@ import ExportPanel from '@/components/export/ExportPanel.vue'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useClinicalValidationStore } from '@/stores/clinical-validation'
 import { useVisitStore } from '@/stores/visit'
+import { useXrayBoardStore } from '@/stores/xray-board'
 import { useDiagnosisStore, resolveDiagnosisKey } from '@/stores/diagnosis'
 import { useVisitSave } from '@/composables/useVisitSave'
 import { useVisitLoad } from '@/composables/useVisitLoad'
@@ -460,7 +461,7 @@ const handleSaveClick = () => {
 const confirmSaveChart = async () => {
   showSaveConfirmModal.value = false
   const saved = await saveVisit()
-  if (!saved) return
+  if (!saved) return false
 
   const { visitId: activeVisit, patientId } = saved
 
@@ -477,6 +478,18 @@ const confirmSaveChart = async () => {
       },
     })
   }
+  return true
+}
+
+// Export tab: save chart + diagnosis (if needed) and the X-ray board before exporting.
+const saveForExport = async () => {
+  const needsVisitSave = activeVisitId.value === 'new' || chartStore.isDirty || diagnosisStore.isDirty
+  if (needsVisitSave) {
+    showValidation.value = true
+    if (!validate() || !(await confirmSaveChart())) return false
+  }
+  if (hasUnsavedBoard()) return useXrayBoardStore().saveBoard()
+  return true
 }
 
 
@@ -687,6 +700,7 @@ const handleUpdateNote = ({ id, note }: { id: string | number; note: string }) =
       v-else-if="activeSubNav === 'export' && hasPatient"
       :patient-id="xrayPatientId"
       :visit-id="xrayVisitId"
+      :save="saveForExport"
       @switch-visit="handleSwitchVisit"
     />
 
