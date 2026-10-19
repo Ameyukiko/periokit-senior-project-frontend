@@ -24,8 +24,12 @@ const emit = defineEmits<{ 'export-saved': []; 'save-and-export': []; cancel: []
 
 const { patientInfo } = storeToRefs(usePeriodontalChartStore())
 const { visits } = storeToRefs(useVisitStore())
+const formatVisitDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const visitLabel = (v: Visit, i: number) =>
-  v.id === 'new' ? 'New visit · Draft' : `Visit #${v.visitNumber ?? i + 1} · ${v.visitDate.slice(0, 10)} · ${v.phase}`
+  v.id === 'new'
+    ? 'New visit · Draft'
+    : `Visit #${v.visitNumber ?? i + 1} · ${formatVisitDate(v.visitDate)} · ${v.phase.replace(/ phase$/i, '')}`
 
 const FORMATS: { id: ExportFormat; icon: typeof FileText; label: string; desc: string }[] = [
   { id: 'pdf', icon: FileText, label: 'PDF', desc: 'Combined report' },
@@ -61,7 +65,7 @@ const LABEL = 'text-[11px] font-bold text-slate-400 uppercase tracking-wide'
           class="px-2 py-0.5 rounded-full text-[10px] font-bold"
           :class="isNewVisit || hasUnsavedChanges ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'"
         >
-          {{ isNewVisit ? 'Not saved' : hasUnsavedChanges ? 'Unsaved changes' : 'Saved' }}
+          {{ isNewVisit ? 'Draft' : hasUnsavedChanges ? 'Unsaved changes' : 'Completed' }}
         </span>
       </div>
       <div class="flex items-center gap-3 mb-3">
@@ -113,7 +117,7 @@ const LABEL = 'text-[11px] font-bold text-slate-400 uppercase tracking-wide'
           <input type="checkbox" checked disabled class="mt-0.5 w-4 h-4 accent-[#0052ff]" />
           <span class="flex-1">
             <span class="block text-[12px] font-bold text-slate-500">Patient &amp; visit details</span>
-            <span class="block text-[10px] text-slate-500">Shown in every page header, cannot be removed</span>
+            <span class="block text-[10px] text-slate-500">Shown in the chart header, cannot be removed</span>
           </span>
           <span class="shrink-0 w-21 flex items-center justify-center gap-1 py-1 rounded-md bg-slate-100 text-[10px] font-bold text-slate-400">
             <Lock class="w-3 h-3" />Always on
@@ -194,7 +198,6 @@ const LABEL = 'text-[11px] font-bold text-slate-400 uppercase tracking-wide'
         v-model="fileName"
         class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-[12px] font-mono outline-none focus:ring-2 focus:ring-blue-100"
       />
-      <p class="mt-1 text-[10px] text-slate-500">The extension is added by the server.</p>
       <div v-if="busy" class="mt-3 flex items-center gap-2">
         <span class="flex-1 flex items-center gap-1.5 text-[12px] font-bold text-[#0052ff]">
           <LoaderCircle class="w-4 h-4 animate-spin" />{{ STATUS_LABEL[status] }}

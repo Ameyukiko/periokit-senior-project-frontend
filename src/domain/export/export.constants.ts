@@ -14,10 +14,10 @@ export interface ExportState {
 }
 
 export const SECTIONS: { id: SectionId; label: string; desc: string; parent?: SectionId }[] = [
-  { id: 'chart', label: 'Periodontal chart', desc: 'Full chart as saved for this visit' },
-  { id: 'diagnosis', label: 'Diagnosis', desc: 'Stage and grade tables' },
+  { id: 'chart', label: 'Periodontal chart', desc: 'Full chart as drawn on the chart page' },
+  { id: 'diagnosis', label: 'Diagnosis', desc: 'Same as the Diagnosis page: stage and grade tables' },
   { id: 'images', label: 'X-ray & intraoral photos', desc: 'Films and photos as placed on the board' },
-  { id: 'imageNotes', label: 'X-ray notes', desc: 'Notes placed on the board', parent: 'images' },
+  { id: 'imageNotes', label: 'X-ray notes', desc: 'Notes placed among the films and photos', parent: 'images' },
   { id: 'notes', label: 'Notes', desc: 'Patient, visit and tooth notes' },
 ]
 
