@@ -6,9 +6,9 @@ export type SortField = 'studentId' | 'createdAt'
 export type SortDir = 'asc' | 'desc'
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  dentist: 'Dentist',
-  admin: 'Admin',
   super_admin: 'Super Admin',
+  admin: 'Admin',
+  dentist: 'Dentist',
 }
 
 export const PRIVILEGED_ROLES: UserRole[] = ['admin', 'super_admin']

@@ -13,9 +13,9 @@ const ITEMS = [
 ]
 
 const ROLES: { role: UserRole; text: string }[] = [
-  { role: 'dentist', text: 'Uses the dentist workspace.' },
-  { role: 'admin', text: "Manages dentist accounts. Can't change roles." },
   { role: 'super_admin', text: 'Manages every account and changes roles.' },
+  { role: 'admin', text: "Manages dentist accounts. Can't change roles." },
+  { role: 'dentist', text: 'Uses the dentist workspace.' },
 ]
 
 const open = ref(false)

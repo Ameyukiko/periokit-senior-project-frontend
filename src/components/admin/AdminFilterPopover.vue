@@ -12,9 +12,9 @@ const GROUPS = [
     key: 'role',
     label: 'Role',
     options: [
-      { value: 'dentist', label: 'Dentist' },
-      { value: 'admin', label: 'Admin' },
       { value: 'super_admin', label: 'Super Admin' },
+      { value: 'admin', label: 'Admin' },
+      { value: 'dentist', label: 'Dentist' },
     ],
   },
   {
