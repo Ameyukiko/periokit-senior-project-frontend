@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia'
 import { usePeriodontalChartStore } from '@/stores/periodontal-chart'
 import { useVisitStore } from '@/stores/visit'
 import type { Visit } from '@/services/api/visit.api'
-import { SECTIONS, PAPER_SIZES, type ExportState, type ExportFormat, type SectionId } from '@/domain/export/export.constants'
+import { SECTIONS, PAPER_SIZES, PAPER_GROUPS, type ExportState, type ExportFormat, type SectionId } from '@/domain/export/export.constants'
 import { isSectionAvailable, type SectionAvailability } from '@/domain/export/export.mapping'
 import type { ExportStatus } from '@/composables/useExportDownload'
 
@@ -181,7 +181,9 @@ const LABEL = 'text-[11px] font-bold text-slate-400 uppercase tracking-wide'
             v-model="state.paper"
             class="appearance-none bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-9 py-1 text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-100"
           >
-            <option v-for="p in PAPER_SIZES" :key="p.id" :value="p.id">{{ p.label }}</option>
+            <optgroup v-for="g in PAPER_GROUPS" :key="g" :label="g">
+              <option v-for="p in PAPER_SIZES.filter((p) => p.group === g)" :key="p.id" :value="p.id">{{ p.label }}</option>
+            </optgroup>
           </select>
           <ChevronDown class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         </span>
