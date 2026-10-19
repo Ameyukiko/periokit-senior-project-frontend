@@ -2,7 +2,7 @@ import type { ChartData, ChartSummary, PdBreakdown, PdCategories, Surface } from
 
 const toNumber = (value: string) => Number.parseInt(value, 10) || 0
 
-export const calculateCal = (pd: string, rec: string) => String(toNumber(pd) + toNumber(rec))
+export const calculateCal = (pd: string, rec: string) => String(Math.max(0, toNumber(pd) + toNumber(rec)))
 
 const getActiveTeeth = (chartData: ChartData) => Object.values(chartData).filter(tooth => !tooth.extracted)
 

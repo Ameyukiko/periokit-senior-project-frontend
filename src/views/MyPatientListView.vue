@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { patientApi, type Patient } from '../services/api/patient.api'
 import Navbar from '../components/layout/Navbar.vue'
 import FilterPanel from '../components/common/FilterPanel.vue'
+import FilterChips from '../components/common/FilterChips.vue'
 import PatientDrawer from '../components/patients/VisitListPanel.vue'
-import type { FilterConfig } from '../components/common/FilterPanel.vue'
+import type { FilterConfig, FilterValues } from '../components/common/FilterPanel.vue'
 import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Type, User } from 'lucide-vue-next'
 import Skeleton from '../components/common/Skeleton.vue'
+import type { MyPatientsQueryVariables } from '@/services/api/patient.api.types'
 
 const router = useRouter()
 const drawerOpen = ref(false)
 
 const allPatients = ref<Patient[]>([])
+const isLoading = ref(false)
 const page = ref(1)
 const pageSize = ref(10)
-const isLoading = ref(false)
+const total = ref(0)
+const totalPages = ref(0)
 
 const searchInput = ref('')
 
@@ -39,62 +43,41 @@ const filterConfigs: FilterConfig[] = [
   }
 ]
 
-
-const filterValues = ref<Record<string, any>>({
+const filterValues = ref<FilterValues>({
   date: null,
   name: null
 })
+
+const patients = allPatients
+
+const getBackendSort = (): MyPatientsQueryVariables['sort'] => {
+  const dateSort = filterValues.value.date
+  const nameSort = filterValues.value.name
+  if (dateSort === 'date_asc' || dateSort === 'date_desc') return dateSort
+  if (nameSort === 'name_asc' || nameSort === 'name_desc') return nameSort
+  return 'date_desc'
+}
 
 const fetchPatients = async () => {
   isLoading.value = true
   try {
     const res = await patientApi.getMyPatients(
-      1,
-      10000,
-      searchInput.value
+      page.value,
+      pageSize.value,
+      searchInput.value,
+      '',
+      '',
+      { sort: getBackendSort() }
     )
     allPatients.value = res.items
+    total.value = res.total
+    totalPages.value = res.totalPages
   } catch (error) {
     console.error('Failed to fetch patients', error)
   } finally {
     isLoading.value = false
   }
 }
-
-
-const sortedPatients = computed(() => {
-  const result = [...allPatients.value]
-  const dateSort = filterValues.value.date
-  const nameSort = filterValues.value.name
-
-  result.sort((a: Patient, b: Patient) => {
-    if (dateSort) {
-      const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
-      const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
-      const cmp = dateSort === 'date_asc' ? dateA - dateB : dateB - dateA
-      if (cmp !== 0) return cmp
-    }
-    if (nameSort) {
-      const cmp = nameSort === 'name_asc'
-        ? a.firstName.localeCompare(b.firstName)
-        : b.firstName.localeCompare(a.firstName)
-      if (cmp !== 0) return cmp
-    }
-
-    const dateA = a.lastVisitDate ? new Date(a.lastVisitDate).getTime() : 0
-    const dateB = b.lastVisitDate ? new Date(b.lastVisitDate).getTime() : 0
-    return dateB - dateA
-  })
-
-  return result
-})
-
-const total = computed(() => sortedPatients.value.length)
-const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-const patients = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return sortedPatients.value.slice(start, start + pageSize.value)
-})
 
 onMounted(() => {
   fetchPatients()
@@ -104,15 +87,26 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null
 const handleSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    page.value = 1
-    fetchPatients()
+    if (page.value === 1) {
+      fetchPatients()
+    } else {
+      page.value = 1
+    }
   }, 400)
 }
 
 
 watch(() => filterValues.value, () => {
-  page.value = 1
+  if (page.value === 1) {
+    fetchPatients()
+  } else {
+    page.value = 1
+  }
 }, { deep: true })
+
+watch(page, () => {
+  fetchPatients()
+})
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
@@ -153,8 +147,7 @@ const handleNewPatient = () => {
             />
           </div>
 
-
-          <FilterPanel v-model="filterValues" :configs="filterConfigs" @apply="fetchPatients" />
+          <FilterPanel v-model="filterValues" :configs="filterConfigs" />
 
 
           <button
@@ -167,8 +160,7 @@ const handleNewPatient = () => {
         </div>
       </div>
 
-
-      <div id="active-filter-chips" class="empty:mb-0 mb-5"></div>
+      <FilterChips v-model="filterValues" :configs="filterConfigs" class="empty:mb-0 mb-5" />
 
 
       <div class="bg-white shadow-sm rounded-2xl overflow-hidden border border-slate-100">

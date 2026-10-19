@@ -15,7 +15,6 @@ import {
 } from "../services/session";
 import {
   getAccessToken,
-  getAuthHeaders as getStoredAuthHeaders,
   getStoredUserProfile,
   saveSession,
 } from "../services/token-storage";
@@ -105,10 +104,6 @@ export const useAuthStore = defineStore("auth", () => {
     await handleUnauthorizedSession();
   }
 
-  function getAuthHeaders(): Record<string, string> {
-    return getStoredAuthHeaders();
-  }
-
   return {
     user,
     token,
@@ -118,7 +113,6 @@ export const useAuthStore = defineStore("auth", () => {
     register,
     logout,
     handleUnauthorized,
-    getAuthHeaders,
     fetchProfile,
   };
 });

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import ToothSidebar from "./ToothSidebar.vue";
+import type { ToothData, ToothId } from "@/domain/chart/chart.types";
 
 defineProps<{
   isOpen: boolean;
-  toothId: string | number | null;
-  toothData: any;
+  toothId: ToothId | null;
+  toothData: ToothData | null;
   readonly?: boolean;
   patientId?: string | null;
   visitId?: string | null;
@@ -12,7 +13,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "update-note", payload: { id: string | number; note: string }): void;
+  (e: "update-note", payload: { id: ToothId; note: string }): void;
 }>();
 </script>
 

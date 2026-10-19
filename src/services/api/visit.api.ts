@@ -1,18 +1,8 @@
-import { apolloClient } from '../apollo-client'
+import { apolloClient } from '@/services/apollo-client'
 import { gql } from '@apollo/client/core'
+import type { Visit, VisitsByPatientQueryData, VisitsByPatientQueryVariables } from '@/services/api/visit.api.types'
 
-export interface Visit {
-  id: string
-  patientId: string
-  visitDate: string
-  phase: string
-  doctorName: string | null
-  studentId: number | null
-  status: string
-  hasChart: boolean
-  visitNumber?: number
-  createdAt: string
-}
+export type { Visit } from '@/services/api/visit.api.types'
 
 const VISITS_BY_PATIENT = gql`
   query VisitsByPatient($patientId: ID!) {
@@ -32,7 +22,7 @@ const VISITS_BY_PATIENT = gql`
 
 export const visitApi = {
   async getByPatient(patientId: string): Promise<Visit[]> {
-    const { data } = await apolloClient.query({
+    const { data } = await apolloClient.query<VisitsByPatientQueryData, VisitsByPatientQueryVariables>({
       query: VISITS_BY_PATIENT,
       variables: { patientId },
       fetchPolicy: 'network-only',

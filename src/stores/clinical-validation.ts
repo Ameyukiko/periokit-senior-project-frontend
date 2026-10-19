@@ -36,11 +36,6 @@ export const useClinicalValidationStore = defineStore('clinicalValidation', {
 
     clearValidation() {
       this.validationStates = {}
-    },
-
-    clearToothValidation(toothId: ToothId | string) {
-      const keysToDelete = Object.keys(this.validationStates).filter(key => key.startsWith(`${toothId}-`))
-      keysToDelete.forEach(key => delete this.validationStates[key])
     }
   }
 })
