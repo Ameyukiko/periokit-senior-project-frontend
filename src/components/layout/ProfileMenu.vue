@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ChevronDown, LayoutGrid, LogOut, Shield } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { isPrivileged } from '@/domain/admin/admin-users.types'
+import { profileMenuItems } from '@/domain/admin/profile-menu'
 import ConfirmModal from '../common/ConfirmModal.vue'
 
 const authStore = useAuthStore()
@@ -15,8 +15,7 @@ const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 
 const route = useRoute()
-const onAdminPage = computed(() => route.path.startsWith('/admin'))
-const canSeeAdmin = computed(() => !onAdminPage.value && isPrivileged(user.value?.role))
+const items = computed(() => profileMenuItems(user.value?.role, route.path))
 
 function close(returnFocus = false) {
   open.value = false
@@ -79,11 +78,11 @@ const ITEM = 'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold trans
         <p class="text-sm font-bold text-[#1f2937] truncate">{{ user?.first_name }} {{ user?.last_name }}</p>
         <p class="text-xs text-gray-400 truncate">{{ user?.email }}</p>
       </div>
-      <router-link v-if="canSeeAdmin" to="/admin" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
+      <router-link v-if="items.includes('admin-dashboard')" to="/admin" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
         <div class="p-1.5 bg-violet-100 text-violet-600 rounded-lg"><Shield class="w-4 h-4" /></div>
         Admin Dashboard
       </router-link>
-      <router-link v-if="onAdminPage" to="/patients" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
+      <router-link v-if="items.includes('dentist-workspace')" to="/patients" role="menuitem" :class="ITEM" class="text-[#1f2937] hover:bg-slate-50" @click="close()">
         <div class="p-1.5 bg-blue-100 text-[#0052ff] rounded-lg"><LayoutGrid class="w-4 h-4" /></div>
         Dentist workspace
       </router-link>

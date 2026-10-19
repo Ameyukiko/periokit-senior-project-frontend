@@ -1,6 +1,8 @@
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notification'
+import { useAuthStore } from '@/stores/auth'
+import { handleUnauthorizedSession } from '@/services/session'
 import { ApiError } from '@/services/api/http'
 import { changeAdminUserLifecycle, listAdminUsers, updateAdminUser } from '@/services/api/admin-users.api'
 import { parseAdminQuery, serializeAdminQuery } from '@/domain/admin/admin-users.query'
@@ -22,6 +24,8 @@ const LIFECYCLE_DONE: Record<LifecycleAction, string> = {
   restore: 'Account restored',
 }
 
+const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401
+
 export function adminErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 403) return 'You no longer have permission to do this. The list has been refreshed.'
@@ -36,6 +40,7 @@ export function useAdminUsers() {
   const route = useRoute()
   const router = useRouter()
   const notify = useNotificationStore()
+  const auth = useAuthStore()
 
   const query = computed(() => parseAdminQuery(route.query))
   const users = shallowRef<AdminUser[]>([])
@@ -80,11 +85,18 @@ export function useAdminUsers() {
     try {
       const page = await listAdminUsers(query.value, controller.signal)
       if (id !== requestId) return
+      // A delete or narrower filter can leave the URL past the last page.
+      const lastPage = Math.max(1, Math.ceil(page.total / query.value.pageSize))
+      if (query.value.page > lastPage) {
+        setQuery({ page: lastPage })
+        return
+      }
       users.value = page.items
       total.value = page.total
       totals.value = page.totals
     } catch (e) {
       if (id !== requestId || (e instanceof DOMException && e.name === 'AbortError')) return
+      if (isUnauthorized(e)) return handleUnauthorizedSession()
       error.value = e instanceof ApiError && e.status === 403
         ? 'You do not have access to user management.'
         : 'Could not load users.'
@@ -101,9 +113,14 @@ export function useAdminUsers() {
     try {
       await run()
       notify.success(done)
+      if (userId === auth.user?.id) await auth.fetchProfile()
       await load()
       return true
     } catch (e) {
+      if (isUnauthorized(e)) {
+        await handleUnauthorizedSession()
+        return false
+      }
       notify.error(adminErrorMessage(e))
       if (e instanceof ApiError && (e.status === 403 || e.status === 409 || e.status === 404)) await load()
       return false

@@ -9,6 +9,10 @@ const notify = { success: vi.fn(), error: vi.fn() }
 vi.mock('@/stores/notification', () => ({ useNotificationStore: () => notify }))
 const api = { listAdminUsers: vi.fn(), updateAdminUser: vi.fn(), changeAdminUserLifecycle: vi.fn() }
 vi.mock('@/services/api/admin-users.api', () => api)
+const auth = { user: { id: 'me' } as { id: string } | null, fetchProfile: vi.fn() }
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
+const handleUnauthorizedSession = vi.fn()
+vi.mock('@/services/session', () => ({ handleUnauthorizedSession }))
 
 const { useAdminUsers } = await import('./useAdminUsers')
 
@@ -35,7 +39,7 @@ const user = { id: 'u1' } as never
 
 beforeEach(() => {
   route.query = {}
-  api.listAdminUsers.mockResolvedValue(page(['a']))
+  api.listAdminUsers.mockResolvedValue({ ...page(['a']), total: 100 })
 })
 
 describe('useAdminUsers', () => {
@@ -132,5 +136,35 @@ describe('useAdminUsers', () => {
     pending.resolve({})
     expect(await first).toBe(true)
     expect(notify.success).toHaveBeenCalledWith('User updated')
+  })
+
+  it('moves back to the last page when the current one is past the end', async () => {
+    route.query = { page: '5' }
+    api.listAdminUsers.mockResolvedValueOnce({ ...page([]), total: 12 })
+    const s = setup()
+    await flush()
+    expect(route.query).toEqual({ page: '2' })
+    expect(s.users.value).toEqual([{ id: 'a' }])
+  })
+
+  it('runs the session-expired flow on 401', async () => {
+    api.listAdminUsers.mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+    const s = setup()
+    await flush()
+    expect(handleUnauthorizedSession).toHaveBeenCalledTimes(1)
+    api.changeAdminUserLifecycle.mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+    expect(await s.changeLifecycle(user, 'delete')).toBe(false)
+    expect(handleUnauthorizedSession).toHaveBeenCalledTimes(2)
+    expect(notify.error).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the signed-in profile after editing your own account', async () => {
+    const s = setup()
+    await flush()
+    api.updateAdminUser.mockResolvedValueOnce({})
+    await s.saveUser({ id: 'me' } as never, { firstName: 'New', lastName: 'Name', studentId: null })
+    expect(auth.fetchProfile).toHaveBeenCalled()
+    await s.saveUser(user, { firstName: 'a', lastName: 'b', studentId: null })
+    expect(auth.fetchProfile).toHaveBeenCalledTimes(1)
   })
 })
