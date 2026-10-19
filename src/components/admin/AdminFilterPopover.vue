@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Filter } from 'lucide-vue-next'
 import { activeFilterCount } from '@/domain/admin/admin-users.query'
-import type { AdminUserQuery, LastSignInFilter, UserRole } from '@/domain/admin/admin-users.types'
+import type { AdminUserQuery, CreatedFilter, UserRole } from '@/domain/admin/admin-users.types'
 
 const props = defineProps<{ query: AdminUserQuery }>()
 const emit = defineEmits<{ change: [patch: Partial<AdminUserQuery>] }>()
@@ -16,26 +16,24 @@ const GROUPS = [
       { value: 'admin', label: 'Admin' },
       { value: 'super_admin', label: 'Super Admin' },
     ],
-    off: 'all',
   },
   {
-    key: 'lastSignIn',
-    label: 'Last sign-in',
+    key: 'created',
+    label: 'Created',
     options: [
       { value: 'week', label: 'Last 7 days' },
-      { value: 'stale', label: 'Over 30 days ago' },
-      { value: 'never', label: 'Never' },
+      { value: 'month', label: 'Last 30 days' },
+      { value: 'older', label: 'Over 30 days ago' },
     ],
-    off: 'any',
   },
 ] as const
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
-function toggle(key: 'role' | 'lastSignIn', value: string, off: string) {
-  const next = props.query[key] === value ? off : value
-  emit('change', key === 'role' ? { role: next as UserRole | 'all' } : { lastSignIn: next as LastSignInFilter })
+function toggle(key: 'role' | 'created', value: string) {
+  if (key === 'role') emit('change', { role: props.query.role === value ? 'all' : (value as UserRole) })
+  else emit('change', { created: props.query.created === value ? 'any' : (value as CreatedFilter) })
 }
 
 const onClick = (e: MouseEvent) => {
@@ -82,13 +80,13 @@ onUnmounted(() => {
             :aria-pressed="query[g.key] === o.value"
             class="px-3 py-1 rounded-full text-[12px] font-bold border"
             :class="query[g.key] === o.value ? 'bg-[#0052ff] border-[#0052ff] text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
-            @click="toggle(g.key, o.value, g.off)"
+            @click="toggle(g.key, o.value)"
           >
             {{ o.label }}
           </button>
         </div>
       </div>
-      <button type="button" class="self-start text-[12px] font-bold text-[#0052ff]" @click="emit('change', { role: 'all', lastSignIn: 'any' })">
+      <button type="button" class="self-start text-[12px] font-bold text-[#0052ff]" @click="emit('change', { role: 'all', created: 'any' })">
         Clear all
       </button>
     </div>

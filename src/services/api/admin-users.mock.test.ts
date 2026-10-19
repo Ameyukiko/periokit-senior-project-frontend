@@ -38,17 +38,22 @@ describe('admin users mock API', () => {
     expect((await list({ search: sid.slice(2) })).items.some((u) => u.studentId === sid)).toBe(true)
   })
 
-  it('filters by role, status and never-signed-in, and paginates', async () => {
+  it('filters by role and status, and paginates', async () => {
     expect((await list({ role: 'super_admin' })).items.every((u) => u.role === 'super_admin')).toBe(true)
     expect((await list({ status: 'deleted' })).items.every((u) => u.status === 'deleted')).toBe(true)
-    expect((await list({ lastSignIn: 'never' })).items.every((u) => u.lastSignInAt === null)).toBe(true)
     const page2 = await run(mock.listAdminUsers({ ...DEFAULT_QUERY, page: 2, pageSize: 5 }))
     expect(page2.items).toHaveLength(5)
   })
 
-  it('filters stale sign-ins and sorts blanks last', async () => {
-    const stale = (await list({ lastSignIn: 'stale' })).items
-    expect(stale.every((u) => Date.now() - Date.parse(u.lastSignInAt!) > 30 * 86_400_000)).toBe(true)
+  it('filters by created date', async () => {
+    const age = (u: { createdAt: string }) => (Date.now() - Date.parse(u.createdAt)) / 86_400_000
+    const week = (await list({ created: 'week' })).items
+    expect(week.length).toBeGreaterThan(0)
+    expect(week.every((u) => age(u) <= 7)).toBe(true)
+    expect((await list({ created: 'older' })).items.every((u) => age(u) > 30)).toBe(true)
+  })
+
+  it('sorts blank student IDs last', async () => {
     const sorted = (await list({ sort: 'studentId', dir: 'desc' })).items
     const firstBlank = sorted.findIndex((u) => !u.studentId)
     expect(sorted.slice(firstBlank).every((u) => !u.studentId)).toBe(true)

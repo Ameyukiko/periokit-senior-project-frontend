@@ -89,16 +89,12 @@ function matches(u: AdminUser, q: AdminUserQuery): boolean {
     if (!hay.some((v) => v.toLowerCase().includes(term))) return false
   }
   if (q.role !== 'all' && u.role !== q.role) return false
-  if (q.lastSignIn === 'never') return u.lastSignInAt === null
-  if (q.lastSignIn !== 'any') {
-    if (!u.lastSignInAt) return false
-    const days = (Date.now() - Date.parse(u.lastSignInAt)) / DAY
-    return q.lastSignIn === 'week' ? days <= 7 : days > 30
-  }
-  return true
+  if (q.created === 'any') return true
+  const days = (Date.now() - Date.parse(u.createdAt)) / DAY
+  return q.created === 'week' ? days <= 7 : q.created === 'month' ? days <= 30 : days > 30
 }
 
-// Blank student IDs and never-signed-in users always sort last.
+// Blank student IDs always sort last.
 function compare(a: AdminUser, b: AdminUser, q: AdminUserQuery): number {
   if (!q.sort) return 0
   const va = a[q.sort]

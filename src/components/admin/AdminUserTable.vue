@@ -22,7 +22,6 @@ const perms = computed(() => new Map(props.users.map((u) => [u.id, permissionsFo
 const SORTABLE: { field: SortField; label: string }[] = [
   { field: 'studentId', label: 'Student ID' },
   { field: 'createdAt', label: 'Created' },
-  { field: 'lastSignInAt', label: 'Last sign-in' },
 ]
 const sortIcon = (f: SortField) => (props.query.sort !== f ? ArrowUpDown : props.query.dir === 'asc' ? ArrowUp : ArrowDown)
 const ariaSort = (f: SortField) => (props.query.sort !== f ? 'none' : props.query.dir === 'asc' ? 'ascending' : 'descending')
@@ -81,7 +80,6 @@ const BTN = 'p-1.5 rounded-lg'
         </td>
         <td class="px-4 py-3"><AdminUserStatus :user="user" /></td>
         <td class="px-4 py-3">{{ formatDate(user.createdAt) }}</td>
-        <td class="px-4 py-3">{{ formatDate(user.lastSignInAt) }}</td>
         <td class="px-4 py-3" @click.stop>
           <div v-if="user.status === 'deleted'" class="flex justify-end">
             <button

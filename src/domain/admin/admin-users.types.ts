@@ -1,8 +1,8 @@
 export type UserRole = 'dentist' | 'admin' | 'super_admin'
 export type UserStatus = 'active' | 'inactive' | 'deleted'
 export type StatusTab = 'all' | UserStatus
-export type LastSignInFilter = 'any' | 'week' | 'stale' | 'never'
-export type SortField = 'studentId' | 'createdAt' | 'lastSignInAt'
+export type CreatedFilter = 'any' | 'week' | 'month' | 'older'
+export type SortField = 'studentId' | 'createdAt'
 export type SortDir = 'asc' | 'desc'
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -38,7 +38,7 @@ export interface AdminUserQuery {
   status: StatusTab
   search: string
   role: UserRole | 'all'
-  lastSignIn: LastSignInFilter
+  created: CreatedFilter
   /** null keeps the server's default order. */
   sort: SortField | null
   dir: SortDir

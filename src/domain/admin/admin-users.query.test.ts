@@ -9,8 +9,8 @@ describe('admin query URL state', () => {
   })
 
   it('round-trips non-default values', () => {
-    const q = { ...DEFAULT_QUERY, status: 'inactive', search: 'ploy', role: 'super_admin', lastSignIn: 'never', sort: 'studentId', dir: 'desc', page: 3 } as const
-    expect(serializeAdminQuery(q)).toEqual({ status: 'inactive', q: 'ploy', role: 'super_admin', signin: 'never', sort: 'studentId', dir: 'desc', page: '3' })
+    const q = { ...DEFAULT_QUERY, status: 'inactive', search: 'ploy', role: 'super_admin', created: 'month', sort: 'studentId', dir: 'desc', page: 3 } as const
+    expect(serializeAdminQuery(q)).toEqual({ status: 'inactive', q: 'ploy', role: 'super_admin', created: 'month', sort: 'studentId', dir: 'desc', page: '3' })
     expect(parseAdminQuery(serializeAdminQuery(q) as Record<string, string>)).toEqual(q)
   })
 
@@ -32,7 +32,7 @@ describe('nextSort', () => {
 
   it('counts active popover filters', () => {
     expect(activeFilterCount(DEFAULT_QUERY)).toBe(0)
-    expect(activeFilterCount({ ...DEFAULT_QUERY, role: 'admin', lastSignIn: 'stale' })).toBe(2)
+    expect(activeFilterCount({ ...DEFAULT_QUERY, role: 'admin', created: 'older' })).toBe(2)
   })
 })
 
