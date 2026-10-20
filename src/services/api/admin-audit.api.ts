@@ -2,8 +2,10 @@ import { apiRequest } from './http'
 import type { AuditLog, AuditLogPage, AuditLogQuery, AuditUser } from '@/domain/admin/admin-audit.types'
 
 type ApiAuditUser = { userId: string; firstName: string; lastName: string; email: string }
-type ApiAuditLog = Omit<AuditLog, 'id' | 'actor' | 'target'> & {
+type ApiAuditLog = Omit<AuditLog, 'id' | 'actor' | 'target' | 'roleBefore' | 'roleAfter'> & {
   auditId: string
+  targetRoleBefore: AuditLog['roleBefore']
+  targetRoleAfter: AuditLog['roleAfter']
   actor: ApiAuditUser
   target: ApiAuditUser
 }
@@ -17,9 +19,11 @@ export async function listAuditLogs(query: AuditLogQuery, signal?: AbortSignal):
   const res = await apiRequest<{ logs: ApiAuditLog[]; total: number }>(`/admin/audit-logs?${params}`, { auth: true, signal })
   const { logs, total } = res.data!
   return {
-    items: logs.map(({ auditId, actor, target, ...rest }) => ({
+    items: logs.map(({ auditId, actor, target, targetRoleBefore, targetRoleAfter, ...rest }) => ({
       ...rest,
       id: auditId,
+      roleBefore: targetRoleBefore,
+      roleAfter: targetRoleAfter,
       actor: toAuditUser(actor),
       target: toAuditUser(target),
     })),
