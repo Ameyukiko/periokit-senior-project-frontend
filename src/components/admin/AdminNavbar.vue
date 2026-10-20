@@ -6,6 +6,10 @@ import { ROLE_LABELS, isPrivileged } from '@/domain/admin/admin-users.types'
 import ProfileMenu from '../layout/ProfileMenu.vue'
 
 const { user } = storeToRefs(useAuthStore())
+const TABS = [
+  { to: '/admin', label: 'Users' },
+  { to: '/admin/activity-log', label: 'Activity Log' },
+]
 </script>
 
 <template>
@@ -15,6 +19,17 @@ const { user } = storeToRefs(useAuthStore())
         <img src="@/assets/logo_perio.png" alt="PERIOKIT" class="h-12 w-auto" />
       </router-link>
       <span class="flex items-center gap-2 text-[#0052ff] font-bold text-sm"><Shield class="w-5 h-5" />Admin Dashboard</span>
+      <div v-if="user?.role === 'super_admin'" class="flex items-center gap-1 ml-4">
+        <router-link
+          v-for="tab in TABS"
+          :key="tab.to"
+          :to="tab.to"
+          class="px-3 py-1.5 rounded-lg text-[13px] font-bold text-slate-500 hover:bg-slate-50"
+          exact-active-class="bg-blue-50 !text-[#0052ff]"
+        >
+          {{ tab.label }}
+        </router-link>
+      </div>
     </div>
     <div class="flex items-center gap-4">
       <span
