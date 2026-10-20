@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { Shield } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { History, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ROLE_LABELS, isPrivileged } from '@/domain/admin/admin-users.types'
 import ProfileMenu from '../layout/ProfileMenu.vue'
 
 const { user } = storeToRefs(useAuthStore())
-const TABS = [
-  { to: '/admin', label: 'Users' },
-  { to: '/admin/activity-log', label: 'Activity Log' },
-]
+const tabs = computed(() => [
+  { to: '/admin', label: 'Admin Dashboard', icon: Shield },
+  ...(user.value?.role === 'super_admin' ? [{ to: '/admin/activity-log', label: 'Activity Log', icon: History }] : []),
+])
 </script>
 
 <template>
   <nav class="bg-white border-b border-[#e2e8f0] h-16 flex items-center justify-between px-8 sticky top-0 z-40 shadow-sm">
-    <div class="flex items-center gap-6">
+    <div class="flex items-center gap-6 self-stretch">
       <router-link to="/admin" class="flex items-center">
         <img src="@/assets/logo_perio.png" alt="PERIOKIT" class="h-12 w-auto" />
       </router-link>
-      <span class="flex items-center gap-2 text-[#0052ff] font-bold text-sm"><Shield class="w-5 h-5" />Admin Dashboard</span>
-      <div v-if="user?.role === 'super_admin'" class="flex items-center gap-1 ml-4">
+      <div class="flex items-stretch self-stretch gap-2">
         <router-link
-          v-for="tab in TABS"
+          v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
-          class="px-3 py-1.5 rounded-lg text-[13px] font-bold text-slate-500 hover:bg-slate-50"
-          exact-active-class="bg-blue-50 !text-[#0052ff]"
+          class="flex items-center gap-2 px-3 text-sm font-bold text-slate-500 hover:text-slate-800"
+          exact-active-class="!text-[#0052ff]"
         >
-          {{ tab.label }}
+          <component :is="tab.icon" class="w-4 h-4" />{{ tab.label }}
         </router-link>
       </div>
     </div>

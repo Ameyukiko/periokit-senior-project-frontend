@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, History, Loader2, RefreshCw, Search } from 'lucide-vue-next'
+import { AlertCircle, ChevronDown, History, Loader2, RefreshCw, Search } from 'lucide-vue-next'
 import AdminNavbar from '@/components/admin/AdminNavbar.vue'
 import AdminAuditTable from '@/components/admin/AdminAuditTable.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
@@ -9,7 +9,6 @@ import { AUDIT_ACTION_LABELS, type AuditAction } from '@/domain/admin/admin-audi
 const { query, searchInput, logs, total, totalPages, loading, error, setQuery, reload } = useAdminAuditLog()
 
 const ACTIONS = Object.entries(AUDIT_ACTION_LABELS) as [AuditAction, string][]
-const PAGE_SIZES = [10, 20, 50]
 const CONTROL = 'py-2.5 text-[13px] rounded-xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:border-[#0052ff]'
 </script>
 
@@ -22,18 +21,19 @@ const CONTROL = 'py-2.5 text-[13px] rounded-xl border border-slate-200 bg-white 
           <h1 class="text-xl font-bold">Activity Log</h1>
           <p class="text-[13px] text-slate-500">History of user management actions by admins</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 mr-6">
           <label class="relative w-85">
             <span class="sr-only">Search activity</span>
             <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input v-model="searchInput" type="search" placeholder="Search name or email" :class="[CONTROL, 'w-full pl-9 pr-3']" />
           </label>
-          <label>
+          <label class="relative">
             <span class="sr-only">Filter by action</span>
-            <select :value="query.action" :class="[CONTROL, 'px-3']" @change="setQuery({ action: ($event.target as HTMLSelectElement).value as AuditAction | 'all' })">
+            <select :value="query.action" :class="[CONTROL, 'appearance-none pl-3 pr-10 cursor-pointer']" @change="setQuery({ action: ($event.target as HTMLSelectElement).value as AuditAction | 'all' })">
               <option value="all">All actions</option>
               <option v-for="[value, label] in ACTIONS" :key="value" :value="value">{{ label }}</option>
             </select>
+            <ChevronDown class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </label>
         </div>
       </div>
@@ -55,12 +55,6 @@ const CONTROL = 'py-2.5 text-[13px] rounded-xl border border-slate-200 bg-white 
         </div>
         <template v-else>
           <AdminAuditTable :logs="logs" :loading="loading" />
-          <div class="flex items-center gap-2 px-4 pt-3 text-[12px] text-slate-500 border-t border-slate-100">
-            Rows per page
-            <select :value="query.pageSize" class="px-2 py-1 rounded-lg border border-slate-200" @change="setQuery({ pageSize: Number(($event.target as HTMLSelectElement).value) })">
-              <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-            </select>
-          </div>
           <AdminPagination :page="query.page" :total-pages="totalPages" :total="total" :page-size="query.pageSize" @change="setQuery({ page: $event })" />
         </template>
       </section>
