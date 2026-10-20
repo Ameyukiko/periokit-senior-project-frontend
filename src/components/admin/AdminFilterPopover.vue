@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Filter } from 'lucide-vue-next'
 import { activeFilterCount } from '@/domain/admin/admin-users.query'
-import type { AdminUserQuery, CreatedFilter, UserRole } from '@/domain/admin/admin-users.types'
+import type { AdminUserQuery, UserRole } from '@/domain/admin/admin-users.types'
 
 const props = defineProps<{ query: AdminUserQuery }>()
 const emit = defineEmits<{ change: [patch: Partial<AdminUserQuery>] }>()
@@ -17,23 +17,13 @@ const GROUPS = [
       { value: 'dentist', label: 'Dentist' },
     ],
   },
-  {
-    key: 'created',
-    label: 'Created',
-    options: [
-      { value: 'week', label: 'Last 7 days' },
-      { value: 'month', label: 'Last 30 days' },
-      { value: 'older', label: 'Over 30 days ago' },
-    ],
-  },
 ] as const
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
-function toggle(key: 'role' | 'created', value: string) {
-  if (key === 'role') emit('change', { role: props.query.role === value ? 'all' : (value as UserRole) })
-  else emit('change', { created: props.query.created === value ? 'any' : (value as CreatedFilter) })
+function toggle(value: string) {
+  emit('change', { role: props.query.role === value ? 'all' : (value as UserRole) })
 }
 
 const onClick = (e: MouseEvent) => {
@@ -80,13 +70,13 @@ onUnmounted(() => {
             :aria-pressed="query[g.key] === o.value"
             class="px-3 py-1 rounded-full text-[12px] font-bold border"
             :class="query[g.key] === o.value ? 'bg-[#0052ff] border-[#0052ff] text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
-            @click="toggle(g.key, o.value)"
+            @click="toggle(o.value)"
           >
             {{ o.label }}
           </button>
         </div>
       </div>
-      <button type="button" class="self-start text-[12px] font-bold text-[#0052ff]" @click="emit('change', { role: 'all', created: 'any' })">
+      <button type="button" class="self-start text-[12px] font-bold text-[#0052ff]" @click="emit('change', { role: 'all' })">
         Clear all
       </button>
     </div>

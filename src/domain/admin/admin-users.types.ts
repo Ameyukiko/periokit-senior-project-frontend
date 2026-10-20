@@ -1,7 +1,6 @@
 export type UserRole = 'dentist' | 'admin' | 'super_admin'
 export type UserStatus = 'active' | 'inactive' | 'deleted'
 export type StatusTab = 'all' | UserStatus
-export type CreatedFilter = 'any' | 'week' | 'month' | 'older'
 export type SortField = 'studentId' | 'createdAt'
 export type SortDir = 'asc' | 'desc'
 
@@ -38,7 +37,6 @@ export interface AdminUserQuery {
   status: StatusTab
   search: string
   role: UserRole | 'all'
-  created: CreatedFilter
   /** null keeps the server's default order. */
   sort: SortField | null
   dir: SortDir

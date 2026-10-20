@@ -1,11 +1,10 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
-import type { AdminUserQuery, CreatedFilter, SortDir, SortField, StatusTab, UserRole } from './admin-users.types'
+import type { AdminUserQuery, SortDir, SortField, StatusTab, UserRole } from './admin-users.types'
 
 export const DEFAULT_QUERY: AdminUserQuery = {
   status: 'all',
   search: '',
   role: 'all',
-  created: 'any',
   sort: null,
   dir: 'asc',
   page: 1,
@@ -17,7 +16,6 @@ const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback:
 
 const STATUSES: StatusTab[] = ['all', 'active', 'inactive', 'deleted']
 const ROLES: (UserRole | 'all')[] = ['all', 'dentist', 'admin', 'super_admin']
-const CREATED: CreatedFilter[] = ['any', 'week', 'month', 'older']
 const SORTS: SortField[] = ['studentId', 'createdAt']
 
 /** Reads table state from the URL, falling back to defaults for anything invalid. */
@@ -27,7 +25,6 @@ export function parseAdminQuery(q: LocationQuery): AdminUserQuery {
     status: pick(q.status, STATUSES, DEFAULT_QUERY.status),
     search: typeof q.q === 'string' ? q.q.trim() : '',
     role: pick(q.role, ROLES, DEFAULT_QUERY.role),
-    created: pick(q.created, CREATED, DEFAULT_QUERY.created),
     sort: SORTS.includes(q.sort as SortField) ? (q.sort as SortField) : null,
     dir: pick(q.dir, ['asc', 'desc'] as const, DEFAULT_QUERY.dir),
     page: Number.isInteger(page) && page > 0 ? page : 1,
@@ -41,7 +38,6 @@ export function serializeAdminQuery(q: AdminUserQuery): LocationQueryRaw {
   if (q.status !== DEFAULT_QUERY.status) out.status = q.status
   if (q.search) out.q = q.search
   if (q.role !== DEFAULT_QUERY.role) out.role = q.role
-  if (q.created !== DEFAULT_QUERY.created) out.created = q.created
   if (q.sort) {
     out.sort = q.sort
     if (q.dir !== DEFAULT_QUERY.dir) out.dir = q.dir
@@ -58,5 +54,4 @@ export function nextSort(q: AdminUserQuery, field: SortField): { sort: SortField
 }
 
 /** Filter popover state counts toward the badge on the Filter button. */
-export const activeFilterCount = (q: AdminUserQuery) =>
-  Number(q.role !== DEFAULT_QUERY.role) + Number(q.created !== DEFAULT_QUERY.created)
+export const activeFilterCount = (q: AdminUserQuery) => Number(q.role !== DEFAULT_QUERY.role)
